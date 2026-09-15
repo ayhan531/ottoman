@@ -58,25 +58,44 @@
 .empty-state{border:1px dashed var(--line);border-radius:16px;padding:24px;text-align:center;color:var(--muted);font-weight:700;background:#fafafe}
 .profile-card{width:100%;text-align:left}
 .ghost-back{align-self:flex-start;background:#f3f0ff;color:var(--purple);font-weight:900;border-radius:12px;padding:10px 13px}
-.landing{min-height:100vh;background:#f7f7fb;color:#15131f;font-family:Inter,system-ui,sans-serif}
-.landing-nav{height:74px;display:flex;align-items:center;justify-content:space-between;gap:22px;padding:0 clamp(18px,5vw,72px);background:#fff;border-bottom:1px solid #e7e7ef;position:sticky;top:0;z-index:5}
+.landing{min-height:100vh;background:#f6f8fc;color:#15131f;font-family:Inter,system-ui,sans-serif;overflow:hidden}
+.landing-nav{height:78px;display:flex;align-items:center;justify-content:space-between;gap:22px;padding:0 clamp(18px,5vw,72px);background:rgba(255,255,255,.88);backdrop-filter:blur(18px);border-bottom:1px solid #e7eaf3;position:sticky;top:0;z-index:5}
 .landing-nav nav{display:flex;gap:22px;flex-wrap:wrap}
 .landing-nav nav button{color:#4f5260;text-decoration:none;font-weight:800;background:transparent;height:36px;border-radius:10px;padding:0 10px}
 .landing-nav nav button.active{background:#f0ecff;color:#7657ff}
-.landing-nav button,.landing-hero button,.landing-footer button{height:44px;border-radius:12px;background:#7657ff;color:#fff;font-weight:900;padding:0 18px}
-.landing-hero{min-height:calc(100vh - 74px);display:grid;grid-template-columns:minmax(0,1.1fr) minmax(320px,.75fr);align-items:center;gap:32px;padding:clamp(32px,7vw,92px)}
-.landing-hero h1{font-size:clamp(38px,6vw,78px);line-height:.96;margin:10px 0 18px;max-width:850px;letter-spacing:0}
-.landing-hero p{font-size:19px;line-height:1.55;color:#565b69;max-width:680px}
+.landing-nav button,.landing-hero button,.landing-footer button{height:46px;border-radius:12px;background:#7657ff;color:#fff;font-weight:900;padding:0 18px;box-shadow:0 14px 30px rgba(118,87,255,.22)}
+.landing-hero{position:relative;min-height:calc(100vh - 78px);display:grid;grid-template-columns:minmax(0,1.05fr) minmax(360px,.82fr);align-items:center;gap:40px;padding:clamp(42px,7vw,98px)}
+.landing-hero::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 72% 28%,rgba(118,87,255,.18),transparent 34%),linear-gradient(135deg,#fff 0%,#f4f7fd 58%,#eef3fb 100%);z-index:-2}
+.landing-hero::after{content:"";position:absolute;right:-120px;bottom:-160px;width:420px;height:420px;background:linear-gradient(135deg,rgba(31,87,190,.12),rgba(118,87,255,.18));border-radius:50%;filter:blur(4px);z-index:-1}
+.hero-copy{animation:landing-up .7s ease both}
+.landing-hero h1{font-size:clamp(42px,6vw,82px);line-height:.98;margin:10px 0 18px;max-width:920px;letter-spacing:0}
+.landing-hero p{font-size:20px;line-height:1.6;color:#565b69;max-width:720px}
 .landing-hero span{color:#7657ff;font-weight:900;text-transform:uppercase}
-.hero-terminal{min-height:320px;border-radius:28px;background:#141220;color:#fff;padding:30px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 24px 80px rgba(31,25,64,.28)}
-.hero-terminal b{color:#bfb4ff;font-size:18px}
-.hero-terminal strong{font-size:56px;margin:12px 0}
-.hero-terminal span{color:#d8d4ff;text-transform:none}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+.hero-actions .secondary{background:#fff;color:#211b44;border:1px solid #e1e4ee;box-shadow:none}
+.hero-terminal{min-height:420px;border-radius:30px;background:linear-gradient(155deg,#111827,#191433 54%,#3b2f8f);color:#fff;padding:30px;display:flex;flex-direction:column;justify-content:center;box-shadow:0 34px 90px rgba(31,25,64,.32);animation:terminal-float 5.5s ease-in-out infinite}
+.terminal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.terminal-top span{color:#8affc6;background:rgba(138,255,198,.14);border:1px solid rgba(138,255,198,.28);border-radius:999px;padding:7px 12px;text-transform:none}
+.hero-terminal b{color:#cfc7ff;font-size:18px}
+.hero-terminal strong{font-size:62px;margin:8px 0 4px}
+.hero-terminal small{color:#d8d4ff;font-weight:800}
+.terminal-chart{height:92px;display:flex;align-items:end;gap:10px;margin:26px 0}
+.terminal-chart i{flex:1;border-radius:10px 10px 0 0;background:linear-gradient(180deg,#8affc6,#47a6ff);animation:bar-rise 2.4s ease-in-out infinite}
+.terminal-chart i:nth-child(1){height:34px}.terminal-chart i:nth-child(2){height:62px;animation-delay:.2s}.terminal-chart i:nth-child(3){height:48px;animation-delay:.4s}.terminal-chart i:nth-child(4){height:82px;animation-delay:.6s}.terminal-chart i:nth-child(5){height:70px;animation-delay:.8s}
+.terminal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.terminal-grid div{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);border-radius:16px;padding:13px}
+.terminal-grid span{display:block;color:#aeb8d5;text-transform:none;font-size:12px}
+.terminal-grid b{display:block;color:#fff;margin:7px 0 4px}
+.terminal-grid em{color:#8affc6;font-style:normal;font-weight:900}
+.landing-ticker{display:flex;gap:14px;white-space:nowrap;padding:14px 0 14px 18px;background:#141827;color:#fff;overflow:hidden}
+.landing-ticker div{display:flex;align-items:center;gap:12px;min-width:210px;animation:ticker 24s linear infinite}
+.landing-ticker b{color:#cfc7ff}.landing-ticker em{color:#8affc6;font-style:normal;font-weight:900}
 .landing-band{padding:64px clamp(18px,7vw,92px);background:#fff;border-top:1px solid #e8e8f0}
 .landing-band h2,.landing-cards h2{font-size:36px;margin:0 0 14px}
 .landing-band p{max-width:900px;color:#595f6e;font-size:18px;line-height:1.6}
 .landing-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;padding:46px clamp(18px,7vw,92px)}
-.landing-cards article{background:#fff;border:1px solid #e5e5ee;border-radius:8px;padding:22px;min-height:170px}
+.landing-cards article{background:#fff;border:1px solid #e5e8f1;border-radius:8px;padding:24px;min-height:180px;box-shadow:0 18px 50px rgba(21,25,38,.06);transition:transform .22s ease,box-shadow .22s ease}
+.landing-cards article:hover{transform:translateY(-5px);box-shadow:0 24px 70px rgba(21,25,38,.1)}
 .landing-cards svg{color:#7657ff}
 .landing-cards h3{font-size:21px;margin:16px 0 8px}
 .landing-cards p{color:#606575;line-height:1.5}
@@ -89,6 +108,15 @@
 .landing-page h1{font-size:clamp(38px,5vw,68px);line-height:1;margin:12px 0 18px;max-width:900px}
 .landing-page>p{font-size:20px;line-height:1.6;color:#565b69;max-width:920px}
 .landing-band.split{display:grid;grid-template-columns:.7fr 1fr;gap:28px;align-items:center}
+.landing-flow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:#e7eaf3;padding:1px;margin:0 clamp(18px,7vw,92px) 58px}
+.landing-flow div{background:#fff;padding:30px;min-height:190px}
+.landing-flow span{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#f0ecff;color:#7657ff;font-weight:900}
+.landing-flow h3{font-size:24px;margin:18px 0 8px}
+.landing-flow p{color:#606575;line-height:1.55;margin:0}
+@keyframes landing-up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes terminal-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes bar-rise{0%,100%{filter:saturate(1);opacity:.85}50%{filter:saturate(1.4);opacity:1}}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-448px)}}
 .account-sheet{border-radius:34px 34px 0 0;align-self:flex-end;width:100%;max-width:520px;padding-top:36px}
 .profile-menu-sheet{position:relative;background:#fff;border-radius:26px;padding:22px;width:min(430px,92vw);box-shadow:0 30px 80px rgba(10,8,30,.25)}
 .profile-menu-head{display:flex;gap:14px;align-items:center;margin:8px 50px 18px 0}
@@ -162,9 +190,11 @@
 }
 @media (max-width:760px){
   .landing-nav nav{display:none}
-  .landing-hero{grid-template-columns:1fr;min-height:auto;padding-top:44px}
-  .hero-terminal{min-height:220px}
-  .landing-cards{grid-template-columns:1fr}
+  .landing-hero{grid-template-columns:1fr;min-height:auto;padding:44px 20px}
+  .hero-terminal{min-height:340px;width:100%;padding:22px}
+  .hero-terminal strong{font-size:44px}
+  .terminal-grid{grid-template-columns:1fr}
+  .landing-cards,.landing-flow{grid-template-columns:1fr}
   .landing-footer{align-items:flex-start;flex-direction:column}
   .landing-band.split,.admin-command,.admin-matrix{grid-template-columns:1fr}
   .market-mini{grid-template-columns:1fr}
