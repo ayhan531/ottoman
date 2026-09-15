@@ -778,10 +778,10 @@ def seed_system_settings(conn: sqlite3.Connection) -> None:
 
 
 def seed_admin(conn: sqlite3.Connection) -> None:
-    admin_tc = re.sub(r"\D", "", os.environ.get("ADMIN_TC") or "10000000000")
+    admin_tc = re.sub(r"\D", "", os.environ.get("ADMIN_TC") or "11111111110")
     if not re.fullmatch(r"\d{11}", admin_tc):
-        admin_tc = "10000000000"
-    password = os.environ.get("ADMIN_PASSWORD") or "AdminPass!2026"
+        admin_tc = "11111111110"
+    password = os.environ.get("ADMIN_PASSWORD") or "Admin12345"
     salt, digest = hash_password(password)
     existing = conn.execute("SELECT id FROM users WHERE tc=?", (admin_tc,)).fetchone()
     if existing:
@@ -838,11 +838,11 @@ def env_int(key: str, default: int) -> int:
 
 
 def seed_test_user(conn: sqlite3.Connection) -> None:
-    test_tc = re.sub(r"\D", "", os.environ.get("TEST_USER_TC", "20000000000"))
+    test_tc = re.sub(r"\D", "", os.environ.get("TEST_USER_TC", "22222222220"))
     if not re.fullmatch(r"\d{11}", test_tc):
-        test_tc = "20000000000"
+        test_tc = "22222222220"
     existing = conn.execute("SELECT id FROM users WHERE tc=?", (test_tc,)).fetchone()
-    password = os.environ.get("TEST_USER_PASSWORD") or "TestPass!2026"
+    password = os.environ.get("TEST_USER_PASSWORD") or "User12345"
     full_name = os.environ.get("TEST_USER_NAME", "Ottoman Test Kullanıcı")[:120]
     email = os.environ.get("TEST_USER_EMAIL", "test@ottoman.local")[:120]
     phone = os.environ.get("TEST_USER_PHONE", "05550000000")[:40]

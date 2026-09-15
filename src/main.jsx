@@ -474,6 +474,7 @@ function App() {
   const [newsItems, setNewsItems] = useState([]);
   const [portfolio, setPortfolio] = useState(null);
   const [adminData, setAdminData] = useState(null);
+  const normalizeUser = (data) => data?.user || (data?.id ? data : null);
   const openTrade = (stock) => setTrade(stock || stocks[0]);
   const toggleFavorite = (code) => setFavorites((old) => {
     const next = new Set(old);
@@ -503,13 +504,13 @@ function App() {
   };
   useEffect(() => {
     loadCore();
-    api("/api/me").then((data) => setMe(data.user || data)).catch(() => setMe(null));
+    api("/api/me").then((data) => setMe(normalizeUser(data))).catch(() => setMe(null));
     const timer = setInterval(loadCore, 30000);
     return () => clearInterval(timer);
   }, []);
   useEffect(() => { loadPortfolio(); loadAdmin(); }, [me]);
   if (!me && !authOpen) return <LandingPage openAuth={() => setAuthOpen(true)} />;
-  if (!me) return <AuthScreen onAuthed={(data) => setMe(data.user || data)} back={() => setAuthOpen(false)} />;
+  if (!me) return <AuthScreen onAuthed={(data) => setMe(normalizeUser(data))} back={() => setAuthOpen(false)} />;
   if (me.role === "admin") return <AdminPanel data={adminData} refresh={loadAdmin} logout={logout} />;
   return <div className={`stage ${dark ? "dark-mode" : ""}`}><div className="phone"><StatusBar />
     {active === "home" && <HomeScreen openTrade={openTrade} market={market} favorites={favorites} toggleFavorite={toggleFavorite} common={common} />}
