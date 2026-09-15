@@ -1,0 +1,480 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  ArrowDown, ArrowLeftRight, ArrowUp, Bell, CheckCircle2, ChevronDown, ChevronRight,
+  CircleUserRound, CreditCard, Eye, EyeOff, FileText, Home, Info, Landmark, LockKeyhole,
+  Moon, Newspaper, PieChart, Search, ShieldCheck, Star, Sun, X,
+} from "lucide-react";
+import "./style.css";
+import "./extra.css";
+
+const tabs = ["BIST Tüm", "BIST 100", "BIST 30", "BIST Katılım", "BIST Temettü"];
+const stocks = [
+  { code: "TUPRS", name: "Tüpraş", price: "₺412,50", rawPrice: 412.5, change: "-%0,78", rawChange: -0.78, assetClass: "stock", color: "#101217", mark: "tupras" },
+  { code: "THYAO", name: "Türk Hava Yolları", price: "₺285,25", rawPrice: 285.25, change: "-%3,47", rawChange: -3.47, assetClass: "stock", color: "#d90812", mark: "thy" },
+  { code: "ASELS", name: "Aselsan", price: "₺377,00", rawPrice: 377, change: "+%1,21", rawChange: 1.21, assetClass: "stock", color: "#087fc4", mark: "aselsan" },
+  { code: "KCHOL", name: "Koç Holding", price: "₺174,20", rawPrice: 174.2, change: "+%0,62", rawChange: 0.62, assetClass: "stock", color: "#183b8f", mark: "bars" },
+  { code: "BIMAS", name: "BİM Mağazalar", price: "₺532,00", rawPrice: 532, change: "+%0,44", rawChange: 0.44, assetClass: "stock", color: "#d71920", mark: "bars" },
+];
+const fallbackNews = [
+  ["market", "Borsa İstanbul'da iki hisseye tedbir: Açığa satış ve kredili işlem yasağı"],
+  ["cash", "BİST 100 endeksinde hızlı düşüş: Gün 13.892 puan seviyesinden kapandı"],
+  ["bist", "SON DAKİKA | Borsa salı gününü düşüşle tamamladı"],
+  ["plain", "Piyasa özeti: Borsa, Döviz, Altın ve Kripto piyasalarındaki son durum"],
+  ["lens", "Borsa İstanbul'da 11 şirket yeni iş ilişkisi duyurdu"],
+];
+
+const money = (value) => `₺${Number(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const pct = (value) => `${Number(value || 0) >= 0 ? "+" : "-"}%${Math.abs(Number(value || 0)).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const compactDate = () => new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
+const markFor = (symbol = "") => ({ TUPRS: "tupras", THYAO: "thy", ASELS: "aselsan", TDGYO: "bars", CEMZY: "cem", BMSTL: "bms", PATEK: "patek" }[symbol] || "bars");
+const colorFor = (symbol = "") => ({ TUPRS: "#101217", THYAO: "#d90812", ASELS: "#087fc4", CEMZY: "#f00815", PATEK: "#11151a", BIMAS: "#d71920", KCHOL: "#183b8f" }[symbol] || "#7657ff");
+const quoteToStock = (q) => ({
+  code: q.symbol || q.code,
+  name: q.name || q.symbol || q.code,
+  price: money(q.price),
+  rawPrice: Number(q.price || 0),
+  change: pct(q.change_pct),
+  rawChange: Number(q.change_pct || 0),
+  assetClass: q.asset_class || "stock",
+  color: colorFor(q.symbol || q.code),
+  mark: markFor(q.symbol || q.code),
+});
+const api = async (path, options = {}) => {
+  const isForm = options.body instanceof FormData;
+  const res = await fetch(path, {
+    credentials: "include",
+    headers: isForm ? (options.headers || {}) : { "Content-Type": "application/json", ...(options.headers || {}) },
+    ...options,
+  });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `HTTP ${res.status}`);
+  return res.json();
+};
+
+function StatusBar() {
+  return <div className="status"><span>20:30</span><span className="status-icons">◒ ◒ ◉</span><span className="status-right">◆ ◢ ▮</span></div>;
+}
+
+function BrandHeader({ showAvatar = true, onNotify, dark, toggleDark }) {
+  return (
+    <header className="brand-header">
+      {showAvatar ? <div className="avatar">OT</div> : <div />}
+      <div className="brand">Ottoman</div>
+      <div className="header-actions">
+        <button onClick={onNotify} title="Bildirimler"><Bell size={27} /></button>
+        <button onClick={toggleDark} title="Tema">{dark ? <Sun size={30} /> : <Moon size={30} />}</button>
+      </div>
+    </header>
+  );
+}
+
+function SearchBox({ placeholder, value, onChange }) {
+  return <label className="search"><Search size={31} /><input value={value} onChange={(e) => onChange?.(e.target.value)} placeholder={placeholder} /></label>;
+}
+
+function MarketTabs({ active, onChange }) {
+  return <div className="market-tabs">{tabs.map((tab) => <button className={active === tab ? "active" : ""} onClick={() => onChange?.(tab)} key={tab}>{tab}</button>)}</div>;
+}
+
+function filterMarket(list, tab, search) {
+  let next = list.filter((item) => item.assetClass === "stock");
+  if (tab === "BIST 100") next = next.slice(0, 100);
+  if (tab === "BIST 30") next = next.slice(0, 30);
+  if (tab === "BIST Katılım") next = next.filter((item, index) => ["ASELS", "KCHOL", "BIMAS"].includes(item.code) || index % 2 === 0);
+  if (tab === "BIST Temettü") next = next.filter((item, index) => ["TUPRS", "BIMAS", "KCHOL"].includes(item.code) || index % 3 === 0);
+  const needle = search.trim().toLocaleLowerCase("tr-TR");
+  if (needle) next = next.filter((item) => `${item.code} ${item.name}`.toLocaleLowerCase("tr-TR").includes(needle));
+  return next;
+}
+
+function StockLogo({ item, pale = false }) {
+  return <div className={`stock-logo ${pale ? "pale" : ""}`} style={{ "--logo": item.color }}><span className={`mark ${item.mark}`}>{item.mark === "aselsan" ? "aselsan" : item.mark === "cem" ? "Cem" : item.mark === "bms" ? "BMS" : item.mark === "armada" ? "armada" : ""}</span></div>;
+}
+
+function StockRow({ item, onClick, favorite, toggleFavorite }) {
+  const positive = String(item.change).startsWith("+");
+  return (
+    <button className="stock-row" onClick={onClick}>
+      <StockLogo item={item} />
+      <div className="stock-copy"><strong>{item.code}</strong><span>{item.name}</span></div>
+      <span className="inline-star" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); toggleFavorite?.(item.code); }}><Star size={20} fill={favorite ? "#7657ff" : "none"} /></span>
+      <div className="stock-price"><strong>{item.price}</strong><span className={positive ? "up" : "down"}>{item.change}</span></div>
+    </button>
+  );
+}
+
+function HomeScreen({ openTrade, market, favorites, toggleFavorite, common }) {
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState("BIST Tüm");
+  const live = filterMarket(market.length ? market : stocks, tab, search);
+  const watched = favorites.size ? live.filter((item) => favorites.has(item.code)) : live.slice(0, 4);
+  const gainers = [...live].sort((a, b) => b.rawChange - a.rawChange).slice(0, 6);
+  return (
+    <main className="screen scroll">
+      <BrandHeader {...common} /><SearchBox placeholder="Ara" value={search} onChange={setSearch} /><MarketTabs active={tab} onChange={setTab} />
+      <div className="section-title"><h2>Takip listem</h2><button onClick={() => setTab("BIST Tüm")}>Tümü</button></div>
+      {watched.map((item) => <StockRow key={item.code} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}
+      <h2 className="solo-title">Öne çıkan yükselenler</h2>
+      {gainers.map((item) => <StockRow key={item.code} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}
+    </main>
+  );
+}
+
+function NewsThumb({ type }) {
+  return <div className={`news-thumb ${type}`}>{type === "plain" ? <Newspaper size={36} /> : <span>{type === "cash" ? "₺" : type === "mynet" ? "FİNANS" : ""}</span>}</div>;
+}
+
+function NewsDetail({ item, onClose }) {
+  return <div className="modal-layer"><section className="trade-modal readable-modal"><button className="close" onClick={onClose}><X /></button><NewsThumb type={item.type} /><h2>{item.title}</h2><p className="subtle-count">{item.source || "Ottoman Haber"} · {item.date || compactDate()}</p><p>{item.body || "Piyasa verileri, Borsa İstanbul işlem hacmi, şirket haberleri ve makro gündem özetlenerek yatırımcı ekranına taşınır. Haber metni demo veride kısa tutulur; canlı bağlantı geldiğinde detay, kaynak ve etiket alanları aynı ekranda görünür."}</p><button className="confirm" onClick={onClose}>Haberlere Dön</button></section></div>;
+}
+
+function NewsScreen({ items = [], common }) {
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState("BIST Tüm");
+  const [detail, setDetail] = useState(null);
+  const list = (items.length ? items : fallbackNews.map(([type, title]) => ({ type, title }))).map((item, index) => ({
+    type: item.type || (index % 4 === 0 ? "market" : index % 4 === 1 ? "cash" : index % 4 === 2 ? "bist" : "plain"),
+    title: item.title || item.headline || item.text,
+    body: item.body || item.summary,
+    source: item.source,
+    date: item.published_at,
+  })).filter((item) => item.title?.toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR")));
+  return (
+    <main className="screen scroll">
+      <BrandHeader {...common} /><SearchBox placeholder="Haber ara" value={search} onChange={setSearch} /><MarketTabs active={tab} onChange={setTab} />
+      <h1 className="page-title">{tab}</h1>
+      <div className="news-list">{list.map((item) => <button className="news-row" key={item.title} onClick={() => setDetail(item)}><NewsThumb type={item.type} /><h3>{item.title}</h3><ChevronRight /></button>)}</div>
+      {detail && <NewsDetail item={detail} onClose={() => setDetail(null)} />}
+    </main>
+  );
+}
+
+function TradeScreen({ market, openTrade, favorites, toggleFavorite, common }) {
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState("BIST Tüm");
+  const list = filterMarket(market.length ? market : stocks, tab, search);
+  return (
+    <main className="screen scroll trade-screen-list">
+      <BrandHeader {...common} /><SearchBox placeholder="Hisse kodu / şirket adı ara" value={search} onChange={setSearch} /><MarketTabs active={tab} onChange={setTab} />
+      <section className="trade-hero"><div><span>Al/Sat</span><h1>Hisse seç, emri sen kur</h1><p>Piyasa, limit, adet ve tutar alanları seçtiğin hisseye göre açılır.</p></div><ArrowLeftRight size={38} /></section>
+      <div className="section-title"><h2>Favoriler</h2><button onClick={() => setSearch("")}>Temizle</button></div>
+      {(favorites.size ? list.filter((item) => favorites.has(item.code)) : list.slice(0, 3)).map((item) => <StockRow key={`fav-${item.code}`} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}
+      <h2 className="solo-title">{tab}</h2>
+      {list.map((item) => <StockRow key={item.code} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}
+    </main>
+  );
+}
+
+function ListEmptyAware({ items, empty, render }) {
+  return items.length ? items.map(render) : <div className="empty-state">{empty}</div>;
+}
+
+function PortfolioScreen({ openTrade, portfolio, common }) {
+  const [segment, setSegment] = useState("Pozisyonlar");
+  const [hidden, setHidden] = useState(false);
+  const [search, setSearch] = useState("");
+  const account = portfolio?.account || {};
+  const apiPositions = (portfolio?.positions || []).map((p) => ({
+    code: p.symbol,
+    name: p.name || p.symbol,
+    lots: `${p.quantity} lot · Ort. maliyet ${money(p.avg_price)}`,
+    profit: `${Number(p.pnl || 0) >= 0 ? "+" : "-"}${money(Math.abs(Number(p.pnl || 0)))} (%${Math.abs(p.avg_price ? ((Number(p.current_price || 0) - Number(p.avg_price || 0)) / Number(p.avg_price || 1)) * 100 : 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`,
+    value: money(p.market_value),
+    rawPrice: Number(p.current_price || p.avg_price || 0),
+    color: colorFor(p.symbol),
+    mark: markFor(p.symbol),
+  }));
+  const shownPositions = (apiPositions.length ? apiPositions : stocks.slice(0, 3).map((s, i) => ({ ...s, lots: `${[250, 150, 50][i]} lot · Ort. maliyet ${money(s.rawPrice * 0.94)}`, profit: `+${money(900 + i * 700)} (%4,65)`, value: money(s.rawPrice * [250, 150, 50][i]) }))).filter((p) => `${p.code} ${p.name}`.toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR")));
+  const orders = portfolio?.orders || [];
+  const transactions = [...(portfolio?.transactions || []), ...(portfolio?.money_requests || [])];
+  const cash = Number(account.cash_balance ?? 24200);
+  const pending = Number(account.pending_balance ?? 24200);
+  const portfolioValue = shownPositions.reduce((sum, p) => sum + Number(String(p.value).replace(/[₺.]/g, "").replace(",", ".") || 0), 0) || 164762.5;
+  const totalValue = cash + pending + portfolioValue;
+  const mask = (v) => hidden ? "••••••" : v;
+  return (
+    <main className="screen scroll portfolio-screen">
+      <BrandHeader showAvatar={false} {...common} />
+      <section className="portfolio-card">
+        <div className="portfolio-top"><span>Portföy özeti</span><button onClick={() => setHidden(!hidden)}>{hidden ? <EyeOff size={24} /> : <Eye size={24} />}</button></div>
+        <div className="portfolio-grid"><div><h1>{mask(money(totalValue))}</h1><p>{mask("+₺7.286,00")} toplam kâr</p><div className="balance-pair"><span>Kullanılabilir<strong>{mask(money(cash))}</strong></span><span>T+2 Bakiye<strong>{mask(money(pending))}</strong></span></div></div><div className="donut"><div>%83</div></div></div>
+        <div className="legend"><span><i /> Pozisyonlar · %83</span><span><i /> Bakiye · %13</span><span><i /> Kâr · +%4,63</span></div>
+      </section>
+      <div className="segments">{["Pozisyonlar", "Emirler", "Geçmiş"].map((item) => <button className={segment === item ? "active" : ""} onClick={() => setSegment(item)} key={item}>{item}</button>)}</div>
+      <SearchBox placeholder="İşlem ara" value={search} onChange={setSearch} /><h1 className="page-title lower">{segment}</h1>
+      {segment === "Pozisyonlar" && shownPositions.map((item) => <button className="position-row" key={item.code} onClick={() => openTrade(item)}><StockLogo item={item} pale /><div className="stock-copy"><strong>{item.code}</strong><span>{item.name}</span><small>{item.lots}</small></div><div className="position-price"><strong>{mask(item.profit)}</strong><span>{mask(item.value)}</span></div><ChevronRight size={25} /></button>)}
+      {segment === "Emirler" && <ListEmptyAware items={orders} empty="Henüz emir kaydı yok." render={(o) => <div className="admin-row" key={o.id}><span><strong>{o.symbol} · {o.side_label || o.side}</strong><small>{o.quantity} lot · {money(o.total)} · {o.status_label || o.status}</small></span></div>} />}
+      {segment === "Geçmiş" && <ListEmptyAware items={transactions} empty="Henüz işlem geçmişi yok." render={(t, i) => <div className="admin-row" key={t.id || i}><span><strong>{t.type_label || t.event_type || "İşlem"}</strong><small>{money(t.amount || t.total || 0)} · {t.status_label || t.created_at || "Tamamlandı"}</small></span></div>} />}
+    </main>
+  );
+}
+
+function AccountScreen({ me, portfolio, openSubpage, logout, common }) {
+  const [hidden, setHidden] = useState(false);
+  const account = portfolio?.account || {};
+  const posValue = (portfolio?.positions || []).reduce((sum, p) => sum + Number(p.market_value || 0), 0) || 164762.5;
+  const cash = Number(account.cash_balance ?? 24200);
+  const blocked = Number(account.blocked_balance ?? 0);
+  const pending = Number(account.pending_balance ?? 24200);
+  const mask = (v) => hidden ? "••••••" : v;
+  const actions = [[ArrowDown, "Para yatır", "green"], [ArrowUp, "Para çek", "blue"], [CreditCard, "Banka hesaplarım", "purple"], [FileText, "İşlem geçmişi", "gray"]];
+  const rows = [["Kişisel bilgiler", "Kimlik ve iletişim bilgilerinizi yönetin"], ["Güvenlik", "Şifre, iki adımlı doğrulama ve güvenlik ayarları"], ["Banka hesaplarım", "Para yatırma ve çekme işlemleri için hesaplarınız"], ["Sözleşmeler", "Çerçeve sözleşme, risk bildirimi ve bilgilendirme metinleri"]];
+  return (
+    <main className="screen scroll account-screen">
+      <BrandHeader {...common} />
+      <button className="profile-card" onClick={() => openSubpage("Kişisel bilgiler")}><div className="avatar">OT</div><div><h2>{me?.full_name || "İsim Soyisim"}</h2><p>Müşteri No: {me?.account_no || "12345678"}</p></div><ChevronRight /></button>
+      <div className="label-row"><span>Finansal özet</span><button onClick={() => setHidden(!hidden)}>{hidden ? <EyeOff size={24} /> : <Eye size={24} />}</button></div>
+      <section className="summary-card">{[["Kullanılabilir bakiye", money(cash), "purple"], ["Emirlerdeki bakiye", money(blocked), "orange"], ["Portföy değeri", money(posValue), ""], ["Toplam değer", money(cash + pending + posValue), ""]].map(([label, value, tone], i) => <div className="summary-line" key={label}><span>{i === 1 && <LockKeyhole size={19} />} {label}</span><strong className={tone}>{mask(value)}</strong></div>)}</section>
+      <div className="quick-actions">{actions.map(([Icon, label, tone]) => <button key={label} onClick={() => openSubpage(label)}><span className={tone}><Icon size={30} /></span>{label}</button>)}</div>
+      <h3 className="muted-heading">Hesap İşlemleri</h3>
+      <section className="settings-card">{rows.map(([title, desc]) => <button className="settings-row" key={title} onClick={() => openSubpage(title)}><span><strong>{title}</strong><small>{desc}</small></span><ChevronRight /></button>)}</section>
+      <button className="logout-button" onClick={logout}>Çıkış Yap</button>
+    </main>
+  );
+}
+
+function TradeModal({ stock, onClose, refresh, favorites, toggleFavorite }) {
+  const item = stock || stocks[0];
+  const [amount, setAmount] = useState(0);
+  const [side, setSide] = useState("buy");
+  const [message, setMessage] = useState("");
+  const price = Number(item.rawPrice || 412.5);
+  const total = useMemo(() => amount * price, [amount, price]);
+  const submitOrder = async () => {
+    if (amount < 1) { setMessage("En az 1 lot gir."); return; }
+    try {
+      await api("/api/orders", { method: "POST", body: JSON.stringify({ symbol: item.code, side, order_type: "limit", quantity: Number(amount), limit_price: price }) });
+      setMessage("Emir kaydedildi. Admin onayı bekliyor.");
+      await refresh?.();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  return (
+    <div className="modal-layer">
+      <section className="trade-modal">
+        <button className="close" onClick={onClose}><X size={34} /></button>
+        <div className="trade-head"><StockLogo item={item} /><div><h2>{item.code} <button className="inline-star" onClick={() => toggleFavorite?.(item.code)}><Star size={25} fill={favorites?.has(item.code) ? "#7657ff" : "none"} /></button></h2><p>{item.name}</p><small><i /> Canlı fiyat</small></div><div className="trade-quote"><strong>{money(price)}</strong><span>{item.change || "-%0,78"}</span></div></div>
+        <label className="field-label">Ürün Türü <Info size={18} /></label><button className="select-pill">Hisse <ChevronDown size={22} /></button>
+        <div className="trade-stats"><span>Portföy<strong>250 lot</strong></span><span>Maliyet<strong>₺394,17</strong></span></div>
+        <div className="order-type"><button>Piyasa</button><button className="active">Limit</button></div>
+        <div className="warning">Piyasa kapalı (10:00-18:00). Sadece limit emir verebilirsin.</div>
+        <div className="buy-sell"><button className={side === "buy" ? "buy" : ""} onClick={() => setSide("buy")}>Alış</button><button className={side === "sell" ? "sell" : ""} onClick={() => setSide("sell")}>Satış</button></div>
+        <label className="field-label">Limit fiyat (₺)</label><div className="input-like">{price.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        <div className="dual-input"><label>Adet<input value={amount || ""} placeholder="0" onChange={(e) => setAmount(Number(e.target.value || 0))} /></label><label>Tutar (₺)<input value={total ? total.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""} placeholder="0,00" readOnly /></label></div>
+        <div className="percent-row">{[25, 50, 75, 100].map((n) => <button onClick={() => setAmount(n)} key={n}>%{n}</button>)}<button className="text" onClick={() => setAmount(250)}>Tümü</button></div>
+        <div className="range-line"><span>Oran</span><b>%{Math.min(100, Math.round((amount / 250) * 100)) || 0}</b><input type="range" min="0" max="250" value={amount} onChange={(e) => setAmount(Number(e.target.value))} /></div>
+        <div className="total-box"><span>Toplam</span><strong>{money(total)}</strong></div>
+        {message && <div className="warning">{message}</div>}
+        <button className={`confirm ${side === "sell" ? "danger" : ""}`} onClick={submitOrder}>{side === "buy" ? "Alış" : "Satış"} emri ver</button>
+      </section>
+    </div>
+  );
+}
+
+function LandingPage({ openAuth }) {
+  const [page, setPage] = useState("Ana sayfa");
+  const nav = ["Ana sayfa", "Kurumsal", "Hizmetler", "Blog", "SSS", "Sözleşmeler", "İletişim"];
+  const posts = ["BIST tarafında gün içi risk yönetimi", "Limit emir ve piyasa emri farkları", "T+2 bakiye yatırımcıya ne anlatır", "Temettü takvimini okuma rehberi"];
+  const pageCopy = {
+    Kurumsal: ["Güvenli yatırımın dijital adresi", "Ottoman Yatırım; müşteri kabul, risk profili, sözleşme, para hareketi ve emir onay süreçlerini tek merkezde yöneten kurumsal bir yatırım deneyimi sunar.", ["Lisanslı operasyon modeli", "KVKK ve risk bildirimi süreçleri", "Şeffaf müşteri ve emir takibi"]],
+    Hizmetler: ["Yatırımcı hizmetleri", "Hisse al-sat, canlı piyasa, haber, portföy, para yatırma/çekme ve sözleşme yönetimi tek e-şube çatısı altında çalışır.", ["Canlı BIST ekranları", "Limit emir matematiği", "Admin onaylı para hareketleri"]],
+    Blog: ["Piyasa okuryazarlığı", "Yatırımcıya sade, hızlı ve karar destekli içerikler sunan blog alanı.", posts],
+    SSS: ["Sıkça sorulan sorular", "Hesap açılışı, para transferi, emir onayı ve sözleşme süreçleri hakkında kısa cevaplar.", ["Para yatırma ne zaman yansır?", "Emir neden onay bekler?", "Banka hesabımı nereden görürüm?"]],
+    Sözleşmeler: ["Sözleşmeler ve formlar", "Çerçeve sözleşme, KVKK, risk bildirim formu ve e-şube kullanım koşulları yatırımcı panelinde tutulur.", ["KVKK Aydınlatma Metni", "Çerçeve Sözleşme", "Risk Bildirim Formu", "E-Şube Kullanım Koşulları"]],
+    İletişim: ["Bize ulaşın", "Yatırımcı destek ekibi, operasyon ve müşteri temsilcisi kanalları tek iletişim merkezinde.", ["0850 000 00 00", "destek@ottomanyatirim.local", "İstanbul Finans Merkezi"]],
+  };
+  const content = pageCopy[page];
+  return (
+    <div className="landing">
+      <header className="landing-nav"><div className="brand">Ottoman</div><nav>{nav.map((n) => <button className={page === n ? "active" : ""} key={n} onClick={() => setPage(n)}>{n}</button>)}</nav><button onClick={openAuth}>E-Şube Giriş</button></header>
+      {page === "Ana sayfa" ? <>
+        <section className="landing-hero"><div><span>Ottoman Yatırım E-Şube</span><h1>Güvenli yatırımın dijital adresi</h1><p>Canlı piyasa, haber, emir, portföy, para yatırma/çekme ve müşteri işlemleri tek panelde. Mobilde APK hissi, masaüstünde işlem masası konforu.</p><button onClick={openAuth}>E-Şubeye Gir</button></div><div className="hero-terminal"><b>BIST 100</b><strong>13.892,40</strong><span>Canlı fiyatlar · Emir onay sistemi · Admin kontrol</span></div></section>
+        <section className="landing-cards">{[[Landmark, "Hisse Al/Sat", "Limit emir, portföy pozisyonu ve geçmiş akışı."], [Newspaper, "Haber ve Piyasa", "Anlık haber arama ve detay ekranları."], [ShieldCheck, "Güvenlik", "Oturum, KVKK, sözleşme ve banka hesap kontrolü."]].map(([Icon, title, text]) => <article key={title}><Icon /><h3>{title}</h3><p>{text}</p></article>)}</section>
+        <section className="landing-band split"><h2>Ottoman ile işlemler net</h2><p>Fiyat, emir, bakiye, sözleşme ve müşteri operasyonları birbirinden kopmadan çalışır. Kullanıcı tarafı sade, admin tarafı tam yetkili operasyon masasıdır.</p></section>
+      </> : <section className="landing-page"><span>{page}</span><h1>{content[0]}</h1><p>{content[1]}</p><div className="landing-cards compact">{content[2].map((item) => <article key={item}><h3>{item}</h3><p>Detaylar Ottoman arayüzüne uyarlanmış kurumsal sayfa yapısında gösterilir.</p></article>)}</div></section>}
+      <footer className="landing-footer"><span>Ottoman Yatırım</span><button onClick={openAuth}>E-Şube Giriş</button></footer>
+    </div>
+  );
+}
+
+function AuthScreen({ onAuthed, back }) {
+  const [mode, setMode] = useState("login");
+  const [message, setMessage] = useState("");
+  const submit = async (event) => {
+    event.preventDefault();
+    setMessage("");
+    const form = Object.fromEntries(new FormData(event.currentTarget));
+    try {
+      if (mode === "login") {
+        await api("/api/login", { method: "POST", body: JSON.stringify(form) });
+      } else {
+        const fd = new FormData(event.currentTarget);
+        fd.append("agreements_version", "2026-09");
+        await api("/api/register", { method: "POST", body: fd });
+        setMode("login");
+        setMessage("Başvurun alındı. Admin onayından sonra giriş yapabilirsin.");
+        return;
+      }
+      onAuthed(await api("/api/me"));
+    } catch (error) {
+      setMessage(error.message);
+    }
+  };
+  return (
+    <div className="stage"><div className="phone"><StatusBar /><main className="screen scroll auth-screen">
+      <button className="ghost-back" onClick={back}>Ana sayfa</button>
+      <div className="auth-logo brand">Ottoman</div>
+      <section className="auth-card">
+        <h1>{mode === "login" ? "E-Şube Giriş" : "Müşteri Ol"}</h1>
+        <p>Portföy, emir, T+2 bakiye, para yatırma/çekme ve canlı piyasa işlemleri tek güvenli oturumda.</p>
+        <div className="segments"><button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Giriş</button><button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>Kayıt</button></div>
+        <form className="auth-form" onSubmit={submit}>
+          {mode === "register" && <><input name="full_name" placeholder="Ad Soyad" required /><input name="phone" placeholder="Telefon" required /><input name="email" type="email" placeholder="E-posta" required /><input name="city" placeholder="Şehir" defaultValue="İstanbul" /></>}
+          <input name="tc" inputMode="numeric" maxLength="11" placeholder="T.C. kimlik / müşteri no" required />
+          <input name="password" type="password" placeholder="Şifre" required />
+          {mode === "register" && <><input name="password_confirm" type="password" placeholder="Şifre tekrar" required /><input type="hidden" name="accept_kvkk" value="1" /><input type="hidden" name="accept_distance_contract" value="1" /><input type="hidden" name="accept_risk_disclosure" value="1" /><input type="hidden" name="risk_experience" value="2" /><input type="hidden" name="risk_horizon" value="2" /><input type="hidden" name="risk_loss" value="2" /><input type="hidden" name="risk_income" value="2" /><input type="hidden" name="trade_frequency" value="2" /><input type="hidden" name="knowledge_level" value="2" /><label className="checkline"><input name="agreements" value="1" type="checkbox" required /> KVKK, risk bildirimi ve e-şube sözleşmelerini kabul ediyorum.</label></>}
+          {message && <div className="warning">{message}</div>}
+          <button className="confirm">{mode === "login" ? "Giriş Yap" : "Başvuruyu Oluştur"}</button>
+        </form>
+      </section>
+    </main><div className="home-indicator" /></div></div>
+  );
+}
+
+function AdminPanel({ data, refresh, logout }) {
+  const [tab, setTab] = useState("Özet");
+  const [selectedUser, setSelectedUser] = useState(null);
+  const summary = data?.summary || {};
+  const users = data?.users || [];
+  const orders = data?.orders || [];
+  const moneyReqs = data?.money_requests || [];
+  const exposure = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+  const pendingMoney = moneyReqs.filter((m) => m.status === "pending").reduce((sum, m) => sum + Number(m.amount || 0), 0);
+  const act = async (path, verb) => {
+    const reason = verb === "reject" ? prompt("Ret nedeni") || "Admin ret" : "Admin onayı";
+    const password = prompt("Admin şifrenizi tekrar girin");
+    if (!password) return;
+    await api("/api/admin/step-up", { method: "POST", body: JSON.stringify({ password }) });
+    await api(path, { method: "POST", body: JSON.stringify({ reason }) });
+    await refresh();
+  };
+  return (
+    <div className="stage admin-stage"><div className="phone admin-phone"><StatusBar /><main className="screen scroll admin-screen">
+      <BrandHeader showAvatar={false} />
+      <div className="section-title"><h2>Admin Paneli</h2><button onClick={logout}>Çıkış</button></div>
+      <div className="segments admin-tabs">{["Özet", "Müşteriler", "Emirler", "Para", "Risk", "Sistem", "Raporlar"].map((x) => <button className={tab === x ? "active" : ""} onClick={() => setTab(x)} key={x}>{x}</button>)}</div>
+      <div className="admin-grid">
+        <article><span>Kullanıcı</span><strong>{summary.users_total ?? users.length}</strong></article>
+        <article><span>Bekleyen Emir</span><strong>{summary.orders_pending ?? orders.filter((o) => o.status === "pending").length}</strong></article>
+        <article><span>Para Talebi</span><strong>{money(pendingMoney)}</strong></article>
+        <article><span>Toplam Emir Hacmi</span><strong>{money(exposure)}</strong></article>
+      </div>
+      {tab === "Özet" && <section className="admin-command"><div><span>Operasyon Masası</span><h1>Tam yetkili kontrol merkezi</h1><p>Müşteri, emir, para, risk, sözleşme ve sistem kontrolleri tek ekranda izlenir.</p></div><div className="pulse-orbit"><b>LIVE</b></div></section>}
+      {["Özet", "Emirler"].includes(tab) && <><h2 className="solo-title">Emir Kontrol</h2>{orders.slice(0, 20).map((o) => <div className="admin-row" key={o.id}><span><strong>{o.symbol} {o.side_label || o.side}</strong><small>{o.full_name} · {o.quantity} lot · {money(o.total)} · {o.status_label || o.status}</small></span>{o.status === "pending" && <b><button onClick={() => act(`/api/admin/orders/${o.id}/approve`, "approve")}>Onay</button><button onClick={() => act(`/api/admin/orders/${o.id}/reject`, "reject")}>Ret</button></b>}</div>)}</>}
+      {["Özet", "Müşteriler"].includes(tab) && <><h2 className="solo-title">Müşteriler</h2>{users.slice(0, 20).map((u) => <div className="admin-row admin-user-row" key={u.id} onClick={() => setSelectedUser(u)}><span><strong>{u.full_name}</strong><small>{u.status_label || u.status} · {u.email} · {u.account_no} · {u.phone || "telefon yok"}</small></span>{u.status !== "approved" && <b><button onClick={(e) => { e.stopPropagation(); act(`/api/admin/users/${u.id}/approve`, "approve"); }}>Onay</button></b>}</div>)}</>}
+      {["Özet", "Para"].includes(tab) && <><h2 className="solo-title">Para Talepleri</h2>{moneyReqs.slice(0, 20).map((m) => <div className="admin-row" key={m.id}><span><strong>{m.type_label || m.request_type}</strong><small>{m.full_name} · {money(m.amount)} · {m.status_label || m.status}</small></span>{m.status === "pending" && <b><button onClick={() => act(`/api/admin/money/${m.id}/approve`, "approve")}>Onay</button><button onClick={() => act(`/api/admin/money/${m.id}/reject`, "reject")}>Ret</button></b>}</div>)}</>}
+      {tab === "Risk" && <section className="admin-matrix">{["Risk skoru", "KYC/KVKK", "Sözleşmeler", "Limit aşımı", "Şüpheli işlem", "Oturum sağlığı"].map((x, i) => <article key={x}><span>{x}</span><strong>{i % 2 ? "Temiz" : "İzleniyor"}</strong><small>Canlı kontrol aktif</small></article>)}</section>}
+      {tab === "Sistem" && <section className="settings-card report-card">{["Piyasa veri akışı", "Haber servisi", "Emir motoru", "Para hareketleri", "Admin step-up", "Audit log"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Çalışıyor · son kontrol şimdi</small></span><CheckCircle2 /></button>)}</section>}
+      {tab === "Raporlar" && <section className="settings-card report-card"><button className="settings-row"><span><strong>Risk ve Uyum</strong><small>KVKK, risk profili, sözleşme kabul durumları</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Operasyon</strong><small>Bekleyen emirler, para talepleri, son müşteri hareketleri</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Müşteri 360</strong><small>Bakiye, emir, para, sözleşme, güvenlik ve işlem geçmişi</small></span><CheckCircle2 /></button></section>}
+      {selectedUser && <div className="modal-layer"><section className="trade-modal readable-modal admin-profile"><button className="close" onClick={() => setSelectedUser(null)}><X /></button><h2>{selectedUser.full_name}</h2><p className="subtle-count">{selectedUser.account_no} · {selectedUser.status_label || selectedUser.status}</p><div className="admin-matrix mini">{["Kimlik", "E-posta", "Telefon", "KVKK", "Risk", "Sözleşme"].map((x, i) => <article key={x}><span>{x}</span><strong>{[selectedUser.tc || "Kayıtlı", selectedUser.email || "Yok", selectedUser.phone || "Yok", "Kabul", "Orta", "Tam"][i]}</strong></article>)}</div><button className="confirm" onClick={() => setSelectedUser(null)}>Kapat</button></section></div>}
+    </main><div className="home-indicator" /></div></div>
+  );
+}
+
+function Subpage({ title, onClose, refresh, me, portfolio }) {
+  const [amount, setAmount] = useState("");
+  const [message, setMessage] = useState("");
+  const type = title === "Para çek" ? "withdraw" : "deposit";
+  const balance = money(portfolio?.account?.cash_balance ?? 24200);
+  const submit = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { request_type: type, amount: Number(amount), note: title };
+      if (type === "withdraw") Object.assign(payload, { account_holder: me?.full_name || "İsim Soyisim", bank_name: "Ottoman Bank", iban: "TR330006100519786457841326" });
+      await api("/api/money-requests", { method: "POST", body: JSON.stringify(payload) });
+      setMessage(`${title} talebin alındı.`);
+      await refresh?.();
+    } catch (error) { setMessage(error.message); }
+  };
+  const history = [...(portfolio?.transactions || []), ...(portfolio?.money_requests || [])];
+  return <div className="modal-layer"><section className="trade-modal readable-modal account-sheet"><div className="sheet-handle" /><button className="close" onClick={onClose}><X /></button><h2>{title}</h2>
+    {["Para yatır", "Para çek"].includes(title) && <form className="auth-form money-sheet-form" onSubmit={submit}><p className="subtle-count">Bakiye · {balance}</p><label className="amount-entry"><span>₺</span><input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" type="number" required /></label><button className="confirm">{title}</button></form>}
+    {title === "Banka hesaplarım" && <div className="bank-empty"><p>Tanımlı banka hesabı bulunmuyor.</p><button className="confirm" onClick={onClose}>Tamam</button></div>}
+    {title === "İşlem geçmişi" && <ListEmptyAware items={history} empty="Henüz işlem yok." render={(t, i) => <div className="admin-row" key={t.id || i}><span><strong>{t.type_label || t.event_type || "İşlem"}</strong><small>{money(t.amount || t.total || 0)} · {t.status_label || t.created_at || "Tamamlandı"}</small></span></div>} />}
+    {title === "Kişisel bilgiler" && <div className="settings-card"><div className="settings-row"><span><strong>{me?.full_name}</strong><small>{me?.email || "E-posta yok"} · {me?.phone || "Telefon yok"}</small></span><CircleUserRound /></div></div>}
+    {title === "Güvenlik" && <div className="settings-card"><button className="settings-row"><span><strong>Şifre güvenliği</strong><small>Giriş şifresi ve admin step-up kontrolleri aktif.</small></span><ShieldCheck /></button><button className="settings-row"><span><strong>Oturum</strong><small>Çerez tabanlı güvenli e-şube oturumu.</small></span><LockKeyhole /></button></div>}
+    {title === "Sözleşmeler" && <div className="settings-card">{["KVKK Aydınlatma Metni", "Çerçeve Sözleşme", "Risk Bildirim Formu", "E-Şube Kullanım Koşulları"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Görüntüle ve kabul durumunu incele</small></span><FileText /></button>)}</div>}
+    {message && <div className="warning">{message}</div>}
+  </section></div>;
+}
+
+function Notifications({ onClose }) {
+  return <div className="modal-layer"><section className="trade-modal readable-modal"><button className="close" onClick={onClose}><X /></button><h2>Bildirimler</h2>{["Emir onayı bekliyor", "Para yatırma talebin alındı", "BIST 30 listesi güncellendi"].map((x) => <div className="admin-row" key={x}><span><strong>{x}</strong><small>{compactDate()}</small></span><Bell /></div>)}</section></div>;
+}
+
+function Nav({ active, setActive }) {
+  const items = [["home", "Ana Sayfa", Home], ["news", "Haberler", Newspaper], ["trade", "Al/Sat", ArrowLeftRight], ["portfolio", "Portföy", PieChart], ["account", "Hesap", CircleUserRound]];
+  return <nav className="bottom-nav">{items.map(([id, label, Icon]) => <button className={`${active === id ? "active" : ""} ${id === "trade" ? "trade-tab" : ""}`} key={id} onClick={() => setActive(id)}><Icon size={id === "trade" ? 34 : 31} /><span>{label}</span></button>)}</nav>;
+}
+
+function App() {
+  const [active, setActive] = useState("home");
+  const [authOpen, setAuthOpen] = useState(false);
+  const [trade, setTrade] = useState(null);
+  const [subpage, setSubpage] = useState(null);
+  const [notify, setNotify] = useState(false);
+  const [dark, setDark] = useState(false);
+  const [favorites, setFavorites] = useState(() => new Set(["TUPRS", "ASELS"]));
+  const [me, setMe] = useState(null);
+  const [market, setMarket] = useState([]);
+  const [newsItems, setNewsItems] = useState([]);
+  const [portfolio, setPortfolio] = useState(null);
+  const [adminData, setAdminData] = useState(null);
+  const openTrade = (stock) => setTrade(stock || stocks[0]);
+  const toggleFavorite = (code) => setFavorites((old) => {
+    const next = new Set(old);
+    next.has(code) ? next.delete(code) : next.add(code);
+    return next;
+  });
+  const common = { onNotify: () => setNotify(true), dark, toggleDark: () => setDark((v) => !v) };
+  const loadCore = async () => {
+    const [m, n] = await Promise.allSettled([api("/api/market"), api("/api/news")]);
+    if (m.status === "fulfilled") setMarket((m.value.quotes || m.value.market || []).map(quoteToStock));
+    if (n.status === "fulfilled") setNewsItems(n.value.items || n.value.news || []);
+  };
+  const loadPortfolio = async () => {
+    if (!me || me.role === "admin") return;
+    const p = await api("/api/portfolio").catch(() => null);
+    if (p) setPortfolio(p);
+  };
+  const loadAdmin = async () => {
+    if (!me || me.role !== "admin") return;
+    const [summary, users, orders, moneyData] = await Promise.all([api("/api/admin/summary"), api("/api/admin/users"), api("/api/admin/orders"), api("/api/admin/money")]);
+    setAdminData({ ...(summary || {}), users: users.users || [], orders: orders.orders || [], money_requests: moneyData.money_requests || [] });
+  };
+  const refresh = async () => { await loadCore(); await loadPortfolio(); await loadAdmin(); };
+  const logout = async () => {
+    await api("/api/logout", { method: "POST", body: "{}" }).catch(() => {});
+    setMe(null); setAdminData(null); setPortfolio(null); setAuthOpen(false);
+  };
+  useEffect(() => {
+    loadCore();
+    api("/api/me").then((data) => setMe(data.user || data)).catch(() => setMe(null));
+    const timer = setInterval(loadCore, 30000);
+    return () => clearInterval(timer);
+  }, []);
+  useEffect(() => { loadPortfolio(); loadAdmin(); }, [me]);
+  if (!me && !authOpen) return <LandingPage openAuth={() => setAuthOpen(true)} />;
+  if (!me) return <AuthScreen onAuthed={(data) => setMe(data.user || data)} back={() => setAuthOpen(false)} />;
+  if (me.role === "admin") return <AdminPanel data={adminData} refresh={loadAdmin} logout={logout} />;
+  return <div className={`stage ${dark ? "dark-mode" : ""}`}><div className="phone"><StatusBar />
+    {active === "home" && <HomeScreen openTrade={openTrade} market={market} favorites={favorites} toggleFavorite={toggleFavorite} common={common} />}
+    {active === "news" && <NewsScreen items={newsItems} common={common} />}
+    {active === "trade" && <TradeScreen market={market} openTrade={openTrade} favorites={favorites} toggleFavorite={toggleFavorite} common={common} />}
+    {active === "portfolio" && <PortfolioScreen openTrade={openTrade} portfolio={portfolio} common={common} />}
+    {active === "account" && <AccountScreen me={me} portfolio={portfolio} openSubpage={setSubpage} logout={logout} common={common} />}
+    <Nav active={active} setActive={setActive} />{trade && <TradeModal stock={trade} onClose={() => setTrade(null)} refresh={refresh} favorites={favorites} toggleFavorite={toggleFavorite} />}{subpage && <Subpage title={subpage} onClose={() => setSubpage(null)} refresh={refresh} me={me} portfolio={portfolio} />}{notify && <Notifications onClose={() => setNotify(false)} />}<div className="home-indicator" /></div></div>;
+}
+
+createRoot(document.getElementById("app")).render(<App />);
