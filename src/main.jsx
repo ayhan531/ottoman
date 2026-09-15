@@ -243,6 +243,8 @@ function AccountScreen({ me, portfolio, openSubpage, logout, common }) {
       <div className="quick-actions">{actions.map(([Icon, label, tone]) => <button key={label} onClick={() => openSubpage(label)}><span className={tone}><Icon size={30} /></span>{label}</button>)}</div>
       <h3 className="muted-heading">Hesap İşlemleri</h3>
       <section className="settings-card">{rows.map(([title, desc]) => <button className="settings-row" key={title} onClick={() => openSubpage(title)}><span><strong>{title}</strong><small>{desc}</small></span><ChevronRight /></button>)}</section>
+      <h3 className="muted-heading">Diğer</h3>
+      <section className="settings-card"><button className="settings-row" onClick={() => openSubpage("Bildirim ayarları")}><span><strong>Bildirim ayarları</strong><small>Fiyat, emir ve hesap bildirim tercihleri</small></span><ChevronRight /></button></section>
       <button className="logout-button" onClick={logout}>Çıkış Yap</button>
     </main>
   );
@@ -279,6 +281,7 @@ function TradeModal({ stock, onClose, refresh, favorites, toggleFavorite }) {
         <div className="dual-input"><label>Adet<input value={amount || ""} placeholder="0" onChange={(e) => setAmount(Number(e.target.value || 0))} /></label><label>Tutar (₺)<input value={total ? total.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""} placeholder="0,00" readOnly /></label></div>
         <div className="percent-row">{[25, 50, 75, 100].map((n) => <button onClick={() => setAmount(n)} key={n}>%{n}</button>)}<button className="text" onClick={() => setAmount(250)}>Tümü</button></div>
         <div className="range-line"><span>Oran</span><b>%{Math.min(100, Math.round((amount / 250) * 100)) || 0}</b><input type="range" min="0" max="250" value={amount} onChange={(e) => setAmount(Number(e.target.value))} /></div>
+        <div className="trade-capacity"><span>Kullanılabilir bakiye <strong>₺24.200,00</strong></span><span>Maks. 58 lot</span></div>
         <div className="total-box"><span>Toplam</span><strong>{money(total)}</strong></div>
         {message && <div className="warning">{message}</div>}
         <button className={`confirm ${side === "sell" ? "danger" : ""}`} onClick={submitOrder}>{side === "buy" ? "Alış" : "Satış"} emri ver</button>
@@ -420,12 +423,13 @@ function Subpage({ title, onClose, refresh, me, portfolio }) {
     {title === "Kişisel bilgiler" && <div className="settings-card"><div className="settings-row"><span><strong>{me?.full_name}</strong><small>{me?.email || "E-posta yok"} · {me?.phone || "Telefon yok"}</small></span><CircleUserRound /></div></div>}
     {title === "Güvenlik" && <div className="settings-card"><button className="settings-row"><span><strong>Şifre güvenliği</strong><small>Giriş şifresi ve admin step-up kontrolleri aktif.</small></span><ShieldCheck /></button><button className="settings-row"><span><strong>Oturum</strong><small>Çerez tabanlı güvenli e-şube oturumu.</small></span><LockKeyhole /></button></div>}
     {title === "Sözleşmeler" && <div className="settings-card">{["KVKK Aydınlatma Metni", "Çerçeve Sözleşme", "Risk Bildirim Formu", "E-Şube Kullanım Koşulları"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Görüntüle ve kabul durumunu incele</small></span><FileText /></button>)}</div>}
+    {title === "Bildirim ayarları" && <div className="settings-card">{["Emir durumları", "Fiyat uyarıları", "Para hareketleri"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Açık</small></span><CheckCircle2 /></button>)}</div>}
     {message && <div className="warning">{message}</div>}
   </section></div>;
 }
 
 function Notifications({ onClose }) {
-  return <div className="modal-layer"><section className="trade-modal readable-modal"><button className="close" onClick={onClose}><X /></button><h2>Bildirimler</h2>{["Emir onayı bekliyor", "Para yatırma talebin alındı", "BIST 30 listesi güncellendi"].map((x) => <div className="admin-row" key={x}><span><strong>{x}</strong><small>{compactDate()}</small></span><Bell /></div>)}</section></div>;
+  return <div className="modal-layer"><section className="trade-modal readable-modal notifications-sheet"><button className="close" onClick={onClose}><X /></button><h2>Bildirimler</h2><div className="notice-empty"><Bell size={44} /><p>Henüz yeni bir bildirimin yok.</p></div></section></div>;
 }
 
 function Nav({ active, setActive }) {

@@ -30,6 +30,10 @@
 .trade-hero h1{font-size:24px;margin:4px 0}
 .trade-hero p{margin:0;line-height:1.35;color:#eee9ff}
 .total-box{height:58px;border-radius:16px;background:#f6f3ff;display:flex;align-items:center;justify-content:space-between;padding:0 15px;margin-top:10px;color:var(--ink)}
+.trade-capacity{display:flex;align-items:center;justify-content:space-between;color:#8d929f;font-size:12px;font-weight:800;margin:8px 0 0}
+.trade-capacity span{display:grid;gap:2px}
+.trade-capacity span:last-child{text-align:right;color:#6f7584}
+.trade-capacity strong{color:#171925}
 .market-status-card{position:relative;border:1px solid var(--line);border-radius:20px;background:#fff;padding:18px;margin:14px 0 18px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start}
 .market-status-card h2{font-size:22px;margin:0 0 10px}
 .market-status-card p{margin:0;color:#9499a6;font-size:18px}
@@ -84,6 +88,10 @@
 .amount-entry input{flex:1;text-align:right;border:0;background:transparent;outline:0;font-size:42px;color:#1a1c27}
 .amount-entry input::placeholder{color:#c9c9cf}
 .bank-empty p{font-size:25px;color:#9298a5;margin:20px 0 46px}
+.notifications-sheet{min-height:360px}
+.notice-empty{display:grid;place-items:center;text-align:center;gap:18px;color:#9298a5;padding:70px 12px}
+.notice-empty svg{color:#7657ff}
+.notice-empty p{font-size:18px;margin:0}
 .admin-command{display:grid;grid-template-columns:1fr 170px;gap:20px;align-items:center;border-radius:22px;background:radial-gradient(circle at 80% 20%,#8d77ff,#181426 58%);color:#fff;padding:24px;margin:14px 0 22px;overflow:hidden}
 .admin-command span{text-transform:uppercase;font-size:12px;font-weight:900;color:#cfc7ff}
 .admin-command h1{font-size:36px;margin:6px 0}
@@ -105,6 +113,7 @@
 .dark-mode .market-status-card{background:#191c26;border-color:#282d3b}
 .dark-mode .market-status-card p strong,.dark-mode .market-mini strong{color:#f6f7fb}
 .dark-mode .market-mini{border-color:#282d3b}
+.dark-mode .trade-capacity strong{color:#f6f7fb}
 .dark-mode .search input{color:#f6f7fb}
 .dark-mode .market-tabs button,.dark-mode .segments button{background:#1b1e28;color:#cbd1df}
 .dark-mode .market-tabs button.active,.dark-mode .segments button.active{background:#7657ff;color:#fff}
