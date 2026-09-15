@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import {
   ArrowDown, ArrowLeftRight, ArrowUp, Bell, CheckCircle2, ChevronDown, ChevronRight,
   CircleUserRound, CreditCard, Eye, EyeOff, FileText, Home, Info, Landmark, LockKeyhole,
-  Moon, Newspaper, PieChart, Search, ShieldCheck, Star, Sun, X,
+  Moon, Newspaper, PieChart, Search, ShieldCheck, Star, Sun, Users, X,
 } from "lucide-react";
 import "./style.css";
 import "./extra.css";
@@ -197,6 +197,7 @@ function PortfolioScreen({ openTrade, portfolio, common }) {
   const [segment, setSegment] = useState("Pozisyonlar");
   const [hidden, setHidden] = useState(false);
   const [search, setSearch] = useState("");
+  const [chartPoint, setChartPoint] = useState(4);
   const account = portfolio?.account || {};
   const apiPositions = (portfolio?.positions || []).map((p) => ({
     code: p.symbol,
@@ -216,6 +217,11 @@ function PortfolioScreen({ openTrade, portfolio, common }) {
   const portfolioValue = shownPositions.reduce((sum, p) => sum + Number(String(p.value).replace(/[₺.]/g, "").replace(",", ".") || 0), 0) || 164762.5;
   const totalValue = cash + pending + portfolioValue;
   const mask = (v) => hidden ? "••••••" : v;
+  const chartData = [
+    ["Pzt 7 Eyl", -1.18], ["Sal 8 Eyl", 0.72], ["Çar 9 Eyl", 1.94],
+    ["Per 10 Eyl", 2.76], ["Cum 11 Eyl", -0.53], ["Pzt 14 Eyl", 4.63],
+  ];
+  const activeChart = chartData[chartPoint] || chartData[0];
   return (
     <main className="screen scroll portfolio-screen">
       <BrandHeader showAvatar={false} {...common} />
@@ -223,6 +229,17 @@ function PortfolioScreen({ openTrade, portfolio, common }) {
         <div className="portfolio-top"><span>Portföy özeti</span><button onClick={() => setHidden(!hidden)}>{hidden ? <EyeOff size={24} /> : <Eye size={24} />}</button></div>
         <div className="portfolio-grid"><div><h1>{mask(money(totalValue))}</h1><p>{mask("+₺7.286,00")} toplam kâr</p><div className="balance-pair"><span>Kullanılabilir<strong>{mask(money(cash))}</strong></span><span>T+2 Bakiye<strong>{mask(money(pending))}</strong></span></div></div><div className="donut"><div>%83</div></div></div>
         <div className="legend"><span><i /> Pozisyonlar · %83</span><span><i /> Bakiye · %13</span><span><i /> Kâr · +%4,63</span></div>
+      </section>
+      <section className="portfolio-card chart-card">
+        <div className="portfolio-top"><span>Getiri grafiği</span><b>{activeChart[0]} · %{activeChart[1].toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</b></div>
+        <svg className="return-chart" viewBox="0 0 320 150" role="img" aria-label="Portföy getiri grafiği">
+          <defs><linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#bdf7ce" stopOpacity=".55" /><stop offset="100%" stopColor="#bdf7ce" stopOpacity=".05" /></linearGradient></defs>
+          <path d="M18 124 C42 86, 58 94, 78 56 S126 42, 143 75 S188 96, 205 50 S248 30, 302 42 L302 138 L18 138 Z" fill="url(#lineFill)" />
+          <path d="M18 124 C42 86, 58 94, 78 56 S126 42, 143 75 S188 96, 205 50 S248 30, 302 42" fill="none" stroke="#9af0b4" strokeWidth="6" strokeLinecap="round" />
+          <line x1={30 + chartPoint * 54} y1="22" x2={30 + chartPoint * 54} y2="138" stroke="rgba(255,255,255,.5)" strokeDasharray="5 6" />
+          <circle cx={30 + chartPoint * 54} cy={chartPoint === 4 ? 50 : 68 - activeChart[1] * 6} r="9" fill="#9af0b4" stroke="#fff" strokeWidth="4" />
+        </svg>
+        <input className="chart-scrub" type="range" min="0" max={chartData.length - 1} value={chartPoint} onChange={(e) => setChartPoint(Number(e.target.value))} />
       </section>
       <div className="segments">{["Pozisyonlar", "Emirler", "Geçmiş"].map((item) => <button className={segment === item ? "active" : ""} onClick={() => setSegment(item)} key={item}>{item}</button>)}</div>
       <SearchBox placeholder="İşlem ara" value={search} onChange={setSearch} /><h1 className="page-title lower">{segment}</h1>
@@ -242,7 +259,7 @@ function AccountScreen({ me, portfolio, openSubpage, logout, common }) {
   const pending = Number(account.pending_balance ?? 24200);
   const mask = (v) => hidden ? "••••••" : v;
   const actions = [[ArrowDown, "Para yatır", "green"], [ArrowUp, "Para çek", "blue"], [CreditCard, "Banka hesaplarım", "purple"], [FileText, "İşlem geçmişi", "gray"]];
-  const rows = [["Kişisel bilgiler", "Kimlik ve iletişim bilgilerinizi yönetin"], ["Güvenlik", "Şifre, iki adımlı doğrulama ve güvenlik ayarları"], ["Banka hesaplarım", "Para yatırma ve çekme işlemleri için hesaplarınız"], ["Sözleşmeler", "Çerçeve sözleşme, risk bildirimi ve bilgilendirme metinleri"]];
+  const rows = [["Kişisel bilgiler", "Kimlik ve iletişim bilgilerinizi yönetin"], ["Güvenlik", "Şifre ve cihaz güvenliği"], ["Banka hesaplarım", "Para yatırma ve çekme işlemleri için hesaplarınız"], ["Sözleşmeler", "Çerçeve sözleşme, risk bildirimi ve bilgilendirme metinleri"]];
   return (
     <main className="screen scroll account-screen">
       <BrandHeader {...common} />
@@ -261,6 +278,7 @@ function AccountScreen({ me, portfolio, openSubpage, logout, common }) {
 
 function ProfileMenu({ me, onClose, openSubpage, logout }) {
   const rows = [
+    ["Referans Fırsatları", "Referansınız ile iletişime geçin", Users],
     ["Fotoğraf yükle", "Profil fotoğrafını güncelle", CircleUserRound],
     ["Güvenlik", "Şifre ve oturum ayarları", ShieldCheck],
     ["Uygulamayı yükle", "Android veya Apple için ana ekrana ekle", ArrowDown],
@@ -368,7 +386,7 @@ function AuthScreen({ onAuthed, back }) {
         <p>Portföy, emir, T+2 bakiye, para yatırma/çekme ve canlı piyasa işlemleri tek güvenli oturumda.</p>
         <div className="segments"><button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Giriş</button><button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>Kayıt</button></div>
         <form className="auth-form" onSubmit={submit}>
-          {mode === "register" && <><input name="full_name" placeholder="Ad Soyad" required /><input name="phone" placeholder="Telefon" required /><input name="email" type="email" placeholder="E-posta" required /><input name="city" placeholder="Şehir" defaultValue="İstanbul" /></>}
+          {mode === "register" && <><input name="full_name" placeholder="Ad Soyad" required /><input name="phone" placeholder="Telefon" required /><input name="email" type="email" placeholder="E-posta (opsiyonel)" /><input name="city" placeholder="Şehir" defaultValue="İstanbul" /></>}
           <input name="tc" inputMode="numeric" maxLength="11" placeholder="T.C. kimlik / müşteri no" required />
           <input name="password" type="password" placeholder="Şifre" required />
           {mode === "register" && <><input name="password_confirm" type="password" placeholder="Şifre tekrar" required /><input type="hidden" name="accept_kvkk" value="1" /><input type="hidden" name="accept_distance_contract" value="1" /><input type="hidden" name="accept_risk_disclosure" value="1" /><input type="hidden" name="risk_experience" value="2" /><input type="hidden" name="risk_horizon" value="2" /><input type="hidden" name="risk_loss" value="2" /><input type="hidden" name="risk_income" value="2" /><input type="hidden" name="trade_frequency" value="2" /><input type="hidden" name="knowledge_level" value="2" /><label className="checkline"><input name="agreements" value="1" type="checkbox" required /> KVKK, risk bildirimi ve e-şube sözleşmelerini kabul ediyorum.</label></>}
@@ -413,7 +431,7 @@ function AdminPanel({ data, refresh, logout }) {
       {["Özet", "Müşteriler"].includes(tab) && <><h2 className="solo-title">Müşteriler</h2>{users.slice(0, 20).map((u) => <div className="admin-row admin-user-row" key={u.id} onClick={() => setSelectedUser(u)}><span><strong>{u.full_name}</strong><small>{u.status_label || u.status} · {u.email} · {u.account_no} · {u.phone || "telefon yok"}</small></span>{u.status !== "approved" && <b><button onClick={(e) => { e.stopPropagation(); act(`/api/admin/users/${u.id}/approve`, "approve"); }}>Onay</button></b>}</div>)}</>}
       {["Özet", "Para"].includes(tab) && <><h2 className="solo-title">Para Talepleri</h2>{moneyReqs.slice(0, 20).map((m) => <div className="admin-row" key={m.id}><span><strong>{m.type_label || m.request_type}</strong><small>{m.full_name} · {money(m.amount)} · {m.status_label || m.status}</small></span>{m.status === "pending" && <b><button onClick={() => act(`/api/admin/money/${m.id}/approve`, "approve")}>Onay</button><button onClick={() => act(`/api/admin/money/${m.id}/reject`, "reject")}>Ret</button></b>}</div>)}</>}
       {tab === "Risk" && <section className="admin-matrix">{["Risk skoru", "KYC/KVKK", "Sözleşmeler", "Limit aşımı", "Şüpheli işlem", "Oturum sağlığı"].map((x, i) => <article key={x}><span>{x}</span><strong>{i % 2 ? "Temiz" : "İzleniyor"}</strong><small>Canlı kontrol aktif</small></article>)}</section>}
-      {tab === "Sistem" && <section className="settings-card report-card">{["Piyasa veri akışı", "Haber servisi", "Emir motoru", "Para hareketleri", "Admin step-up", "Audit log"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Çalışıyor · son kontrol şimdi</small></span><CheckCircle2 /></button>)}</section>}
+      {tab === "Sistem" && <section className="settings-card report-card">{["Piyasa veri akışı", "Haber servisi", "Emir motoru", "Para hareketleri", "Admin step-up", "Audit log"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Çalışıyor · son kontrol şimdi</small></span><CheckCircle2 /></button>)}<button className="settings-row"><span><strong>T+2 sistemi</strong><small>Varsayılan kapalı · satış sonrası admin isterse açar</small></span><Moon /></button></section>}
       {tab === "Raporlar" && <section className="settings-card report-card"><button className="settings-row"><span><strong>Risk ve Uyum</strong><small>KVKK, risk profili, sözleşme kabul durumları</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Operasyon</strong><small>Bekleyen emirler, para talepleri, son müşteri hareketleri</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Müşteri 360</strong><small>Bakiye, emir, para, sözleşme, güvenlik ve işlem geçmişi</small></span><CheckCircle2 /></button></section>}
       {selectedUser && <div className="modal-layer"><section className="trade-modal readable-modal admin-profile"><button className="close" onClick={() => setSelectedUser(null)}><X /></button><h2>{selectedUser.full_name}</h2><p className="subtle-count">{selectedUser.account_no} · {selectedUser.status_label || selectedUser.status}</p><div className="admin-matrix mini">{["Kimlik", "E-posta", "Telefon", "KVKK", "Risk", "Sözleşme"].map((x, i) => <article key={x}><span>{x}</span><strong>{[selectedUser.tc || "Kayıtlı", selectedUser.email || "Yok", selectedUser.phone || "Yok", "Kabul", "Orta", "Tam"][i]}</strong></article>)}</div><h3 className="muted-heading">Ana bakiye düzeltme</h3><div className="admin-balance-edit"><input placeholder="Yeni ana bakiye" inputMode="decimal" /><button>Bakiyeyi Düzelt</button></div><h3 className="muted-heading">İşlem geçmişi</h3><div className="settings-card"><div className="settings-row"><span><strong>Para yatırma</strong><small>₺24.200,00 · Onaylandı</small></span></div><div className="settings-row"><span><strong>TUPRS Alış</strong><small>50 lot · ₺9.000,00</small></span></div><div className="settings-row"><span><strong>THYAO Alış</strong><small>150 lot · ₺43.200,00</small></span></div></div><button className="confirm" onClick={() => setSelectedUser(null)}>Kapat</button></section></div>}
     </main><div className="home-indicator" /></div></div>
@@ -440,10 +458,11 @@ function Subpage({ title, onClose, refresh, me, portfolio }) {
     {["Para yatır", "Para çek"].includes(title) && <form className="auth-form money-sheet-form" onSubmit={submit}><p className="subtle-count">Bakiye · {balance}</p><label className="amount-entry"><span>₺</span><input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0,00" type="number" required /></label><button className="confirm">{title}</button></form>}
     {title === "Banka hesaplarım" && <div className="bank-empty"><p>Tanımlı banka hesabı bulunmuyor.</p><button className="confirm" onClick={onClose}>Tamam</button></div>}
     {title === "İşlem geçmişi" && <ListEmptyAware items={history} empty="Henüz işlem yok." render={(t, i) => <div className="admin-row" key={t.id || i}><span><strong>{t.type_label || t.event_type || "İşlem"}</strong><small>{money(t.amount || t.total || 0)} · {t.status_label || t.created_at || "Tamamlandı"}</small></span></div>} />}
-    {title === "Kişisel bilgiler" && <div className="settings-card"><div className="settings-row"><span><strong>{me?.full_name}</strong><small>{me?.email || "E-posta yok"} · {me?.phone || "Telefon yok"}</small></span><CircleUserRound /></div></div>}
-    {title === "Güvenlik" && <div className="settings-card"><button className="settings-row"><span><strong>Şifre güvenliği</strong><small>Giriş şifresi ve admin step-up kontrolleri aktif.</small></span><ShieldCheck /></button><button className="settings-row"><span><strong>Oturum</strong><small>Çerez tabanlı güvenli e-şube oturumu.</small></span><LockKeyhole /></button></div>}
+    {title === "Kişisel bilgiler" && <div className="settings-card"><div className="settings-row"><span><strong>Cep Telefonu</strong><small>{me?.phone || "+90 5-- -- --"}</small></span><ChevronRight /></div><div className="settings-row"><span><strong>E-posta</strong><small>{me?.email || "E-posta yok"}</small></span><ChevronRight /></div><div className="settings-row"><span><strong>Adres</strong><small>{me?.address || "Kayıtlı adres bulunmuyor"}</small></span><ChevronRight /></div><div className="settings-row"><span><strong>İl / İlçe</strong><small>{me?.city || "İstanbul"} / {me?.district || "Merkez"}</small></span><ChevronRight /></div><div className="settings-row"><span><strong>Tebligat Tercihi</strong><small>E-posta</small></span><CheckCircle2 /></div></div>}
+    {title === "Güvenlik" && <div className="settings-card"><button className="settings-row"><span><strong>Şifre Değiştir</strong><small>Son değiştirme bilgisi ve parola yenileme</small></span><ChevronRight /></button><button className="settings-row"><span><strong>İşlem Onayı</strong><small>Para çekme ve kritik işlemlerde doğrulama</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Güvenilir Cihazlar</strong><small>Bu oturuma bağlı cihazları görüntüle</small></span><ChevronRight /></button><button className="settings-row"><span><strong>Aktif Oturumlar</strong><small>1 aktif oturum</small></span><ChevronRight /></button></div>}
     {title === "Sözleşmeler" && <div className="settings-card">{["KVKK Aydınlatma Metni", "Çerçeve Sözleşme", "Risk Bildirim Formu", "E-Şube Kullanım Koşulları"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Görüntüle ve kabul durumunu incele</small></span><FileText /></button>)}</div>}
-    {title === "Bildirim ayarları" && <div className="settings-card">{["Emir durumları", "Fiyat uyarıları", "Para hareketleri"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Açık</small></span><CheckCircle2 /></button>)}</div>}
+    {title === "Bildirim ayarları" && <div className="settings-card">{["Tüm Bildirimler", "Fiyat Bildirimleri", "Haber Bildirimleri", "İşlem Bildirimleri", "Referans bildirimi"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Açık</small></span><CheckCircle2 /></button>)}</div>}
+    {title === "Referans Fırsatları" && <div className="bank-empty"><p>Referans fırsatları için referansınız ile iletişime geçiniz.</p><button className="confirm" onClick={onClose}>Tamam</button></div>}
     {title === "Fotoğraf yükle" && <div className="settings-card"><button className="settings-row"><span><strong>Profil fotoğrafı seç</strong><small>JPG veya PNG yükleyebilirsin.</small></span><CircleUserRound /></button></div>}
     {title === "Uygulamayı yükle" && <div className="settings-card"><button className="settings-row"><span><strong>Android</strong><small>Ana ekrana ekle ve uygulama gibi kullan.</small></span><ArrowDown /></button><button className="settings-row"><span><strong>Apple</strong><small>Safari paylaş menüsünden ana ekrana ekle.</small></span><ArrowDown /></button></div>}
     {title === "Ayarlar" && <div className="settings-card"><button className="settings-row"><span><strong>Tema</strong><small>Açık / Koyu</small></span><Moon /></button><button className="settings-row"><span><strong>Yazı boyutu</strong><small>Orta</small></span><ChevronRight /></button><button className="settings-row"><span><strong>Renk modu</strong><small>Mavi</small></span><ChevronRight /></button></div>}

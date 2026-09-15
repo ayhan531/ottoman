@@ -729,7 +729,7 @@ def seed_system_settings(conn: sqlite3.Connection) -> None:
         "trading_enabled": "1",
         "maintenance_mode": "0",
         "price_simulation": "0",
-        "t2_enabled": "1",
+        "t2_enabled": "0",
         "commission_rate_bps": os.environ.get("COMMISSION_RATE_BPS", "0"),
         "minimum_commission": os.environ.get("MINIMUM_COMMISSION", "0"),
         "official_company_name": os.environ.get("OFFICIAL_COMPANY_NAME", ""),
