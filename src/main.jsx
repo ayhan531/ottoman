@@ -319,7 +319,7 @@ function TradeModal({ stock, onClose, refresh, favorites, toggleFavorite }) {
         <div className="percent-row">{[25, 50, 75, 100].map((n) => <button onClick={() => setAmount(n)} key={n}>%{n}</button>)}<button className="text" onClick={() => setAmount(250)}>Tümü</button></div>
         <div className="range-line"><span>Oran</span><b>%{Math.min(100, Math.round((amount / 250) * 100)) || 0}</b><input type="range" min="0" max="250" value={amount} onChange={(e) => setAmount(Number(e.target.value))} /></div>
         <div className="trade-capacity"><span>Kullanılabilir bakiye <strong>₺24.200,00</strong></span><span>Maks. 58 lot</span></div>
-        <div className="profit-preview"><span>Net kâr / zarar <b>(%4,55)</b><strong>+₺391,00</strong></span><em>+4.97%</em></div>
+        <div className="profit-preview"><span><b>Net kâr / zarar</b><strong>+₺391,00</strong></span><span><b>K/Z Oranı</b><em>+4.97%</em></span></div>
         <div className="total-box"><span>Toplam</span><strong>{money(total)}</strong></div>
         {message && <div className="warning">{message}</div>}
         <button className={`confirm ${side === "sell" ? "danger" : ""}`} onClick={submitOrder}>{side === "buy" ? "Alış" : "Satış"} emri ver</button>
@@ -415,6 +415,17 @@ function AdminPanel({ data, refresh, logout }) {
     await api(path, { method: "POST", body: JSON.stringify({ reason }) });
     await refresh();
   };
+  const setUserBalance = async (user) => {
+    const input = document.getElementById(`balance-${user.id}`);
+    const amount = Number(String(input?.value || "").replace(",", "."));
+    if (!Number.isFinite(amount) || amount < 0) return alert("Geçerli ana bakiye gir.");
+    const password = prompt("Admin şifrenizi tekrar girin");
+    if (!password) return;
+    await api("/api/admin/step-up", { method: "POST", body: JSON.stringify({ password }) });
+    await api("/api/admin/balances", { method: "POST", body: JSON.stringify({ user_id: user.id, action: "set", amount, note: "Admin doğrudan ana bakiye düzeltme" }) });
+    await refresh();
+    setSelectedUser((old) => old ? { ...old, cash_balance: amount } : old);
+  };
   return (
     <div className="stage admin-stage"><div className="phone admin-phone"><StatusBar /><main className="screen scroll admin-screen">
       <BrandHeader showAvatar={false} />
@@ -433,7 +444,7 @@ function AdminPanel({ data, refresh, logout }) {
       {tab === "Risk" && <section className="admin-matrix">{["Risk skoru", "KYC/KVKK", "Sözleşmeler", "Limit aşımı", "Şüpheli işlem", "Oturum sağlığı"].map((x, i) => <article key={x}><span>{x}</span><strong>{i % 2 ? "Temiz" : "İzleniyor"}</strong><small>Canlı kontrol aktif</small></article>)}</section>}
       {tab === "Sistem" && <section className="settings-card report-card">{["Piyasa veri akışı", "Haber servisi", "Emir motoru", "Para hareketleri", "Admin step-up", "Audit log"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Çalışıyor · son kontrol şimdi</small></span><CheckCircle2 /></button>)}<button className="settings-row"><span><strong>T+2 sistemi</strong><small>Varsayılan kapalı · satış sonrası admin isterse açar</small></span><Moon /></button></section>}
       {tab === "Raporlar" && <section className="settings-card report-card"><button className="settings-row"><span><strong>Risk ve Uyum</strong><small>KVKK, risk profili, sözleşme kabul durumları</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Operasyon</strong><small>Bekleyen emirler, para talepleri, son müşteri hareketleri</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Müşteri 360</strong><small>Bakiye, emir, para, sözleşme, güvenlik ve işlem geçmişi</small></span><CheckCircle2 /></button></section>}
-      {selectedUser && <div className="modal-layer"><section className="trade-modal readable-modal admin-profile"><button className="close" onClick={() => setSelectedUser(null)}><X /></button><h2>{selectedUser.full_name}</h2><p className="subtle-count">{selectedUser.account_no} · {selectedUser.status_label || selectedUser.status}</p><div className="admin-matrix mini">{["Kimlik", "E-posta", "Telefon", "KVKK", "Risk", "Sözleşme"].map((x, i) => <article key={x}><span>{x}</span><strong>{[selectedUser.tc || "Kayıtlı", selectedUser.email || "Yok", selectedUser.phone || "Yok", "Kabul", "Orta", "Tam"][i]}</strong></article>)}</div><h3 className="muted-heading">Ana bakiye düzeltme</h3><div className="admin-balance-edit"><input placeholder="Yeni ana bakiye" inputMode="decimal" /><button>Bakiyeyi Düzelt</button></div><h3 className="muted-heading">İşlem geçmişi</h3><div className="settings-card"><div className="settings-row"><span><strong>Para yatırma</strong><small>₺24.200,00 · Onaylandı</small></span></div><div className="settings-row"><span><strong>TUPRS Alış</strong><small>50 lot · ₺9.000,00</small></span></div><div className="settings-row"><span><strong>THYAO Alış</strong><small>150 lot · ₺43.200,00</small></span></div></div><button className="confirm" onClick={() => setSelectedUser(null)}>Kapat</button></section></div>}
+      {selectedUser && <div className="modal-layer"><section className="trade-modal readable-modal admin-profile"><button className="close" onClick={() => setSelectedUser(null)}><X /></button><h2>{selectedUser.full_name}</h2><p className="subtle-count">{selectedUser.account_no} · {selectedUser.status_label || selectedUser.status}</p><div className="admin-matrix mini">{["Ana Bakiye", "Alış", "Satış", "İşlem", "KVKK", "Risk"].map((x, i) => <article key={x}><span>{x}</span><strong>{[money(selectedUser.cash_balance || 0), selectedUser.buy_count || 0, selectedUser.sell_count || 0, selectedUser.transaction_count || 0, "Kabul", "Orta"][i]}</strong></article>)}</div><h3 className="muted-heading">Ana bakiye düzeltme</h3><div className="admin-balance-edit"><input id={`balance-${selectedUser.id}`} placeholder="Yeni ana bakiye" inputMode="decimal" defaultValue={Number(selectedUser.cash_balance || 0).toFixed(2)} /><button onClick={() => setUserBalance(selectedUser)}>Bakiyeyi Düzelt</button></div><h3 className="muted-heading">İşlem geçmişi</h3><div className="settings-card"><div className="settings-row"><span><strong>Toplam emir</strong><small>{selectedUser.order_count || 0} adet · Alış {selectedUser.buy_count || 0} · Satış {selectedUser.sell_count || 0}</small></span></div><div className="settings-row"><span><strong>Son hareket</strong><small>{selectedUser.transaction_count || 0} işlem kaydı · {money(selectedUser.cash_balance || 0)} bakiye</small></span></div><div className="settings-row"><span><strong>KYC / Sözleşme</strong><small>{selectedUser.kyc_status_label || selectedUser.kyc_status || "Onaylandı"} · Tam</small></span></div></div><button className="confirm" onClick={() => setSelectedUser(null)}>Kapat</button></section></div>}
     </main><div className="home-indicator" /></div></div>
   );
 }

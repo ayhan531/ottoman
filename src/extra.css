@@ -37,7 +37,7 @@
 .trade-capacity span{display:grid;gap:2px}
 .trade-capacity span:last-child{text-align:right;color:#6f7584}
 .trade-capacity strong{color:#171925}
-.profit-preview{border-radius:16px;background:#eafff4;margin-top:10px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;color:#0f9f70}
+.profit-preview{border-radius:16px;background:#eafff4;margin-top:10px;padding:13px 16px;display:grid;grid-template-columns:1fr auto;align-items:center;gap:18px;color:#0f9f70}
 .profit-preview span{display:grid;gap:5px;color:#7d8592}
 .profit-preview b{color:#0f9f70}
 .profit-preview strong{font-size:21px;color:#0f9f70}
@@ -142,10 +142,23 @@
   .stage{padding:24px}
   .phone{width:min(1120px,96vw);height:min(930px,96vh);border-radius:28px}
   .screen{padding-left:34px;padding-right:34px}
-  .bottom-nav{left:50%;transform:translateX(-50%);width:min(760px,70vw);border-radius:28px 28px 0 0}
+  .bottom-nav{left:0;right:auto;top:50px;bottom:0;width:96px;height:auto;grid-template-columns:1fr;grid-template-rows:repeat(5,1fr);border-right:1px solid var(--line);border-top:0;border-radius:0}
+  .screen{left:96px;bottom:0}
   .stock-row,.position-row{min-height:86px}
   .trade-modal{width:min(560px,92vw)}
   .portfolio-grid{grid-template-columns:1fr 210px}
+  .home-indicator{display:none}
+  .portfolio-screen{display:grid;grid-template-columns:minmax(360px,560px) minmax(380px,1fr);align-content:start;column-gap:28px}
+  .portfolio-screen .brand-header{grid-column:1/-1}
+  .portfolio-screen > .portfolio-card:not(.chart-card){grid-column:1;grid-row:2}
+  .portfolio-screen > .chart-card{grid-column:1;grid-row:3}
+  .portfolio-screen > .segments,
+  .portfolio-screen > .search,
+  .portfolio-screen > .page-title,
+  .portfolio-screen > .position-row,
+  .portfolio-screen > .admin-row,
+  .portfolio-screen > .empty-state{grid-column:2}
+  .portfolio-screen > .segments{margin-top:0}
 }
 @media (max-width:760px){
   .landing-nav nav{display:none}
@@ -160,6 +173,8 @@
 
 .portfolio-card {
   background: linear-gradient(145deg, #5f93ef 0%, #4c7ed9 52%, #3562b4 100%);
+  box-shadow: 0 14px 28px rgba(76, 92, 160, .22);
+  margin-bottom: 22px;
 }
 .chart-card {
   margin-top: 14px;
@@ -194,4 +209,24 @@
 .portfolio-top,
 .legend {
   min-width: 0;
+}
+
+.portfolio-screen .segments {
+  position: relative;
+  z-index: 2;
+  margin-top: 4px;
+}
+
+.market-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.market-tabs::-webkit-scrollbar {
+  display: none;
+}
+.market-tabs button {
+  scroll-snap-align: start;
 }

@@ -2596,7 +2596,11 @@ class AppHandler(BaseHTTPRequestHandler):
             rows = conn.execute(
                 """
                 SELECT u.*, a.cash_balance, a.blocked_balance, a.pending_balance, a.credit_limit,
-                  (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id) AS document_count
+                  (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id) AS document_count,
+                  (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id) AS order_count,
+                  (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id AND o.side='buy') AS buy_count,
+                  (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id AND o.side='sell') AS sell_count,
+                  (SELECT COUNT(*) FROM user_transactions t WHERE t.user_id=u.id) AS transaction_count
                 FROM users u
                 LEFT JOIN accounts a ON a.user_id=u.id
                 WHERE u.role='user'
@@ -3181,7 +3185,7 @@ class AppHandler(BaseHTTPRequestHandler):
         amount = float(payload.get("amount", 0) or 0)
         action = str(payload.get("action", "add")).lower()
         note = str(payload.get("note", "")).strip()[:300]
-        if user_id <= 0 or amount <= 0 or action not in {"add", "subtract", "credit"}:
+        if user_id <= 0 or amount < 0 or action not in {"add", "subtract", "credit", "set"}:
             raise HttpError(400, "Bakiye işlemi hatalı")
         if len(note) < 8:
             raise HttpError(422, "Finansal değişiklik için en az 8 karakterlik gerekçe zorunludur")
@@ -3200,11 +3204,15 @@ class AppHandler(BaseHTTPRequestHandler):
                 after = round(before - amount, 2)
                 conn.execute("UPDATE accounts SET cash_balance=? WHERE user_id=?", (after, user_id))
                 tx_type = "admin_subtract"
-            else:
+            elif action == "credit":
                 after = round(before + amount, 2)
                 conn.execute("UPDATE accounts SET credit_limit=? WHERE user_id=?", (after, user_id))
                 tx_type = "credit_limit"
-            write_transaction(conn, user_id, tx_type, amount, before, after, note=note)
+            else:
+                after = round(amount, 2)
+                conn.execute("UPDATE accounts SET cash_balance=? WHERE user_id=?", (after, user_id))
+                tx_type = "admin_set_balance"
+            write_transaction(conn, user_id, tx_type, abs(after - before) if action == "set" else amount, before, after, note=note)
             audit(conn, admin["id"], "adjust_balance", "account", user_id, {"amount": amount, "action": action, "reason": note})
             conn.commit()
             self.json_response({"ok": True})
@@ -3944,6 +3952,10 @@ def public_user(user: dict, include_sensitive: bool = False) -> dict:
         data["pending_balance"] = user.get("pending_balance", 0)
         data["credit_limit"] = user.get("credit_limit", 0)
         data["document_count"] = user.get("document_count", 0)
+        data["order_count"] = user.get("order_count", 0)
+        data["buy_count"] = user.get("buy_count", 0)
+        data["sell_count"] = user.get("sell_count", 0)
+        data["transaction_count"] = user.get("transaction_count", 0)
     return data
 
 
