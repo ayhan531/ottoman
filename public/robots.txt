@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ottoman-eggb.onrender.com/sitemap.xml

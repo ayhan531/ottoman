@@ -113,6 +113,9 @@
 .landing-flow span{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#f0ecff;color:#7657ff;font-weight:900}
 .landing-flow h3{font-size:24px;margin:18px 0 8px}
 .landing-flow p{color:#606575;line-height:1.55;margin:0}
+.landing-seo{padding:0 clamp(18px,7vw,92px) 58px;max-width:1160px}
+.landing-seo h2{font-size:32px;margin:0 0 12px}
+.landing-seo p{color:#606575;line-height:1.65;font-size:18px;margin:0}
 @keyframes landing-up{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 @keyframes terminal-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 @keyframes bar-rise{0%,100%{filter:saturate(1);opacity:.85}50%{filter:saturate(1.4);opacity:1}}
@@ -195,6 +198,7 @@
   .hero-terminal strong{font-size:44px}
   .terminal-grid{grid-template-columns:1fr}
   .landing-cards,.landing-flow{grid-template-columns:1fr}
+  .landing-seo{padding:0 20px 44px}
   .landing-footer{align-items:flex-start;flex-direction:column}
   .landing-band.split,.admin-command,.admin-matrix{grid-template-columns:1fr}
   .market-mini{grid-template-columns:1fr}
