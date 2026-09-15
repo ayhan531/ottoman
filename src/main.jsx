@@ -165,7 +165,7 @@ function NewsScreen({ items = [], common }) {
     <main className="screen scroll">
       <BrandHeader {...common} /><SearchBox placeholder="Haber ara" value={search} onChange={setSearch} /><MarketTabs active={tab} onChange={setTab} />
       <h1 className="page-title">{tab}</h1>
-      <div className="news-list">{list.map((item) => <button className="news-row" key={item.title} onClick={() => setDetail(item)}><NewsThumb type={item.type} /><h3>{item.title}</h3><ChevronRight /></button>)}</div>
+      <div className="news-list">{list.length ? list.map((item) => <button className="news-row" key={item.title} onClick={() => setDetail(item)}><NewsThumb type={item.type} /><h3>{item.title}</h3><ChevronRight /></button>) : <div className="empty-state">Aramana uygun haber bulunamadı.</div>}</div>
       {detail && <NewsDetail item={detail} onClose={() => setDetail(null)} />}
     </main>
   );
