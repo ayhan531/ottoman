@@ -30,6 +30,15 @@
 .trade-hero h1{font-size:24px;margin:4px 0}
 .trade-hero p{margin:0;line-height:1.35;color:#eee9ff}
 .total-box{height:58px;border-radius:16px;background:#f6f3ff;display:flex;align-items:center;justify-content:space-between;padding:0 15px;margin-top:10px;color:var(--ink)}
+.market-status-card{position:relative;border:1px solid var(--line);border-radius:20px;background:#fff;padding:18px;margin:14px 0 18px;display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start}
+.market-status-card h2{font-size:22px;margin:0 0 10px}
+.market-status-card p{margin:0;color:#9499a6;font-size:18px}
+.market-status-card p strong{display:block;color:#171925;font-size:30px;margin-bottom:3px}
+.market-status-card>b{border-radius:14px;background:#ffe4ed;color:#dd5575;display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:16px}
+.market-status-card i{width:11px;height:11px;border-radius:50%;background:#dd5575;display:inline-block}
+.market-mini{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:8px;border-top:1px solid #eceef5;color:#8c929f}
+.market-mini span{display:grid;gap:4px;font-size:12px}
+.market-mini strong{color:#171925;font-size:15px}
 .confirm.danger{background:#ef4655}
 .buy-sell .sell{background:#ef4655;color:#fff}
 .readable-modal{line-height:1.55}
@@ -93,6 +102,9 @@
 .dark-mode .phone,.dark-mode .screen{background:#11131a;color:#f6f7fb}
 .dark-mode .status,.dark-mode .stock-copy span,.dark-mode .subtle-count,.dark-mode .muted-heading,.dark-mode .settings-row small{color:#aeb4c3}
 .dark-mode .search,.dark-mode .stock-row,.dark-mode .summary-card,.dark-mode .settings-card,.dark-mode .auth-card,.dark-mode .input-like,.dark-mode .select-pill,.dark-mode .empty-state{background:#191c26;color:#f6f7fb;border-color:#282d3b}
+.dark-mode .market-status-card{background:#191c26;border-color:#282d3b}
+.dark-mode .market-status-card p strong,.dark-mode .market-mini strong{color:#f6f7fb}
+.dark-mode .market-mini{border-color:#282d3b}
 .dark-mode .search input{color:#f6f7fb}
 .dark-mode .market-tabs button,.dark-mode .segments button{background:#1b1e28;color:#cbd1df}
 .dark-mode .market-tabs button.active,.dark-mode .segments button.active{background:#7657ff;color:#fff}
@@ -117,5 +129,6 @@
   .landing-cards{grid-template-columns:1fr}
   .landing-footer{align-items:flex-start;flex-direction:column}
   .landing-band.split,.admin-command,.admin-matrix{grid-template-columns:1fr}
+  .market-mini{grid-template-columns:1fr}
   .admin-tabs{grid-template-columns:repeat(2,1fr)}
 }

@@ -103,19 +103,32 @@ function StockRow({ item, onClick, favorite, toggleFavorite }) {
   );
 }
 
+function MarketStatusCard({ tab, loading = false }) {
+  if (tab === "BIST Tüm") return null;
+  return (
+    <section className="market-status-card">
+      <div><h2>Piyasa Durumu</h2>{loading ? <p>Piyasa verisi yükleniyor...</p> : <p><strong>16.645,08</strong><span> −%2,16 · −366,67</span></p>}</div>
+      <b><i /> Kapalı</b>
+      {!loading && <div className="market-mini"><span>Yükselenler <strong>%7</strong></span><span>Düşenler <strong>%93</strong></span><span>Toplam Hacim: <strong>136,55 Mr ₺</strong></span></div>}
+    </section>
+  );
+}
+
 function HomeScreen({ openTrade, market, favorites, toggleFavorite, common }) {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("BIST Tüm");
   const live = filterMarket(market.length ? market : stocks, tab, search);
   const watched = favorites.size ? live.filter((item) => favorites.has(item.code)) : live.slice(0, 4);
   const gainers = [...live].sort((a, b) => b.rawChange - a.rawChange).slice(0, 6);
+  const isSearching = Boolean(search.trim());
+  const indexMode = tab !== "BIST Tüm" && !isSearching;
   return (
     <main className="screen scroll">
       <BrandHeader {...common} /><SearchBox placeholder="Ara" value={search} onChange={setSearch} /><MarketTabs active={tab} onChange={setTab} />
-      <div className="section-title"><h2>Takip listem</h2><button onClick={() => setTab("BIST Tüm")}>Tümü</button></div>
-      {watched.map((item) => <StockRow key={item.code} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}
-      <h2 className="solo-title">Öne çıkan yükselenler</h2>
-      {gainers.map((item) => <StockRow key={item.code} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}
+      <MarketStatusCard tab={tab} loading={!market.length && indexMode} />
+      <div className="section-title"><h2>{isSearching ? "Arama sonuçları" : indexMode ? tab : "Takip listem"}</h2><button onClick={() => { setSearch(""); setTab("BIST Tüm"); }}>Tümü</button></div>
+      {(isSearching || indexMode ? live : watched).map((item) => <StockRow key={item.code} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}
+      {!isSearching && !indexMode && <><h2 className="solo-title">Öne çıkan yükselenler</h2>{gainers.map((item) => <StockRow key={item.code} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}</>}
     </main>
   );
 }
@@ -153,13 +166,15 @@ function TradeScreen({ market, openTrade, favorites, toggleFavorite, common }) {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("BIST Tüm");
   const list = filterMarket(market.length ? market : stocks, tab, search);
+  const isSearching = Boolean(search.trim());
   return (
     <main className="screen scroll trade-screen-list">
       <BrandHeader {...common} /><SearchBox placeholder="Hisse kodu / şirket adı ara" value={search} onChange={setSearch} /><MarketTabs active={tab} onChange={setTab} />
+      <MarketStatusCard tab={tab} loading={!market.length && tab !== "BIST Tüm"} />
       <section className="trade-hero"><div><span>Al/Sat</span><h1>Hisse seç, emri sen kur</h1><p>Piyasa, limit, adet ve tutar alanları seçtiğin hisseye göre açılır.</p></div><ArrowLeftRight size={38} /></section>
       <div className="section-title"><h2>Favoriler</h2><button onClick={() => setSearch("")}>Temizle</button></div>
       {(favorites.size ? list.filter((item) => favorites.has(item.code)) : list.slice(0, 3)).map((item) => <StockRow key={`fav-${item.code}`} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}
-      <h2 className="solo-title">{tab}</h2>
+      <h2 className="solo-title">{isSearching ? "Arama sonuçları" : tab}</h2>
       {list.map((item) => <StockRow key={item.code} item={item} favorite={favorites.has(item.code)} toggleFavorite={toggleFavorite} onClick={() => openTrade(item)} />)}
     </main>
   );
