@@ -418,7 +418,7 @@ function AuthScreen({ onAuthed, back }) {
     }
   };
   return (
-    <div className="stage"><div className="phone"><StatusBar /><main className="screen scroll auth-screen">
+    <div className="stage auth-stage"><div className="phone auth-phone"><main className="screen scroll auth-screen">
       <button className="ghost-back" onClick={back}>Ana sayfa</button>
       <div className="auth-logo brand">Ottoman</div>
       <section className="auth-card">
