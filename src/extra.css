@@ -487,4 +487,15 @@
 .news-detail .close{z-index:2}
 .dark-mode .news-excerpt,.dark-mode .news-row small,.dark-mode .featured-news small{color:#bcc3d2}
 .dark-mode .dual-input input,.dark-mode .auth-form input,.dark-mode .amount-entry,.dark-mode .percent-row button,.dark-mode .order-type button{background:#252b38;color:#f7f8ff}
+
+/* News detail owns the full app surface, so the feed cannot scroll beneath it. */
+.news-screen.is-modal-open{overflow:hidden}
+.app-stage .news-modal-layer{position:absolute;inset:0;z-index:60;align-items:center;padding:24px;background:rgba(10,13,21,.58);overscroll-behavior:contain}
+.app-stage .news-modal-layer .news-detail{width:min(700px,100%);max-height:100%;margin:0;align-self:center;overscroll-behavior:contain}
+.news-detail .news-thumb{flex:none}
+
+/* Treat dark market filters as a single scrollable control instead of separate tiles. */
+.dark-mode .market-tabs{height:54px;align-items:center;gap:0;padding:5px;margin-bottom:18px;border:1px solid #2c3444;border-radius:12px;background:#171c27}
+.dark-mode .market-tabs button{height:42px;padding:0 15px;border:0;border-radius:8px;background:transparent;color:#bcc3d2;white-space:nowrap}
+.dark-mode .market-tabs button.active{background:#7657ff;color:#fff;box-shadow:0 5px 16px rgba(118,87,255,.28)}
 @media(max-width:760px){.portfolio-screen .portfolio-carousel>.portfolio-card{padding:24px;min-height:340px}.portfolio-screen .portfolio-grid{grid-template-columns:minmax(0,1fr) 80px;gap:12px}.portfolio-screen .portfolio-grid h1{font-size:29px}.portfolio-screen .donut{width:80px;height:80px}.portfolio-screen .donut div{width:52px;height:52px;font-size:19px}.portfolio-screen .balance-pair{gap:18px}.portfolio-screen .balance-pair strong{font-size:17px}.portfolio-screen .legend{display:grid;gap:10px;margin-top:20px}.portfolio-screen .position-row{grid-template-columns:38px minmax(0,1fr) 20px;gap:12px}.portfolio-screen .position-price{grid-column:2;align-items:flex-start;text-align:left;flex-direction:row;flex-wrap:wrap;gap:8px}.portfolio-screen .position-row>svg{grid-column:3;grid-row:1/3}.portfolio-screen .stock-logo{width:36px;height:36px}.portfolio-screen .position-price strong{font-size:13px}.portfolio-heading h1{font-size:25px}.news-row .news-excerpt{display:none}}

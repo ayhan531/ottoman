@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { createPortal } from "react-dom";
 import {
   ArrowDown, ArrowLeftRight, ArrowUp, Bell, CheckCircle2, ChevronDown, ChevronRight, ChevronLeft, ExternalLink, Menu,
   CircleUserRound, CreditCard, Eye, EyeOff, FileText, Home, Info, Landmark, LockKeyhole,
@@ -155,14 +156,16 @@ const newsArtwork = {
 function NewsThumb({ item = {}, type }) {
   const [failed, setFailed] = useState(false);
   const src = item.image_url;
-  return <div className="news-thumb publisher-image">{src && !failed ? <img src={src} alt={item.title || ""} onError={() => setFailed(true)} /> : <Newspaper aria-label="Haber görseli mevcut değil" />}<span>{item.source}</span></div>;
+  return <div className="news-thumb publisher-image">{src && !failed ? <img src={src} alt={item.title || ""} onError={() => setFailed(true)} /> : <Newspaper aria-label="Haber görseli mevcut değil" />}</div>;
 }
 
 const newsDate = (value) => value && !Number.isNaN(Date.parse(value)) ? new Date(value).toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
 const safeNewsUrl = (value) => { try { const url = new URL(value); return url.protocol === "https:" ? url.href : null; } catch { return null; } };
 
 function NewsDetail({ item, onClose }) {
-  return <div className="modal-layer"><section role="dialog" aria-modal="true" aria-label="Haber detayı" className="trade-modal readable-modal news-detail"><button className="close" aria-label="Haberi kapat" onClick={onClose}><X /></button><NewsThumb item={item} /><p className="news-kicker">{item.source}</p><h2>{item.title}</h2><time className="subtle-count" dateTime={item.date}>{newsDate(item.date)}</time><p>{item.body}</p>{safeNewsUrl(item.url) && <a className="confirm read-source" href={safeNewsUrl(item.url)} target="_blank" rel="noopener noreferrer">Devamını oku <ExternalLink size={18} /></a>}</section></div>;
+  const content = <div className="modal-layer news-modal-layer"><section role="dialog" aria-modal="true" aria-label="Haber detayı" className="trade-modal readable-modal news-detail"><button className="close" aria-label="Haberi kapat" onClick={onClose}><X /></button><NewsThumb item={item} /><h2>{item.title}</h2><time className="subtle-count" dateTime={item.date}>{newsDate(item.date)}</time><p>{item.body}</p>{safeNewsUrl(item.url) && <a className="confirm read-source" href={safeNewsUrl(item.url)} target="_blank" rel="noopener noreferrer">Devamını oku <ExternalLink size={18} /></a>}</section></div>;
+  const host = document.querySelector(".app-stage .phone");
+  return host ? createPortal(content, host) : content;
 }
 
 function NewsScreen({ items = [], common }) {
@@ -181,11 +184,11 @@ function NewsScreen({ items = [], common }) {
   const featured = list[0];
   const rows = featured && !search ? list.slice(1) : list;
   return (
-    <main className="screen scroll">
+    <main className={`screen scroll news-screen${detail ? " is-modal-open" : ""}`}>
       <BrandHeader {...common} /><SearchBox placeholder="Başlık, açıklama veya kaynak ara" value={search} onChange={setSearch} />
       <div className="news-head"><span>Piyasalar & Ekonomi</span><h1>{search ? "Arama sonuçları" : "Güncel Haberler"}</h1><p>{list.length} haber · Yayın tarihine göre en yeniden eskiye</p></div>
-      {featured && !search && <button className="featured-news" onClick={() => setDetail(featured)}><NewsThumb item={featured} /><span><b>{featured.source}</b><h2>{featured.title}</h2><p className="news-excerpt">{featured.body}</p><small>{newsDate(featured.date)}</small></span><ChevronRight /></button>}
-      <div className="news-list">{rows.length ? rows.map((item) => <button className="news-row" key={item.url} onClick={() => setDetail(item)}><NewsThumb item={item} /><span><b>{item.source}</b><h3>{item.title}</h3><p className="news-excerpt">{item.body}</p><small>{newsDate(item.date)}</small></span><ChevronRight /></button>) : (!featured && <div className="empty-state">{search ? "Aramana uygun haber bulunamadı." : "Güncel haber akışı şu anda alınamıyor. Biraz sonra yeniden denenecek."}</div>)}</div>
+      {featured && !search && <button className="featured-news" onClick={() => setDetail(featured)}><NewsThumb item={featured} /><span><h2>{featured.title}</h2><p className="news-excerpt">{featured.body}</p><small>{newsDate(featured.date)}</small></span><ChevronRight /></button>}
+      <div className="news-list">{rows.length ? rows.map((item) => <button className="news-row" key={item.url} onClick={() => setDetail(item)}><NewsThumb item={item} /><span><h3>{item.title}</h3><p className="news-excerpt">{item.body}</p><small>{newsDate(item.date)}</small></span><ChevronRight /></button>) : (!featured && <div className="empty-state">{search ? "Aramana uygun haber bulunamadı." : "Güncel haber akışı şu anda alınamıyor. Biraz sonra yeniden denenecek."}</div>)}</div>
       {detail && <NewsDetail item={detail} onClose={() => setDetail(null)} />}
     </main>
   );
