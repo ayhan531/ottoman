@@ -174,6 +174,15 @@ function NewsScreen({ items = [], common }) {
   );
 }
 
+function LiveDataStrip({ marketMeta, newsMeta }) {
+  const marketOk = marketMeta?.ok ?? true;
+  const newsOk = newsMeta?.ok ?? true;
+  return <section className="live-data-strip">
+    <article><span>Piyasa verisi</span><strong>{marketOk ? "Canlı kaynak aktif" : "Kaynak yedekli"}</strong><small>{marketMeta?.source || "trrealapi-market"} · {marketMeta?.symbol_count || marketMeta?.symbols || "çoklu"} sembol</small></article>
+    <article><span>Haber akışı</span><strong>{newsOk ? "Resmi kaynak aktif" : "Yedek kaynak"}</strong><small>{newsMeta?.updated_at_label || compactDate()} · TCMB / SPK / Borsa İstanbul</small></article>
+  </section>;
+}
+
 function TradeScreen({ market, openTrade, favorites, toggleFavorite, common }) {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("BIST Tüm");
@@ -336,6 +345,22 @@ function LandingPage({ openAuth }) {
   const nav = ["Ana sayfa", "Kurumsal", "Hizmetler", "Blog", "SSS", "Sözleşmeler", "İletişim"];
   const posts = ["BIST tarafında gün içi risk yönetimi", "Limit emir ve piyasa emri farkları", "T+2 bakiye yatırımcıya ne anlatır", "Temettü takvimini okuma rehberi"];
   const marketStrip = [["BIST 100", "13.892,40", "+0,51"], ["XU030", "14.467,25", "+0,37"], ["THYAO", "300,50", "+0,33"], ["ASELS", "381,25", "+1,21"]];
+  const serviceCards = [
+    [Landmark, "Pay Piyasası İşlemleri", "Borsa İstanbul pay piyasasında canlı fiyat, limit emir, piyasa emri ve işlem geçmişi tek ekranda yönetilir."],
+    [PieChart, "Portföy ve Varlık Takibi", "Pozisyon, maliyet, kâr/zarar oranı, T+2 bakiye ve grafik performansı mobil ve masaüstünde okunur."],
+    [Newspaper, "Canlı Haber ve Duyuru", "TCMB, SPK, Borsa İstanbul ve piyasa haberleri arama, detay ve kaynak bilgisiyle sunulur."],
+    [CreditCard, "Para Transfer Süreçleri", "Para yatırma, para çekme, banka hesabı ve işlem geçmişi admin onay akışına bağlı çalışır."],
+    [ShieldCheck, "Uyum ve Güvenlik", "KYC, KVKK, risk bildirimi, sözleşme kabulü, oturum güvenliği ve admin step-up süreçleri izlenir."],
+    [FileText, "Raporlama ve Sözleşmeler", "Müşteri, emir, bakiye, para hareketi, sözleşme ve denetim kayıtları raporlanabilir şekilde tutulur."],
+  ];
+  const numbers = [["24", "resmi haber başlığına kadar görünür akış"], ["60 sn", "piyasa veri yenileme penceresi"], ["360°", "müşteri, emir, para, risk ve sözleşme kontrolü"], ["7/24", "e-şube ve admin operasyon görünürlüğü"]];
+  const why = ["Canlı fiyat doğrulaması olmadan emir geçirmeyen işlem mantığı", "Mobilde APK hissi, masaüstünde işlem masası yoğunluğu", "Para hareketlerinde banka, dekont, IBAN ve admin onay disiplini", "SEO, sözleşme, KVKK ve risk içerikleriyle kurumsal landing yapısı"];
+  const testimonials = [
+    ["Kurumsal yatırımcı", "Portföy ve emir ekranları aynı mantıkla aktığı için işlem kontrolü çok daha hızlı."],
+    ["Operasyon ekibi", "Bekleyen para, emir, kullanıcı ve risk kontrolleri tek admin panelinde okunuyor."],
+    ["Mobil kullanıcı", "Telefon ekranında yatırım uygulaması gibi, bilgisayarda da ciddi bir e-şube gibi çalışıyor."],
+  ];
+  const partners = ["SPK süreç uyumu", "Borsa İstanbul piyasa ekranları", "KAP şirket bildirimleri", "TCMB duyuruları", "Banka transfer akışları", "KVKK ve sözleşme kayıtları"];
   const pageCopy = {
     Kurumsal: ["Güvenli yatırımın dijital adresi", "Ottoman Yatırım; müşteri kabul, risk profili, sözleşme, para hareketi ve emir onay süreçlerini tek merkezde yöneten kurumsal bir yatırım deneyimi sunar.", ["Lisanslı operasyon modeli", "KVKK ve risk bildirimi süreçleri", "Şeffaf müşteri ve emir takibi"]],
     Hizmetler: ["Yatırımcı hizmetleri", "Hisse al-sat, canlı piyasa, haber, portföy, para yatırma/çekme ve sözleşme yönetimi tek e-şube çatısı altında çalışır.", ["Canlı BIST ekranları", "Limit emir matematiği", "Admin onaylı para hareketleri"]],
@@ -351,12 +376,18 @@ function LandingPage({ openAuth }) {
       {page === "Ana sayfa" ? <>
         <section className="landing-hero"><div className="hero-copy"><span>Ottoman Yatırım E-Şube</span><h1>Kurumsal yatırım, canlı işlem ve dijital şube tek merkezde.</h1><p>Canlı piyasa, haber, emir, portföy, para yatırma/çekme, sözleşmeler ve admin operasyonları mobilde APK hissiyle, masaüstünde işlem masası netliğiyle çalışır.</p><div className="hero-actions"><button onClick={openAuth}>E-Şubeye Gir</button><button className="secondary" onClick={() => setPage("Kurumsal")}>Kurumsalı İncele</button></div></div><div className="hero-terminal"><div className="terminal-top"><b>BIST 100</b><span>Canlı</span></div><strong>13.892,40</strong><small>+0,51% · Piyasa kapalıyken limit emir</small><div className="terminal-chart"><i /><i /><i /><i /><i /></div><div className="terminal-grid">{marketStrip.map(([code, value, change]) => <div key={code}><span>{code}</span><b>{value}</b><em>+%{change}</em></div>)}</div></div></section>
         <section className="landing-ticker">{marketStrip.concat(marketStrip).map(([code, value, change], index) => <div key={`${code}-${index}`}><b>{code}</b><span>{value}</span><em>+%{change}</em></div>)}</section>
-        <section className="landing-cards">{[[Landmark, "E-Şube İşlemleri", "Hisse al-sat, limit emir, portföy pozisyonu ve geçmiş akışı tek panelde."], [PieChart, "Yatırım Ürünleri", "Borsa İstanbul, yatırım fonları, VİOP ve portföy takip deneyimi tek mimaride sunulur."], [Newspaper, "Piyasa ve Haber", "SPK, TCMB, KAP ve piyasa haberleri arama ve detay ekranlarıyla izlenir."], [ShieldCheck, "Operasyon Güvenliği", "KYC, KVKK, sözleşme, para hareketi ve admin step-up kontrolleri birlikte çalışır."], [CreditCard, "Para İşlemleri", "Para yatırma, para çekme, banka hesapları ve işlem geçmişi e-şube altında toplanır."], [FileText, "Sözleşme ve Uyum", "Risk bildirimi, çerçeve sözleşme ve kullanıcı onay süreçleri düzenli şekilde yönetilir."]].map(([Icon, title, text]) => <article key={title}><Icon /><h3>{title}</h3><p>{text}</p></article>)}</section>
+        <section className="landing-section landing-services-deep"><div className="landing-section-head"><span>Yatırım Hizmetlerimiz</span><h2>Yatırımcının beklediği bütün dijital şube işlemleri tek mimaride.</h2><p>Ottoman; piyasa izleme, emir oluşturma, portföy, haber, para hareketi, sözleşme ve admin onay süreçlerini parçalı değil, uçtan uca bağlı çalıştırır.</p></div><div className="landing-cards landing-cards-inner">{serviceCards.map(([Icon, title, text]) => <article key={title}><Icon /><h3>{title}</h3><p>{text}</p></article>)}</div></section>
+        <section className="landing-stats"><div><span>Rakamlarla Ottoman Yatırım</span><h2>Operasyonun tamamı ölçülebilir, izlenebilir ve yönetilebilir.</h2></div><div className="stat-grid">{numbers.map(([value, label]) => <article key={value}><strong>{value}</strong><p>{label}</p></article>)}</div></section>
+        <section className="landing-why"><div className="landing-section-head"><span>Neden Ottoman Yatırım?</span><h2>Mobilde sade, masaüstünde güçlü, admin tarafında tam yetkili.</h2></div><div className="why-list">{why.map((item, index) => <article key={item}><b>{String(index + 1).padStart(2, "0")}</b><p>{item}</p></article>)}</div></section>
+        <section className="landing-testimonials"><div className="landing-section-head"><span>Müşterilerimiz Ne Diyor?</span><h2>Her rol için okunabilir, hızlı ve kontrollü deneyim.</h2></div><div>{testimonials.map(([role, text]) => <article key={role}><p>“{text}”</p><strong>{role}</strong></article>)}</div></section>
+        <section className="landing-regulators"><div><span>Düzenleyici Kurumlar & İş Ortakları</span><h2>Resmi kaynaklara bağlı, uyum süreçlerini merkeze alan yapı.</h2><p>Platform; yatırım süreçlerini anlatırken düzenleyici kurum, resmi duyuru ve sözleşme başlıklarını görünür tutar. Lisans/kurum bilgileri admin ayarlarından yönetilebilir.</p></div><div>{partners.map((item) => <article key={item}><CheckCircle2 /><strong>{item}</strong></article>)}</div></section>
         <section className="landing-band split"><h2>Ottoman Yatırım ile işlemler net, kontrol merkezi güçlü.</h2><p>Ottoman E-Şube; kullanıcı tarafında sade bir yatırım akışı, admin tarafında müşteri, emir, para, risk, T+2 ve bakiye kontrolünü yöneten tam yetkili operasyon masası sunar.</p></section>
         <section className="landing-seo"><h2>Ottoman Yatırım E-Şube</h2><p>Ottoman Yatırım, canlı BIST ekranları, hisse al-sat, portföy takibi, haber akışı, para yatırma ve para çekme işlemleri için kurumsal dijital yatırım deneyimi sağlar. Ottoman E-Şube masaüstü ve mobil kullanım için tasarlanmış güvenli yatırım platformudur.</p></section>
         <section className="landing-services"><div><span>Yatırım Alanları</span><h2>Borsa, fon, VİOP ve portföy işlemleri aynı ekranda.</h2></div><div className="service-list">{["Borsa İstanbul pay piyasası", "Yatırım fonları ve portföy dağılımı", "Vadeli işlemler ve risk takibi", "Canlı haber ve piyasa duyuruları", "Sözleşme ve uygunluk akışları", "Admin kontrollü para operasyonları"].map((x) => <article key={x}><CheckCircle2 /><strong>{x}</strong></article>)}</div></section>
+        <section className="landing-discovery"><div><span>Ottoman Yatırım'ı Keşfedin</span><h2>E-şube, admin paneli ve kurumsal içerik aynı kalite çizgisinde.</h2><p>Landing tarafında kurumsal güven, e-şube tarafında hızlı işlem, admin tarafında tüm yetki ve denetim görünürlüğü birlikte çalışır.</p></div><button onClick={openAuth}>E-Şubeyi Aç</button></section>
         <section className="landing-faq"><h2>Sık sorulan konular</h2><div>{["E-Şube hesabı nasıl açılır?", "Para yatırma talebi nereden izlenir?", "Limit emir ne zaman iletilir?", "Portföy kâr/zarar oranı nasıl hesaplanır?"].map((x) => <button className="landing-row" key={x}>{x}<ChevronRight /></button>)}</div></section>
         <section className="landing-flow"><div><span>01</span><h3>Hesaba gir</h3><p>Güvenli e-şube oturumu ile portföy ve piyasa ekranına ulaş.</p></div><div><span>02</span><h3>Fiyatı izle</h3><p>BIST listeleri, favoriler, haberler ve arama üzerinden fırsatları takip et.</p></div><div><span>03</span><h3>Emri yönet</h3><p>Limit emir, bakiye, kâr/zarar ve geçmiş akışını aynı deneyimde gör.</p></div></section>
+        <section className="landing-cta"><span>Yatırım Yolculuğunuza Bugün Başlayın</span><h2>Ottoman E-Şube’ye girin, piyasayı izleyin, portföyünüzü yönetin.</h2><p>Kayıt, giriş, canlı fiyat, haber, para hareketi ve işlem ekranları mobil, tablet ve masaüstünde aynı kaliteyle çalışacak şekilde tasarlandı.</p><button onClick={openAuth}>Hemen Başla</button></section>
       </> : <section className="landing-page"><span>{page}</span><h1>{content[0]}</h1><p>{content[1]}</p><div className="landing-cards compact">{content[2].map((item) => <article key={item}><h3>{item}</h3><p>Detaylar Ottoman arayüzüne uyarlanmış kurumsal sayfa yapısında gösterilir.</p></article>)}</div></section>}
       <footer className="landing-footer"><span>Ottoman Yatırım</span><button onClick={openAuth}>E-Şube Giriş</button></footer>
     </div>
@@ -414,8 +445,15 @@ function AdminPanel({ data, refresh, logout }) {
   const users = data?.users || [];
   const orders = data?.orders || [];
   const moneyReqs = data?.money_requests || [];
+  const reports = data?.reports || {};
+  const marketMeta = data?.market_meta || {};
+  const newsMeta = data?.news_meta || {};
   const exposure = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
   const pendingMoney = moneyReqs.filter((m) => m.status === "pending").reduce((sum, m) => sum + Number(m.amount || 0), 0);
+  const approvedUsers = users.filter((u) => u.status === "approved").length;
+  const pendingUsers = users.filter((u) => u.status !== "approved").length;
+  const rejectedOrders = orders.filter((o) => o.status === "rejected").length;
+  const approvedOrders = orders.filter((o) => o.status === "approved").length;
   const act = async (path, verb) => {
     const reason = verb === "reject" ? prompt("Ret nedeni") || "Admin ret" : "Admin onayı";
     const password = prompt("Admin şifrenizi tekrar girin");
@@ -446,13 +484,14 @@ function AdminPanel({ data, refresh, logout }) {
         <article><span>Para Talebi</span><strong>{money(pendingMoney)}</strong></article>
         <article><span>Toplam Emir Hacmi</span><strong>{money(exposure)}</strong></article>
       </div>
-      {tab === "Özet" && <section className="admin-command"><div><span>Operasyon Masası</span><h1>Tam yetkili kontrol merkezi</h1><p>Müşteri, emir, para, risk, sözleşme ve sistem kontrolleri tek ekranda izlenir.</p></div><div className="pulse-orbit"><b>LIVE</b></div></section>}
+      <LiveDataStrip marketMeta={marketMeta} newsMeta={newsMeta} />
+      {tab === "Özet" && <><section className="admin-command"><div><span>Operasyon Masası</span><h1>Tam yetkili kontrol merkezi</h1><p>Müşteri, emir, para, risk, sözleşme, haber, piyasa ve sistem kontrolleri tek ekranda izlenir.</p></div><div className="pulse-orbit"><b>LIVE</b></div></section><section className="admin-control-wall">{[["Onaylı müşteri", approvedUsers], ["Onay bekleyen", pendingUsers], ["Onaylı emir", approvedOrders], ["Reddedilen emir", rejectedOrders], ["Haber sayısı", newsMeta.count || 0], ["Piyasa sembolü", marketMeta.symbol_count || 0]].map(([label, value]) => <article key={label}><span>{label}</span><strong>{value}</strong><small>Canlı panel metriği</small></article>)}</section></>}
       {["Özet", "Emirler"].includes(tab) && <><h2 className="solo-title">Emir Kontrol</h2>{orders.slice(0, 20).map((o) => <div className="admin-row" key={o.id}><span><strong>{o.symbol} {o.side_label || o.side}</strong><small>{o.full_name} · {o.quantity} lot · {money(o.total)} · {o.status_label || o.status}</small></span>{o.status === "pending" && <b><button onClick={() => act(`/api/admin/orders/${o.id}/approve`, "approve")}>Onay</button><button onClick={() => act(`/api/admin/orders/${o.id}/reject`, "reject")}>Ret</button></b>}</div>)}</>}
       {["Özet", "Müşteriler"].includes(tab) && <><h2 className="solo-title">Müşteriler</h2>{users.slice(0, 20).map((u) => <div className="admin-row admin-user-row" key={u.id} onClick={() => setSelectedUser(u)}><span><strong>{u.full_name}</strong><small>{u.status_label || u.status} · {u.email} · {u.account_no} · {u.phone || "telefon yok"}</small></span>{u.status !== "approved" && <b><button onClick={(e) => { e.stopPropagation(); act(`/api/admin/users/${u.id}/approve`, "approve"); }}>Onay</button></b>}</div>)}</>}
       {["Özet", "Para"].includes(tab) && <><h2 className="solo-title">Para Talepleri</h2>{moneyReqs.slice(0, 20).map((m) => <div className="admin-row" key={m.id}><span><strong>{m.type_label || m.request_type}</strong><small>{m.full_name} · {money(m.amount)} · {m.status_label || m.status}</small></span>{m.status === "pending" && <b><button onClick={() => act(`/api/admin/money/${m.id}/approve`, "approve")}>Onay</button><button onClick={() => act(`/api/admin/money/${m.id}/reject`, "reject")}>Ret</button></b>}</div>)}</>}
-      {tab === "Risk" && <section className="admin-matrix">{["Risk skoru", "KYC/KVKK", "Sözleşmeler", "Limit aşımı", "Şüpheli işlem", "Oturum sağlığı"].map((x, i) => <article key={x}><span>{x}</span><strong>{i % 2 ? "Temiz" : "İzleniyor"}</strong><small>Canlı kontrol aktif</small></article>)}</section>}
-      {tab === "Sistem" && <section className="settings-card report-card">{["Piyasa veri akışı", "Haber servisi", "Emir motoru", "Para hareketleri", "Admin step-up", "Audit log"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Çalışıyor · son kontrol şimdi</small></span><CheckCircle2 /></button>)}<button className="settings-row"><span><strong>T+2 sistemi</strong><small>Varsayılan kapalı · satış sonrası admin isterse açar</small></span><Moon /></button></section>}
-      {tab === "Raporlar" && <section className="settings-card report-card"><button className="settings-row"><span><strong>Risk ve Uyum</strong><small>KVKK, risk profili, sözleşme kabul durumları</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Operasyon</strong><small>Bekleyen emirler, para talepleri, son müşteri hareketleri</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Müşteri 360</strong><small>Bakiye, emir, para, sözleşme, güvenlik ve işlem geçmişi</small></span><CheckCircle2 /></button></section>}
+      {tab === "Risk" && <section className="admin-matrix">{[["Risk skoru", "İzleniyor", `${pendingUsers} kullanıcı onay/uyum kuyruğunda`], ["KYC/KVKK", "Aktif", "Sözleşme ve kimlik statüsü kullanıcı kartında"], ["Sözleşmeler", "Kayıtlı", "KVKK, risk bildirimi ve e-şube kabulü"], ["Limit aşımı", money(exposure), "Toplam emir hacmi"], ["Şüpheli işlem", pendingMoney ? "İncele" : "Temiz", `${money(pendingMoney)} bekleyen para talebi`], ["Oturum sağlığı", "Step-up", "Kritik admin işlemlerinde şifre doğrulama"]].map(([x, state, detail]) => <article key={x}><span>{x}</span><strong>{state}</strong><small>{detail}</small></article>)}</section>}
+      {tab === "Sistem" && <section className="settings-card report-card">{[["Piyasa veri akışı", `${marketMeta.ok === false ? "Yedekli" : "Çalışıyor"} · ${marketMeta.source || "trrealapi-market"}`], ["Haber servisi", `${newsMeta.ok === false ? "Yedekli" : "Çalışıyor"} · ${newsMeta.count || 0} haber`], ["Emir motoru", `${orders.length} emir · canlı fiyat doğrulama`], ["Para hareketleri", `${moneyReqs.length} talep · ${money(pendingMoney)} bekleyen`], ["Admin step-up", "Kritik işlem öncesi parola doğrulama"], ["Audit log", `${reports.audit?.length || 0} son kayıt görünür`]].map(([x, detail]) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>{detail}</small></span><CheckCircle2 /></button>)}<button className="settings-row"><span><strong>T+2 sistemi</strong><small>Varsayılan kapalı · satış sonrası admin isterse açar</small></span><Moon /></button></section>}
+      {tab === "Raporlar" && <section className="settings-card report-card">{[["Risk ve Uyum", `Kullanıcı statüleri: ${(reports.users || []).length} grup`], ["Operasyon", `Bekleyen emir ${orders.filter((o) => o.status === "pending").length} · para talebi ${moneyReqs.filter((m) => m.status === "pending").length}`], ["Müşteri 360", `Bakiye, emir, para, sözleşme, güvenlik ve işlem geçmişi`], ["Mutabakat", `Nakit ${money(reports.reconciliation?.cash || summary.cash_total || 0)} · Bloke ${money(reports.reconciliation?.blocked || summary.blocked_total || 0)}`]].map(([title, detail]) => <button className="settings-row" key={title}><span><strong>{title}</strong><small>{detail}</small></span><CheckCircle2 /></button>)}</section>}
       {selectedUser && <div className="modal-layer"><section className="trade-modal readable-modal admin-profile"><button className="close" onClick={() => setSelectedUser(null)}><X /></button><h2>{selectedUser.full_name}</h2><p className="subtle-count">{selectedUser.account_no} · {selectedUser.status_label || selectedUser.status}</p><div className="admin-matrix mini">{["Ana Bakiye", "Alış", "Satış", "İşlem", "KVKK", "Risk"].map((x, i) => <article key={x}><span>{x}</span><strong>{[money(selectedUser.cash_balance || 0), selectedUser.buy_count || 0, selectedUser.sell_count || 0, selectedUser.transaction_count || 0, "Kabul", "Orta"][i]}</strong></article>)}</div><h3 className="muted-heading">Ana bakiye düzeltme</h3><div className="admin-balance-edit"><input id={`balance-${selectedUser.id}`} placeholder="Yeni ana bakiye" inputMode="decimal" defaultValue={Number(selectedUser.cash_balance || 0).toFixed(2)} /><button onClick={() => setUserBalance(selectedUser)}>Bakiyeyi Düzelt</button></div><h3 className="muted-heading">İşlem geçmişi</h3><div className="settings-card"><div className="settings-row"><span><strong>Toplam emir</strong><small>{selectedUser.order_count || 0} adet · Alış {selectedUser.buy_count || 0} · Satış {selectedUser.sell_count || 0}</small></span></div><div className="settings-row"><span><strong>Son hareket</strong><small>{selectedUser.transaction_count || 0} işlem kaydı · {money(selectedUser.cash_balance || 0)} bakiye</small></span></div><div className="settings-row"><span><strong>KYC / Sözleşme</strong><small>{selectedUser.kyc_status_label || selectedUser.kyc_status || "Onaylandı"} · Tam</small></span></div></div><button className="confirm" onClick={() => setSelectedUser(null)}>Kapat</button></section></div>}
     </main><div className="home-indicator" /></div></div>
   );
@@ -511,6 +550,8 @@ function App() {
   const [me, setMe] = useState(null);
   const [market, setMarket] = useState([]);
   const [newsItems, setNewsItems] = useState([]);
+  const [marketMeta, setMarketMeta] = useState({});
+  const [newsMeta, setNewsMeta] = useState({});
   const [portfolio, setPortfolio] = useState(null);
   const [adminData, setAdminData] = useState(null);
   const normalizeUser = (data) => data?.user || (data?.id ? data : null);
@@ -523,8 +564,14 @@ function App() {
   const common = { onNotify: () => setNotify(true), dark, toggleDark: () => setDark((v) => !v), openProfile: () => setProfileMenu(true), me };
   const loadCore = async () => {
     const [m, n] = await Promise.allSettled([api("/api/market"), api("/api/news")]);
-    if (m.status === "fulfilled") setMarket((m.value.quotes || m.value.market || []).map(quoteToStock));
-    if (n.status === "fulfilled") setNewsItems(n.value.items || n.value.news || []);
+    if (m.status === "fulfilled") {
+      setMarket((m.value.quotes || m.value.market || []).map(quoteToStock));
+      setMarketMeta({ ...(m.value.meta || {}), source: m.value.source, symbol_count: (m.value.quotes || []).length, updated_at: m.value.updated_at });
+    }
+    if (n.status === "fulfilled") {
+      setNewsItems(n.value.items || n.value.news || []);
+      setNewsMeta({ ...(n.value.meta || {}), count: (n.value.items || n.value.news || []).length });
+    }
   };
   const loadPortfolio = async () => {
     if (!me || me.role === "admin") return;
@@ -533,8 +580,8 @@ function App() {
   };
   const loadAdmin = async () => {
     if (!me || me.role !== "admin") return;
-    const [summary, users, orders, moneyData] = await Promise.all([api("/api/admin/summary"), api("/api/admin/users"), api("/api/admin/orders"), api("/api/admin/money")]);
-    setAdminData({ ...(summary || {}), users: users.users || [], orders: orders.orders || [], money_requests: moneyData.money_requests || [] });
+    const [summary, users, orders, moneyData, reports] = await Promise.all([api("/api/admin/summary"), api("/api/admin/users"), api("/api/admin/orders"), api("/api/admin/money"), api("/api/admin/reports").catch(() => ({}))]);
+    setAdminData({ ...(summary || {}), users: users.users || [], orders: orders.orders || [], money_requests: moneyData.money_requests || [], reports, market_meta: marketMeta, news_meta: newsMeta });
   };
   const refresh = async () => { await loadCore(); await loadPortfolio(); await loadAdmin(); };
   const logout = async () => {
@@ -550,7 +597,7 @@ function App() {
   useEffect(() => { loadPortfolio(); loadAdmin(); }, [me]);
   if (!me && !authOpen) return <LandingPage openAuth={() => setAuthOpen(true)} />;
   if (!me) return <AuthScreen onAuthed={(data) => setMe(normalizeUser(data))} back={() => setAuthOpen(false)} />;
-  if (me.role === "admin") return <AdminPanel data={adminData} refresh={loadAdmin} logout={logout} />;
+  if (me.role === "admin") return <AdminPanel data={{ ...(adminData || {}), market_meta: marketMeta, news_meta: newsMeta }} refresh={loadAdmin} logout={logout} />;
   return <div className={`stage ${dark ? "dark-mode" : ""}`}><div className="phone"><StatusBar />
     {active === "home" && <HomeScreen openTrade={openTrade} market={market} favorites={favorites} toggleFavorite={toggleFavorite} common={common} />}
     {active === "news" && <NewsScreen items={newsItems} common={common} />}
