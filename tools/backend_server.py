@@ -93,6 +93,7 @@ class MultipartForm:
 
 ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
+PUBLIC = ROOT / "public"
 DATA_DIR = Path(os.environ.get("DATA_DIR", ROOT / "data"))
 DB_PATH = Path(os.environ.get("DATABASE_PATH", DATA_DIR / "ottoman.db"))
 UPLOAD_DIR = DATA_DIR / "uploads"
@@ -3372,6 +3373,12 @@ class AppHandler(BaseHTTPRequestHandler):
     def serve_static(self, path: str) -> None:
         requested = (DIST / path.lstrip("/")).resolve()
         if not str(requested).startswith(str(DIST.resolve())) or not requested.exists() or requested.is_dir():
+            public_file = (PUBLIC / path.lstrip("/")).resolve()
+            if str(public_file).startswith(str(PUBLIC.resolve())) and public_file.exists() and not public_file.is_dir():
+                requested = public_file
+            else:
+                requested = DIST / "index.html"
+        if not requested.exists() or requested.is_dir():
             requested = DIST / "index.html"
         self.serve_file(requested)
 
