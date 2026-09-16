@@ -1,6 +1,9 @@
 .auth-stage{background:linear-gradient(135deg,#f6f8ff,#eef2fb)}
 .auth-phone{max-width:1180px;width:min(1180px,96vw);height:min(780px,94vh);border-radius:28px}
 .auth-screen{inset:0;padding:clamp(28px,5vw,68px);display:flex;flex-direction:column;justify-content:center;gap:20px;background:linear-gradient(135deg,#fff,#f8f9ff)}
+.app-stage .screen,.admin-stage .screen{inset:0 0 64px}
+.admin-stage .screen{inset:0}
+.app-stage .modal-layer,.admin-stage .modal-layer{inset:0}
 .auth-logo{font-size:44px;text-align:center}
 .auth-card{width:min(100%,860px);margin:0 auto;border:1px solid #dfe3f0;border-radius:24px;padding:26px 28px;background:rgba(255,255,255,.92);box-shadow:0 24px 70px rgba(65,77,120,.12)}
 .auth-card h1{margin:0 0 8px;font-size:32px}
@@ -225,9 +228,15 @@
 .admin-balance-edit{display:grid;grid-template-columns:1fr auto;gap:10px;margin:10px 0 18px}
 .admin-balance-edit input{height:46px;border:0;border-radius:12px;background:#f4f4f7;padding:0 14px}
 .admin-balance-edit button{border-radius:12px;background:#7657ff;color:#fff;font-weight:900;padding:0 14px}
-.dark-mode .phone,.dark-mode .screen{background:#11131a;color:#f6f7fb}
-.dark-mode .status,.dark-mode .stock-copy span,.dark-mode .subtle-count,.dark-mode .muted-heading,.dark-mode .settings-row small{color:#aeb4c3}
-.dark-mode .search,.dark-mode .stock-row,.dark-mode .summary-card,.dark-mode .settings-card,.dark-mode .auth-card,.dark-mode .input-like,.dark-mode .select-pill,.dark-mode .empty-state{background:#191c26;color:#f6f7fb;border-color:#282d3b}
+.dark-mode .phone,.dark-mode .screen{background:#0f121a;color:#f7f8ff}
+.dark-mode .brand-header,.dark-mode .bottom-nav{background:rgba(15,18,26,.96);border-color:#292f3d}
+.dark-mode .header-actions{color:#f7f8ff}
+.dark-mode .brand{color:#8f75ff}
+.dark-mode .stock-copy span,.dark-mode .stock-copy small,.dark-mode .subtle-count,.dark-mode .muted-heading,.dark-mode .settings-row small,.dark-mode .news-head p{color:#c2c8d6}
+.dark-mode .search,.dark-mode .stock-row,.dark-mode .summary-card,.dark-mode .settings-card,.dark-mode .auth-card,.dark-mode .input-like,.dark-mode .select-pill,.dark-mode .empty-state,.dark-mode .featured-news,.dark-mode .news-row{background:#191e2a;color:#f7f8ff;border-color:#303747}
+.dark-mode .featured-news h2,.dark-mode .news-row h3,.dark-mode .page-title,.dark-mode .solo-title,.dark-mode .section-title h2{color:#f7f8ff}
+.dark-mode .bottom-nav button{color:#b7bfce}
+.dark-mode .bottom-nav .active{color:#8f75ff}
 .dark-mode .market-status-card{background:#191c26;border-color:#282d3b}
 .dark-mode .market-status-card p strong,.dark-mode .market-mini strong{color:#f6f7fb}
 .dark-mode .market-mini{border-color:#282d3b}
@@ -235,7 +244,7 @@
 .dark-mode .search input{color:#f6f7fb}
 .dark-mode .market-tabs button,.dark-mode .segments button{background:#1b1e28;color:#cbd1df}
 .dark-mode .market-tabs button.active,.dark-mode .segments button.active{background:#7657ff;color:#fff}
-.dark-mode .portfolio-card{background:linear-gradient(135deg,#211b44,#5d45d8)}
+.dark-mode .portfolio-card{background:linear-gradient(145deg,#1d2a48,#4b63c8);box-shadow:0 14px 34px rgba(0,0,0,.32)}
 .dark-mode .total-box{background:#211d35;color:#fff}
 .admin-stage .phone,.admin-phone{max-width:1120px;width:min(1120px,96vw);height:min(940px,96vh);border-radius:28px}
 .admin-tabs{grid-template-columns:repeat(7,1fr)}
@@ -244,13 +253,15 @@
   .stage{padding:24px}
   .phone{width:min(1120px,96vw);height:min(930px,96vh);border-radius:28px}
   .screen{padding-left:34px;padding-right:34px}
-  .bottom-nav{left:0;right:auto;top:50px;bottom:0;width:96px;height:auto;grid-template-columns:1fr;grid-template-rows:repeat(5,1fr);border-right:1px solid var(--line);border-top:0;border-radius:0}
+  .bottom-nav{left:0;right:auto;top:0;bottom:0;width:96px;height:auto;grid-template-columns:1fr;grid-template-rows:repeat(5,1fr);border-right:1px solid var(--line);border-top:0;border-radius:0}
   .screen{left:96px;bottom:0}
+  .app-stage .screen{left:96px;top:0;bottom:0}
+  .admin-stage .screen{left:0;top:0;bottom:0}
   .stock-row,.position-row{min-height:86px}
   .trade-modal{width:min(560px,92vw)}
-  .portfolio-grid{grid-template-columns:1fr 210px}
+  .portfolio-grid{grid-template-columns:minmax(0,1fr) 130px}
   .home-indicator{display:none}
-  .portfolio-screen{display:grid;grid-template-columns:minmax(360px,560px) minmax(380px,1fr);align-content:start;column-gap:28px}
+  .portfolio-screen{display:grid;grid-template-columns:minmax(320px,470px) minmax(420px,1fr);align-content:start;column-gap:28px;row-gap:18px}
   .portfolio-screen .brand-header{grid-column:1/-1}
   .portfolio-screen > .portfolio-card:not(.chart-card){grid-column:1;grid-row:2}
   .portfolio-screen > .chart-card{grid-column:1;grid-row:3}
@@ -261,6 +272,16 @@
   .portfolio-screen > .admin-row,
   .portfolio-screen > .empty-state{grid-column:2}
   .portfolio-screen > .segments{margin-top:0}
+  .portfolio-screen .portfolio-card{padding:22px;border-radius:18px;margin-bottom:0}
+  .portfolio-screen .portfolio-grid h1{font-size:34px;margin:18px 0 8px}
+  .portfolio-screen .portfolio-grid p{margin-bottom:16px}
+  .portfolio-screen .donut{width:84px;height:84px}
+  .portfolio-screen .donut div{width:52px;height:52px;font-size:20px}
+  .portfolio-screen .legend{justify-content:start;margin-top:14px}
+  .portfolio-screen .legend span{font-size:15px}
+  .portfolio-screen .chart-card{margin-top:0;padding-bottom:14px}
+  .portfolio-screen .chart-card{min-height:188px}
+  .portfolio-screen .return-chart{height:118px;margin-top:4px}
 }
 @media (max-width:760px){
   .landing-nav nav{display:none}
@@ -310,6 +331,7 @@
   margin-top: 14px;
   padding-bottom: 18px;
   overflow: hidden;
+  min-height: 214px;
 }
 .chart-card .portfolio-top b {
   color: #f5f8ff;
@@ -327,7 +349,7 @@
   accent-color: #ffffff;
 }
 @media (max-width:460px){
-  .chart-card{margin-top:8px;padding-bottom:12px}
+  .chart-card{margin-top:8px;padding-bottom:12px;min-height:194px}
   .chart-card .portfolio-top{font-size:15px}
   .chart-card .portfolio-top b{font-size:12px}
   .return-chart{height:112px;margin-top:4px}

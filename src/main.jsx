@@ -381,12 +381,7 @@ function LandingPage({ openAuth }) {
         <section className="landing-why"><div className="landing-section-head"><span>Neden Ottoman Yatırım?</span><h2>Mobilde sade, masaüstünde güçlü, admin tarafında tam yetkili.</h2></div><div className="why-list">{why.map((item, index) => <article key={item}><b>{String(index + 1).padStart(2, "0")}</b><p>{item}</p></article>)}</div></section>
         <section className="landing-testimonials"><div className="landing-section-head"><span>Müşterilerimiz Ne Diyor?</span><h2>Her rol için okunabilir, hızlı ve kontrollü deneyim.</h2></div><div>{testimonials.map(([role, text]) => <article key={role}><p>“{text}”</p><strong>{role}</strong></article>)}</div></section>
         <section className="landing-regulators"><div><span>Düzenleyici Kurumlar & İş Ortakları</span><h2>Resmi kaynaklara bağlı, uyum süreçlerini merkeze alan yapı.</h2><p>Platform; yatırım süreçlerini anlatırken düzenleyici kurum, resmi duyuru ve sözleşme başlıklarını görünür tutar. Lisans/kurum bilgileri admin ayarlarından yönetilebilir.</p></div><div>{partners.map((item) => <article key={item}><CheckCircle2 /><strong>{item}</strong></article>)}</div></section>
-        <section className="landing-band split"><h2>Ottoman Yatırım ile işlemler net, kontrol merkezi güçlü.</h2><p>Ottoman E-Şube; kullanıcı tarafında sade bir yatırım akışı, admin tarafında müşteri, emir, para, risk, T+2 ve bakiye kontrolünü yöneten tam yetkili operasyon masası sunar.</p></section>
-        <section className="landing-seo"><h2>Ottoman Yatırım E-Şube</h2><p>Ottoman Yatırım, canlı BIST ekranları, hisse al-sat, portföy takibi, haber akışı, para yatırma ve para çekme işlemleri için kurumsal dijital yatırım deneyimi sağlar. Ottoman E-Şube masaüstü ve mobil kullanım için tasarlanmış güvenli yatırım platformudur.</p></section>
-        <section className="landing-services"><div><span>Yatırım Alanları</span><h2>Borsa, fon, VİOP ve portföy işlemleri aynı ekranda.</h2></div><div className="service-list">{["Borsa İstanbul pay piyasası", "Yatırım fonları ve portföy dağılımı", "Vadeli işlemler ve risk takibi", "Canlı haber ve piyasa duyuruları", "Sözleşme ve uygunluk akışları", "Admin kontrollü para operasyonları"].map((x) => <article key={x}><CheckCircle2 /><strong>{x}</strong></article>)}</div></section>
-        <section className="landing-discovery"><div><span>Ottoman Yatırım'ı Keşfedin</span><h2>E-şube, admin paneli ve kurumsal içerik aynı kalite çizgisinde.</h2><p>Landing tarafında kurumsal güven, e-şube tarafında hızlı işlem, admin tarafında tüm yetki ve denetim görünürlüğü birlikte çalışır.</p></div><button onClick={openAuth}>E-Şubeyi Aç</button></section>
         <section className="landing-faq"><h2>Sık sorulan konular</h2><div>{["E-Şube hesabı nasıl açılır?", "Para yatırma talebi nereden izlenir?", "Limit emir ne zaman iletilir?", "Portföy kâr/zarar oranı nasıl hesaplanır?"].map((x) => <button className="landing-row" key={x}>{x}<ChevronRight /></button>)}</div></section>
-        <section className="landing-flow"><div><span>01</span><h3>Hesaba gir</h3><p>Güvenli e-şube oturumu ile portföy ve piyasa ekranına ulaş.</p></div><div><span>02</span><h3>Fiyatı izle</h3><p>BIST listeleri, favoriler, haberler ve arama üzerinden fırsatları takip et.</p></div><div><span>03</span><h3>Emri yönet</h3><p>Limit emir, bakiye, kâr/zarar ve geçmiş akışını aynı deneyimde gör.</p></div></section>
         <section className="landing-cta"><span>Yatırım Yolculuğunuza Bugün Başlayın</span><h2>Ottoman E-Şube’ye girin, piyasayı izleyin, portföyünüzü yönetin.</h2><p>Kayıt, giriş, canlı fiyat, haber, para hareketi ve işlem ekranları mobil, tablet ve masaüstünde aynı kaliteyle çalışacak şekilde tasarlandı.</p><button onClick={openAuth}>Hemen Başla</button></section>
       </> : <section className="landing-page"><span>{page}</span><h1>{content[0]}</h1><p>{content[1]}</p><div className="landing-cards compact">{content[2].map((item) => <article key={item}><h3>{item}</h3><p>Detaylar Ottoman arayüzüne uyarlanmış kurumsal sayfa yapısında gösterilir.</p></article>)}</div></section>}
       <footer className="landing-footer"><span>Ottoman Yatırım</span><button onClick={openAuth}>E-Şube Giriş</button></footer>
@@ -474,7 +469,7 @@ function AdminPanel({ data, refresh, logout }) {
     setSelectedUser((old) => old ? { ...old, cash_balance: amount } : old);
   };
   return (
-    <div className="stage admin-stage"><div className="phone admin-phone"><StatusBar /><main className="screen scroll admin-screen">
+    <div className="stage admin-stage"><div className="phone admin-phone"><main className="screen scroll admin-screen">
       <BrandHeader showAvatar={false} />
       <div className="section-title"><h2>Admin Paneli</h2><button onClick={logout}>Çıkış</button></div>
       <div className="segments admin-tabs">{["Özet", "Müşteriler", "Emirler", "Para", "Risk", "Sistem", "Raporlar"].map((x) => <button className={tab === x ? "active" : ""} onClick={() => setTab(x)} key={x}>{x}</button>)}</div>
@@ -598,7 +593,7 @@ function App() {
   if (!me && !authOpen) return <LandingPage openAuth={() => setAuthOpen(true)} />;
   if (!me) return <AuthScreen onAuthed={(data) => setMe(normalizeUser(data))} back={() => setAuthOpen(false)} />;
   if (me.role === "admin") return <AdminPanel data={{ ...(adminData || {}), market_meta: marketMeta, news_meta: newsMeta }} refresh={loadAdmin} logout={logout} />;
-  return <div className={`stage ${dark ? "dark-mode" : ""}`}><div className="phone"><StatusBar />
+  return <div className={`stage app-stage ${dark ? "dark-mode" : ""}`}><div className="phone">
     {active === "home" && <HomeScreen openTrade={openTrade} market={market} favorites={favorites} toggleFavorite={toggleFavorite} common={common} />}
     {active === "news" && <NewsScreen items={newsItems} common={common} />}
     {active === "trade" && <TradeScreen market={market} openTrade={openTrade} favorites={favorites} toggleFavorite={toggleFavorite} common={common} />}
