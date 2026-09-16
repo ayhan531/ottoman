@@ -11,8 +11,8 @@
 .corporate-login,.corporate-primary{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:#7657ff;color:#fff;border-radius:6px;padding:12px 18px;white-space:normal}
 .corporate-menu{display:none}
 .corporate-hero{min-height:560px;display:grid;place-items:center;text-align:center;padding:70px 24px;background:#171226;color:#fff;position:relative;isolation:isolate;overflow:hidden}
-.corporate-hero:before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(16,12,30,.94) 0%,rgba(30,22,53,.74) 49%,rgba(15,13,27,.76) 100%),url('/news/bist-markets.jpg') center 54%/cover;filter:saturate(.76) sepia(.22) contrast(1.08);opacity:.94;z-index:-1}
-.corporate-hero:after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.24;background-image:linear-gradient(115deg,rgba(217,177,94,.2),transparent 42%),repeating-conic-gradient(from 30deg at 85% 42%,rgba(221,188,111,.36) 0deg 9deg,transparent 9deg 30deg);background-size:auto,106px 106px;background-position:center,center;mask-image:linear-gradient(90deg,transparent 0%,rgba(0,0,0,.7) 54%,#000 100%)}
+.corporate-hero:before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(15,12,29,.94) 0%,rgba(27,20,48,.81) 48%,rgba(13,14,27,.8) 100%),url('/news/company-disclosures.jpg') center 52%/cover;filter:saturate(.72) contrast(1.08);opacity:.96;z-index:-1}
+.corporate-hero:after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.16;background:linear-gradient(90deg,transparent 0%,rgba(220,187,111,.18) 50%,transparent 100%);border-top:1px solid rgba(225,196,128,.22);border-bottom:1px solid rgba(225,196,128,.16)}
 .corporate-hero>div{max-width:780px;position:relative;z-index:1;animation:corporate-in .5s ease both}
 .corporate-eyebrow{font-size:12px;font-weight:600;color:#cbbdff}
 .corporate-hero h1{font-size:58px;line-height:1.12;margin:18px 0 12px;font-weight:700}
