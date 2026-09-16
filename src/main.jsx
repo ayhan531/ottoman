@@ -142,12 +142,23 @@ function ContactOnlyModal({ title, onClose }) {
   return <div className="modal-layer"><section className="trade-modal readable-modal account-sheet"><div className="sheet-handle" /><button className="close" onClick={onClose}><X /></button><h2>{title}</h2><p className="contact-copy">{title} alış / satış işlemleri için referansınız ile iletişime geçiniz.</p><button className="confirm" onClick={onClose}>Tamam</button></section></div>;
 }
 
-function NewsThumb({ type }) {
-  return <div className={`news-thumb ${type}`}>{type === "plain" ? <Newspaper size={36} /> : <span>{type === "cash" ? "₺" : type === "mynet" ? "FİNANS" : ""}</span>}</div>;
+const newsArtwork = {
+  market: "/news/bist-markets.jpg",
+  bist: "/news/bist-markets.jpg",
+  cash: "/news/turkey-economy.jpg",
+  mynet: "/news/turkey-economy.jpg",
+  lens: "/news/company-disclosures.jpg",
+  plain: "/news/company-disclosures.jpg",
+};
+
+function NewsThumb({ item = {}, type }) {
+  const kind = item.type || type || "plain";
+  const src = item.image_url || item.image || item.thumbnail || newsArtwork[kind] || newsArtwork.plain;
+  return <div className={`news-thumb ${kind}`}><img src={src} alt="" /><span>{item.source || (kind === "cash" ? "EKONOMİ" : kind === "bist" || kind === "market" ? "PİYASA" : "GÜNDEM")}</span></div>;
 }
 
 function NewsDetail({ item, onClose }) {
-  return <div className="modal-layer"><section className="trade-modal readable-modal"><button className="close" onClick={onClose}><X /></button><NewsThumb type={item.type} /><h2>{item.title}</h2><p className="subtle-count">{item.source || "Ottoman Haber"} · {item.date || compactDate()}</p><p>{item.body || "Piyasa verileri, Borsa İstanbul işlem hacmi, şirket haberleri ve makro gündem özetlenerek yatırımcı ekranına taşınır. Haber metni demo veride kısa tutulur; canlı bağlantı geldiğinde detay, kaynak ve etiket alanları aynı ekranda görünür."}</p><button className="confirm" onClick={onClose}>Haberlere Dön</button></section></div>;
+  return <div className="modal-layer"><section className="trade-modal readable-modal news-detail"><button className="close" onClick={onClose}><X /></button><NewsThumb item={item} /><p className="news-kicker">{item.source || "Ottoman Haber"}</p><h2>{item.title}</h2><p className="subtle-count">{item.date || compactDate()}</p><p>{item.body || "Piyasa verileri, Borsa İstanbul işlem hacmi, şirket haberleri ve makro gündem; yatırımcının hızlı okuyabileceği açık ve güvenilir bir özet halinde sunulur."}</p><button className="confirm" onClick={onClose}>Haberlere Dön</button></section></div>;
 }
 
 function NewsScreen({ items = [], common }) {
@@ -160,6 +171,7 @@ function NewsScreen({ items = [], common }) {
     body: item.body || item.summary,
     source: item.source,
     date: item.published_at,
+    image_url: item.image_url || item.image || item.thumbnail,
   })).filter((item) => item.title?.toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR")));
   const featured = list[0];
   const rows = featured && !search ? list.slice(1) : list;
@@ -167,8 +179,8 @@ function NewsScreen({ items = [], common }) {
     <main className="screen scroll">
       <BrandHeader {...common} /><SearchBox placeholder="Haber ara" value={search} onChange={setSearch} /><MarketTabs active={tab} onChange={setTab} />
       <div className="news-head"><span>Güncel Haberler</span><h1>{search ? "Arama sonuçları" : tab}</h1><p>{list.length} haber · SPK, TCMB, KAP ve piyasa kaynakları</p></div>
-      {featured && !search && <button className="featured-news" onClick={() => setDetail(featured)}><NewsThumb type={featured.type} /><span><b>{featured.source || "Ottoman Haber"}</b><h2>{featured.title}</h2><small>{featured.date || compactDate()}</small></span><ChevronRight /></button>}
-      <div className="news-list">{rows.length ? rows.map((item) => <button className="news-row" key={item.title} onClick={() => setDetail(item)}><NewsThumb type={item.type} /><span><h3>{item.title}</h3><small>{item.source || "Ottoman Haber"} · {item.date || compactDate()}</small></span><ChevronRight /></button>) : (!featured && <div className="empty-state">Aramana uygun haber bulunamadı.</div>)}</div>
+      {featured && !search && <button className="featured-news" onClick={() => setDetail(featured)}><NewsThumb item={featured} /><span><b>{featured.source || "Ottoman Haber"}</b><h2>{featured.title}</h2><small>{featured.date || compactDate()}</small></span><ChevronRight /></button>}
+      <div className="news-list">{rows.length ? rows.map((item) => <button className="news-row" key={item.title} onClick={() => setDetail(item)}><NewsThumb item={item} /><span><b>{item.source || "Ottoman Haber"}</b><h3>{item.title}</h3><small>{item.date || compactDate()}</small></span><ChevronRight /></button>) : (!featured && <div className="empty-state">Aramana uygun haber bulunamadı.</div>)}</div>
       {detail && <NewsDetail item={detail} onClose={() => setDetail(null)} />}
     </main>
   );
@@ -237,22 +249,24 @@ function PortfolioScreen({ openTrade, portfolio, common }) {
   return (
     <main className="screen scroll portfolio-screen">
       <BrandHeader showAvatar={false} {...common} />
-      <section className="portfolio-card">
-        <div className="portfolio-top"><span>Portföy özeti</span><button onClick={() => setHidden(!hidden)}>{hidden ? <EyeOff size={24} /> : <Eye size={24} />}</button></div>
-        <div className="portfolio-grid"><div><h1>{mask(money(totalValue))}</h1><p>{mask("+₺7.286,00")} toplam kâr</p><div className="balance-pair"><span>Kullanılabilir<strong>{mask(money(cash))}</strong></span><span>T+2 Bakiye<strong>{mask(money(pending))}</strong></span></div></div><div className="donut"><div>%83</div></div></div>
-        <div className="legend"><span><i /> Pozisyonlar · %83</span><span><i /> Bakiye · %13</span><span><i /> Kâr · +%4,63</span></div>
-      </section>
-      <section className="portfolio-card chart-card">
-        <div className="portfolio-top"><span>Getiri grafiği</span><b>{activeChart[0]} · %{activeChart[1].toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</b></div>
-        <svg className="return-chart" viewBox="0 0 320 150" role="img" aria-label="Portföy getiri grafiği">
-          <defs><linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#bdf7ce" stopOpacity=".55" /><stop offset="100%" stopColor="#bdf7ce" stopOpacity=".05" /></linearGradient></defs>
-          <path d="M18 124 C42 86, 58 94, 78 56 S126 42, 143 75 S188 96, 205 50 S248 30, 302 42 L302 138 L18 138 Z" fill="url(#lineFill)" />
-          <path d="M18 124 C42 86, 58 94, 78 56 S126 42, 143 75 S188 96, 205 50 S248 30, 302 42" fill="none" stroke="#9af0b4" strokeWidth="6" strokeLinecap="round" />
-          <line x1={30 + chartPoint * 54} y1="22" x2={30 + chartPoint * 54} y2="138" stroke="rgba(255,255,255,.5)" strokeDasharray="5 6" />
-          <circle cx={30 + chartPoint * 54} cy={chartPoint === 4 ? 50 : 68 - activeChart[1] * 6} r="9" fill="#9af0b4" stroke="#fff" strokeWidth="4" />
-        </svg>
-        <input className="chart-scrub" type="range" min="0" max={chartData.length - 1} value={chartPoint} onChange={(e) => setChartPoint(Number(e.target.value))} />
-      </section>
+      <div className="portfolio-carousel" aria-label="Portföy özet ve getiri kartları">
+        <section className="portfolio-card portfolio-summary-card">
+          <div className="portfolio-top"><span>Portföy özeti</span><button onClick={() => setHidden(!hidden)}>{hidden ? <EyeOff size={24} /> : <Eye size={24} />}</button></div>
+          <div className="portfolio-grid"><div><h1>{mask(money(totalValue))}</h1><p>{mask("+₺7.286,00")} toplam kâr</p><div className="balance-pair"><span>Kullanılabilir<strong>{mask(money(cash))}</strong></span><span>T+2 Bakiye<strong>{mask(money(pending))}</strong></span></div></div><div className="donut"><div>%83</div></div></div>
+          <div className="legend"><span><i /> Pozisyonlar · %83</span><span><i /> Bakiye · %13</span><span><i /> Kâr · +%4,63</span></div>
+        </section>
+        <section className="portfolio-card chart-card">
+          <div className="portfolio-top"><span>Getiri grafiği</span><b>{activeChart[0]} · %{activeChart[1].toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</b></div>
+          <svg className="return-chart" viewBox="0 0 320 150" role="img" aria-label="Portföy getiri grafiği">
+            <defs><linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#bdf7ce" stopOpacity=".55" /><stop offset="100%" stopColor="#bdf7ce" stopOpacity=".05" /></linearGradient></defs>
+            <path d="M18 124 C42 86, 58 94, 78 56 S126 42, 143 75 S188 96, 205 50 S248 30, 302 42 L302 138 L18 138 Z" fill="url(#lineFill)" />
+            <path d="M18 124 C42 86, 58 94, 78 56 S126 42, 143 75 S188 96, 205 50 S248 30, 302 42" fill="none" stroke="#9af0b4" strokeWidth="6" strokeLinecap="round" />
+            <line x1={30 + chartPoint * 54} y1="22" x2={30 + chartPoint * 54} y2="138" stroke="rgba(255,255,255,.5)" strokeDasharray="5 6" />
+            <circle cx={30 + chartPoint * 54} cy={chartPoint === 4 ? 50 : 68 - activeChart[1] * 6} r="9" fill="#9af0b4" stroke="#fff" strokeWidth="4" />
+          </svg>
+          <input className="chart-scrub" type="range" min="0" max={chartData.length - 1} value={chartPoint} onChange={(e) => setChartPoint(Number(e.target.value))} />
+        </section>
+      </div>
       <div className="segments">{["Pozisyonlar", "Emirler", "Geçmiş"].map((item) => <button className={segment === item ? "active" : ""} onClick={() => setSegment(item)} key={item}>{item}</button>)}</div>
       <SearchBox placeholder="İşlem ara" value={search} onChange={setSearch} /><h1 className="page-title lower">{segment}</h1>
       {segment === "Pozisyonlar" && shownPositions.map((item) => <button className="position-row" key={item.code} onClick={() => openTrade(item)}><StockLogo item={item} pale /><div className="stock-copy"><strong>{item.code}</strong><span>{item.name}</span><small>{item.lots}</small></div><div className="position-price"><strong>{mask(item.profit)}</strong><span>{mask(item.value)}</span></div><ChevronRight size={25} /></button>)}
@@ -346,21 +360,20 @@ function LandingPage({ openAuth }) {
   const posts = ["BIST tarafında gün içi risk yönetimi", "Limit emir ve piyasa emri farkları", "T+2 bakiye yatırımcıya ne anlatır", "Temettü takvimini okuma rehberi"];
   const marketStrip = [["BIST 100", "13.892,40", "+0,51"], ["XU030", "14.467,25", "+0,37"], ["THYAO", "300,50", "+0,33"], ["ASELS", "381,25", "+1,21"]];
   const serviceCards = [
-    [Landmark, "Pay Piyasası İşlemleri", "Borsa İstanbul pay piyasasında canlı fiyat, limit emir, piyasa emri ve işlem geçmişi tek ekranda yönetilir."],
-    [PieChart, "Portföy ve Varlık Takibi", "Pozisyon, maliyet, kâr/zarar oranı, T+2 bakiye ve grafik performansı mobil ve masaüstünde okunur."],
-    [Newspaper, "Canlı Haber ve Duyuru", "TCMB, SPK, Borsa İstanbul ve piyasa haberleri arama, detay ve kaynak bilgisiyle sunulur."],
-    [CreditCard, "Para Transfer Süreçleri", "Para yatırma, para çekme, banka hesabı ve işlem geçmişi admin onay akışına bağlı çalışır."],
-    [ShieldCheck, "Uyum ve Güvenlik", "KYC, KVKK, risk bildirimi, sözleşme kabulü, oturum güvenliği ve admin step-up süreçleri izlenir."],
-    [FileText, "Raporlama ve Sözleşmeler", "Müşteri, emir, bakiye, para hareketi, sözleşme ve denetim kayıtları raporlanabilir şekilde tutulur."],
+    [Landmark, "Borsa İstanbul", "BIST pay piyasasında canlı fiyatlarla hisse senedi alım satım işlemlerinizi güvenle yönetin."],
+    [PieChart, "Yatırım Fonları", "Profesyonel yönetilen fon seçenekleriyle portföyünüzü çeşitlendirin ve yatırım hedeflerinizi takip edin."],
+    [ArrowLeftRight, "Vadeli İşlemler", "VİOP vadeli ve opsiyon sözleşmelerini e-şube deneyimine uygun sade ekranlarla izleyin."],
+    [Users, "Portföy Yönetimi", "Yatırım stratejinizi portföy, risk, kâr/zarar ve varlık dağılımı ekranlarıyla kontrol edin."],
   ];
-  const numbers = [["24", "resmi haber başlığına kadar görünür akış"], ["60 sn", "piyasa veri yenileme penceresi"], ["360°", "müşteri, emir, para, risk ve sözleşme kontrolü"], ["7/24", "e-şube ve admin operasyon görünürlüğü"]];
-  const why = ["Canlı fiyat doğrulaması olmadan emir geçirmeyen işlem mantığı", "Mobilde APK hissi, masaüstünde işlem masası yoğunluğu", "Para hareketlerinde banka, dekont, IBAN ve admin onay disiplini", "SEO, sözleşme, KVKK ve risk içerikleriyle kurumsal landing yapısı"];
+  const numbers = [["4.166+", "aktif müşteri deneyimi"], ["₺2 Milyar", "yıllık işlem hacmi hedefi"], ["20+ Yıl", "piyasa deneyimi yaklaşımı"], ["99.8%", "platform erişilebilirliği hedefi"]];
+  const why = ["Ücretsiz hesap açılışı ve hızlı e-şube başlangıcı", "Düşük komisyon, şeffaf ücret ve sade işlem ekranları", "Canlı piyasa verisi, haber akışı ve portföy takibi", "Kurumsal destek, uyum süreçleri ve güvenli operasyon altyapısı"];
   const testimonials = [
-    ["Kurumsal yatırımcı", "Portföy ve emir ekranları aynı mantıkla aktığı için işlem kontrolü çok daha hızlı."],
-    ["Operasyon ekibi", "Bekleyen para, emir, kullanıcı ve risk kontrolleri tek admin panelinde okunuyor."],
-    ["Mobil kullanıcı", "Telefon ekranında yatırım uygulaması gibi, bilgisayarda da ciddi bir e-şube gibi çalışıyor."],
+    ["Ahmet K.", "Ottoman Yatırım ile portföyümü daha kolay takip ediyor, işlem ekranlarını hızlı kullanabiliyorum."],
+    ["Elif D.", "Analiz, haber ve portföy görünümü yatırım kararlarını daha bilinçli takip etmemi sağlıyor."],
+    ["Mehmet S.", "Kurumsal yatırım ihtiyaçlarında şeffaf akış, destek ve işlem kontrolü önemli fark yaratıyor."],
   ];
-  const partners = ["SPK süreç uyumu", "Borsa İstanbul piyasa ekranları", "KAP şirket bildirimleri", "TCMB duyuruları", "Banka transfer akışları", "KVKK ve sözleşme kayıtları"];
+  const partners = ["SPK", "Borsa İstanbul", "KAP", "TCMB", "Takasbank", "MKK"];
+  const discover = [["Komisyon Oranları", "Rekabetçi ücretler"], ["Blog & Analiz", "Piyasa haberleri"], ["SSS", "Merak edilenler"], ["İletişim", "Bize ulaşın"]];
   const pageCopy = {
     Kurumsal: ["Güvenli yatırımın dijital adresi", "Ottoman Yatırım; müşteri kabul, risk profili, sözleşme, para hareketi ve emir onay süreçlerini tek merkezde yöneten kurumsal bir yatırım deneyimi sunar.", ["Lisanslı operasyon modeli", "KVKK ve risk bildirimi süreçleri", "Şeffaf müşteri ve emir takibi"]],
     Hizmetler: ["Yatırımcı hizmetleri", "Hisse al-sat, canlı piyasa, haber, portföy, para yatırma/çekme ve sözleşme yönetimi tek e-şube çatısı altında çalışır.", ["Canlı BIST ekranları", "Limit emir matematiği", "Admin onaylı para hareketleri"]],
@@ -374,17 +387,22 @@ function LandingPage({ openAuth }) {
     <div className="landing">
       <header className="landing-nav"><div className="brand">Ottoman</div><nav>{nav.map((n) => <button className={page === n ? "active" : ""} key={n} onClick={() => setPage(n)}>{n}</button>)}</nav><button onClick={openAuth}>E-Şube Giriş</button></header>
       {page === "Ana sayfa" ? <>
-        <section className="landing-hero"><div className="hero-copy"><span>Ottoman Yatırım E-Şube</span><h1>Kurumsal yatırım, canlı işlem ve dijital şube tek merkezde.</h1><p>Canlı piyasa, haber, emir, portföy, para yatırma/çekme, sözleşmeler ve admin operasyonları mobilde APK hissiyle, masaüstünde işlem masası netliğiyle çalışır.</p><div className="hero-actions"><button onClick={openAuth}>E-Şubeye Gir</button><button className="secondary" onClick={() => setPage("Kurumsal")}>Kurumsalı İncele</button></div></div><div className="hero-terminal"><div className="terminal-top"><b>BIST 100</b><span>Canlı</span></div><strong>13.892,40</strong><small>+0,51% · Piyasa kapalıyken limit emir</small><div className="terminal-chart"><i /><i /><i /><i /><i /></div><div className="terminal-grid">{marketStrip.map(([code, value, change]) => <div key={code}><span>{code}</span><b>{value}</b><em>+%{change}</em></div>)}</div></div></section>
+        <section className="landing-hero"><div className="hero-copy"><span>Güvenli Yatırımın Adresi</span><h1>Ottoman Yatırım ile borsa, fon ve vadeli işlemlerde güvenle yatırım yapın.</h1><p>Ottoman Yatırım; Borsa İstanbul, yatırım fonları, vadeli işlemler ve portföy yönetimi süreçlerini dijital e-şube deneyimiyle yatırımcıya sunar.</p><div className="hero-actions"><button onClick={openAuth}>Hemen Başla</button><button className="secondary" onClick={() => setPage("Kurumsal")}>Kayıt Ol</button></div></div><div className="hero-terminal"><div className="terminal-top"><b>BIST 100</b><span>Canlı</span></div><strong>13.892,40</strong><small>+0,51% · Piyasa kapalıyken limit emir</small><div className="terminal-chart"><i /><i /><i /><i /><i /></div><div className="terminal-grid">{marketStrip.map(([code, value, change]) => <div key={code}><span>{code}</span><b>{value}</b><em>+%{change}</em></div>)}</div></div></section>
         <section className="landing-ticker">{marketStrip.concat(marketStrip).map(([code, value, change], index) => <div key={`${code}-${index}`}><b>{code}</b><span>{value}</span><em>+%{change}</em></div>)}</section>
-        <section className="landing-section landing-services-deep"><div className="landing-section-head"><span>Yatırım Hizmetlerimiz</span><h2>Yatırımcının beklediği bütün dijital şube işlemleri tek mimaride.</h2><p>Ottoman; piyasa izleme, emir oluşturma, portföy, haber, para hareketi, sözleşme ve admin onay süreçlerini parçalı değil, uçtan uca bağlı çalıştırır.</p></div><div className="landing-cards landing-cards-inner">{serviceCards.map(([Icon, title, text]) => <article key={title}><Icon /><h3>{title}</h3><p>{text}</p></article>)}</div></section>
-        <section className="landing-stats"><div><span>Rakamlarla Ottoman Yatırım</span><h2>Operasyonun tamamı ölçülebilir, izlenebilir ve yönetilebilir.</h2></div><div className="stat-grid">{numbers.map(([value, label]) => <article key={value}><strong>{value}</strong><p>{label}</p></article>)}</div></section>
-        <section className="landing-why"><div className="landing-section-head"><span>Neden Ottoman Yatırım?</span><h2>Mobilde sade, masaüstünde güçlü, admin tarafında tam yetkili.</h2></div><div className="why-list">{why.map((item, index) => <article key={item}><b>{String(index + 1).padStart(2, "0")}</b><p>{item}</p></article>)}</div></section>
-        <section className="landing-testimonials"><div className="landing-section-head"><span>Müşterilerimiz Ne Diyor?</span><h2>Her rol için okunabilir, hızlı ve kontrollü deneyim.</h2></div><div>{testimonials.map(([role, text]) => <article key={role}><p>“{text}”</p><strong>{role}</strong></article>)}</div></section>
-        <section className="landing-regulators"><div><span>Düzenleyici Kurumlar & İş Ortakları</span><h2>Resmi kaynaklara bağlı, uyum süreçlerini merkeze alan yapı.</h2><p>Platform; yatırım süreçlerini anlatırken düzenleyici kurum, resmi duyuru ve sözleşme başlıklarını görünür tutar. Lisans/kurum bilgileri admin ayarlarından yönetilebilir.</p></div><div>{partners.map((item) => <article key={item}><CheckCircle2 /><strong>{item}</strong></article>)}</div></section>
-        <section className="landing-faq"><h2>Sık sorulan konular</h2><div>{["E-Şube hesabı nasıl açılır?", "Para yatırma talebi nereden izlenir?", "Limit emir ne zaman iletilir?", "Portföy kâr/zarar oranı nasıl hesaplanır?"].map((x) => <button className="landing-row" key={x}>{x}<ChevronRight /></button>)}</div></section>
-        <section className="landing-cta"><span>Yatırım Yolculuğunuza Bugün Başlayın</span><h2>Ottoman E-Şube’ye girin, piyasayı izleyin, portföyünüzü yönetin.</h2><p>Kayıt, giriş, canlı fiyat, haber, para hareketi ve işlem ekranları mobil, tablet ve masaüstünde aynı kaliteyle çalışacak şekilde tasarlandı.</p><button onClick={openAuth}>Hemen Başla</button></section>
+        <section className="landing-section landing-services-deep"><div className="landing-section-head"><span>Hizmetlerimiz</span><h2>Yatırım Hizmetlerimiz</h2><p>Ottoman Yatırım olarak geniş ürün yelpazemizle yatırım hedeflerinize ulaşmanız için dijital e-şube çözümleri sunuyoruz.</p></div><div className="landing-cards landing-cards-inner">{serviceCards.map(([Icon, title, text]) => <article key={title}><Icon /><h3>{title}</h3><p>{text}</p><button>Detaylı bilgi</button></article>)}</div><button className="landing-more">Tüm hizmetlerimizi görüntüleyin</button></section>
+        <section className="landing-stats"><div><span>Rakamlarla Ottoman Yatırım</span><h2>Güçlü dijital altyapı, ölçülebilir yatırım deneyimi.</h2></div><div className="stat-grid">{numbers.map(([value, label]) => <article key={value}><strong>{value}</strong><p>{label}</p></article>)}</div></section>
+        <section className="landing-why"><div className="landing-section-head"><span>Neden Ottoman Yatırım?</span><h2>Yatırımcılar neden Ottoman Yatırım’ı tercih ediyor?</h2></div><div className="why-list">{why.map((item, index) => <article key={item}><b>{String(index + 1).padStart(2, "0")}</b><p>{item}</p></article>)}</div><button className="landing-more" onClick={openAuth}>Ücretsiz Hesap Aç</button></section>
+        <section className="landing-testimonials"><div className="landing-section-head"><span>Müşterilerimiz Ne Diyor?</span><h2>Ottoman Yatırım müşterilerinin deneyimleri.</h2></div><div>{testimonials.map(([role, text]) => <article key={role}><p>“{text}”</p><strong>{role}</strong><small>Bireysel Yatırımcı</small></article>)}</div></section>
+        <section className="landing-regulators"><div><span>Düzenleyici Kurumlar & İş Ortakları</span><h2>Resmi kaynaklar ve piyasa altyapısıyla uyumlu dijital yatırım akışı.</h2><p>Ottoman Yatırım; piyasa verisi, haber, sözleşme ve operasyon ekranlarında düzenli, anlaşılır ve kurumsal bir deneyim sunar.</p></div><div>{partners.map((item) => <article key={item}><CheckCircle2 /><strong>{item}</strong></article>)}</div></section>
+        <section className="landing-discovery"><div><span>Ottoman Yatırım’ı Keşfedin</span><h2>Daha fazla bilgi için sayfalarımızı ziyaret edin.</h2><div className="discover-grid">{discover.map(([title, desc]) => <article key={title}><strong>{title}</strong><small>{desc}</small></article>)}</div></div><button onClick={openAuth}>E-Şube Giriş</button></section>
+        <section className="landing-cta"><span>Yatırım Yolculuğunuza Bugün Başlayın</span><h2>Ottoman Yatırım ile ücretsiz hesap açın, borsa, yatırım fonları ve vadeli işlemleri tek ekrandan takip edin.</h2><p>Canlı fiyat, portföy, haber, para transferi ve işlem ekranlarıyla dijital yatırım deneyimini hemen başlatın.</p><button onClick={openAuth}>Ücretsiz Hesap Aç</button></section>
       </> : <section className="landing-page"><span>{page}</span><h1>{content[0]}</h1><p>{content[1]}</p><div className="landing-cards compact">{content[2].map((item) => <article key={item}><h3>{item}</h3><p>Detaylar Ottoman arayüzüne uyarlanmış kurumsal sayfa yapısında gösterilir.</p></article>)}</div></section>}
-      <footer className="landing-footer"><span>Ottoman Yatırım</span><button onClick={openAuth}>E-Şube Giriş</button></footer>
+      <footer className="landing-footer">
+        <div><strong>Ottoman Yatırım</strong><p>Güvenilir, yenilikçi ve dijital yatırım çözümleri.</p></div>
+        <div><h3>Hızlı Erişim</h3><button onClick={() => setPage("Hizmetler")}>Hizmetlerimiz</button><button onClick={() => setPage("Blog")}>Blog & Analiz</button><button onClick={() => setPage("SSS")}>SSS</button></div>
+        <div><h3>Hizmetlerimiz</h3><p>Borsa İstanbul</p><p>Yatırım Fonları</p><p>Vadeli İşlemler</p><p>Portföy Yönetimi</p></div>
+        <div><h3>İletişim</h3><p>İstanbul Finans Merkezi</p><p>0850 000 00 00</p><p>destek@ottomanyatirim.local</p><button onClick={openAuth}>E-Şube Giriş</button></div>
+      </footer>
     </div>
   );
 }
