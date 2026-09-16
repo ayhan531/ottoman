@@ -153,7 +153,9 @@ const newsArtwork = {
 
 function NewsThumb({ item = {}, type }) {
   const kind = item.type || type || "plain";
-  const src = item.image_url || item.image || item.thumbnail || newsArtwork[kind] || newsArtwork.plain;
+  const source = String(item.source || "").toLocaleLowerCase("tr-TR");
+  const sourceArtwork = source.includes("tcmb") ? newsArtwork.cash : source.includes("borsa") ? newsArtwork.bist : source.includes("spk") || source.includes("kap") ? newsArtwork.lens : null;
+  const src = sourceArtwork || newsArtwork[kind] || item.image_url || item.image || item.thumbnail || newsArtwork.plain;
   return <div className={`news-thumb ${kind}`}><img src={src} alt="" /><span>{item.source || (kind === "cash" ? "EKONOMİ" : kind === "bist" || kind === "market" ? "PİYASA" : "GÜNDEM")}</span></div>;
 }
 
