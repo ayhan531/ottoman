@@ -1,12 +1,13 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  ArrowDown, ArrowLeftRight, ArrowUp, Bell, CheckCircle2, ChevronDown, ChevronRight,
+  ArrowDown, ArrowLeftRight, ArrowUp, Bell, CheckCircle2, ChevronDown, ChevronRight, ChevronLeft, ExternalLink, Menu,
   CircleUserRound, CreditCard, Eye, EyeOff, FileText, Home, Info, Landmark, LockKeyhole,
   Moon, Newspaper, PieChart, Search, ShieldCheck, Star, Sun, Users, X,
 } from "lucide-react";
 import "./style.css";
 import "./extra.css";
+import CorporateLanding from "./CorporateLanding";
 
 const tabs = ["BIST Tüm", "BIST 100", "BIST 30", "BIST Katılım", "BIST Temettü", "Halka Arzlar", "Fonlar", "Döviz"];
 const contactOnlyTabs = new Set(["Halka Arzlar", "Fonlar", "Döviz"]);
@@ -152,37 +153,39 @@ const newsArtwork = {
 };
 
 function NewsThumb({ item = {}, type }) {
-  const kind = item.type || type || "plain";
-  const source = String(item.source || "").toLocaleLowerCase("tr-TR");
-  const sourceArtwork = source.includes("tcmb") ? newsArtwork.cash : source.includes("borsa") ? newsArtwork.bist : source.includes("spk") || source.includes("kap") ? newsArtwork.lens : null;
-  const src = sourceArtwork || newsArtwork[kind] || item.image_url || item.image || item.thumbnail || newsArtwork.plain;
-  return <div className={`news-thumb ${kind}`}><img src={src} alt="" /><span>{item.source || (kind === "cash" ? "EKONOMİ" : kind === "bist" || kind === "market" ? "PİYASA" : "GÜNDEM")}</span></div>;
+  const [failed, setFailed] = useState(false);
+  const src = item.image_url;
+  return <div className="news-thumb publisher-image">{src && !failed ? <img src={src} alt={item.title || ""} onError={() => setFailed(true)} /> : <Newspaper aria-label="Haber görseli mevcut değil" />}<span>{item.source}</span></div>;
 }
 
+const newsDate = (value) => value && !Number.isNaN(Date.parse(value)) ? new Date(value).toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
+const safeNewsUrl = (value) => { try { const url = new URL(value); return url.protocol === "https:" ? url.href : null; } catch { return null; } };
+
 function NewsDetail({ item, onClose }) {
-  return <div className="modal-layer"><section className="trade-modal readable-modal news-detail"><button className="close" onClick={onClose}><X /></button><NewsThumb item={item} /><p className="news-kicker">{item.source || "Ottoman Haber"}</p><h2>{item.title}</h2><p className="subtle-count">{item.date || compactDate()}</p><p>{item.body || "Piyasa verileri, Borsa İstanbul işlem hacmi, şirket haberleri ve makro gündem; yatırımcının hızlı okuyabileceği açık ve güvenilir bir özet halinde sunulur."}</p><button className="confirm" onClick={onClose}>Haberlere Dön</button></section></div>;
+  return <div className="modal-layer"><section role="dialog" aria-modal="true" aria-label="Haber detayı" className="trade-modal readable-modal news-detail"><button className="close" aria-label="Haberi kapat" onClick={onClose}><X /></button><NewsThumb item={item} /><p className="news-kicker">{item.source}</p><h2>{item.title}</h2><time className="subtle-count" dateTime={item.date}>{newsDate(item.date)}</time><p>{item.body}</p>{safeNewsUrl(item.url) && <a className="confirm read-source" href={safeNewsUrl(item.url)} target="_blank" rel="noopener noreferrer">Devamını oku <ExternalLink size={18} /></a>}</section></div>;
 }
 
 function NewsScreen({ items = [], common }) {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("BIST Tüm");
   const [detail, setDetail] = useState(null);
-  const list = (items.length ? items : fallbackNews.map(([type, title]) => ({ type, title }))).map((item, index) => ({
+  const list = items.map((item, index) => ({
     type: item.type || (index % 4 === 0 ? "market" : index % 4 === 1 ? "cash" : index % 4 === 2 ? "bist" : "plain"),
     title: item.title || item.headline || item.text,
     body: item.body || item.summary,
     source: item.source,
     date: item.published_at,
     image_url: item.image_url || item.image || item.thumbnail,
-  })).filter((item) => item.title?.toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR")));
+    url: item.url,
+  })).filter((item) => `${item.title} ${item.body} ${item.source}`.toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR"))).sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
   const featured = list[0];
   const rows = featured && !search ? list.slice(1) : list;
   return (
     <main className="screen scroll">
-      <BrandHeader {...common} /><SearchBox placeholder="Haber ara" value={search} onChange={setSearch} /><MarketTabs active={tab} onChange={setTab} />
-      <div className="news-head"><span>Güncel Haberler</span><h1>{search ? "Arama sonuçları" : tab}</h1><p>{list.length} haber · SPK, TCMB, KAP ve piyasa kaynakları</p></div>
-      {featured && !search && <button className="featured-news" onClick={() => setDetail(featured)}><NewsThumb item={featured} /><span><b>{featured.source || "Ottoman Haber"}</b><h2>{featured.title}</h2><small>{featured.date || compactDate()}</small></span><ChevronRight /></button>}
-      <div className="news-list">{rows.length ? rows.map((item) => <button className="news-row" key={item.title} onClick={() => setDetail(item)}><NewsThumb item={item} /><span><b>{item.source || "Ottoman Haber"}</b><h3>{item.title}</h3><small>{item.date || compactDate()}</small></span><ChevronRight /></button>) : (!featured && <div className="empty-state">Aramana uygun haber bulunamadı.</div>)}</div>
+      <BrandHeader {...common} /><SearchBox placeholder="Başlık, açıklama veya kaynak ara" value={search} onChange={setSearch} />
+      <div className="news-head"><span>Piyasalar & Ekonomi</span><h1>{search ? "Arama sonuçları" : "Güncel Haberler"}</h1><p>{list.length} haber · Yayın tarihine göre en yeniden eskiye</p></div>
+      {featured && !search && <button className="featured-news" onClick={() => setDetail(featured)}><NewsThumb item={featured} /><span><b>{featured.source}</b><h2>{featured.title}</h2><p className="news-excerpt">{featured.body}</p><small>{newsDate(featured.date)}</small></span><ChevronRight /></button>}
+      <div className="news-list">{rows.length ? rows.map((item) => <button className="news-row" key={item.url} onClick={() => setDetail(item)}><NewsThumb item={item} /><span><b>{item.source}</b><h3>{item.title}</h3><p className="news-excerpt">{item.body}</p><small>{newsDate(item.date)}</small></span><ChevronRight /></button>) : (!featured && <div className="empty-state">{search ? "Aramana uygun haber bulunamadı." : "Güncel haber akışı şu anda alınamıyor. Biraz sonra yeniden denenecek."}</div>)}</div>
       {detail && <NewsDetail item={detail} onClose={() => setDetail(null)} />}
     </main>
   );
@@ -224,6 +227,9 @@ function PortfolioScreen({ openTrade, portfolio, common }) {
   const [hidden, setHidden] = useState(false);
   const [search, setSearch] = useState("");
   const [chartPoint, setChartPoint] = useState(4);
+  const carouselRef = useRef(null);
+  const [cardIndex, setCardIndex] = useState(0);
+  const showCard = (index) => { const el = carouselRef.current; if (el) el.scrollTo({ left: index * (el.clientWidth + 16), behavior: "smooth" }); };
   const account = portfolio?.account || {};
   const apiPositions = (portfolio?.positions || []).map((p) => ({
     code: p.symbol,
@@ -235,38 +241,32 @@ function PortfolioScreen({ openTrade, portfolio, common }) {
     color: colorFor(p.symbol),
     mark: markFor(p.symbol),
   }));
-  const shownPositions = (apiPositions.length ? apiPositions : stocks.slice(0, 3).map((s, i) => ({ ...s, lots: `${[250, 150, 50][i]} lot · Ort. maliyet ${money(s.rawPrice * 0.94)}`, profit: `+${money(900 + i * 700)} (%4,65)`, value: money(s.rawPrice * [250, 150, 50][i]) }))).filter((p) => `${p.code} ${p.name}`.toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR")));
+  const shownPositions = apiPositions.filter((p) => `${p.code} ${p.name}`.toLocaleLowerCase("tr-TR").includes(search.toLocaleLowerCase("tr-TR")));
   const orders = portfolio?.orders || [];
   const transactions = [...(portfolio?.transactions || []), ...(portfolio?.money_requests || [])];
-  const cash = Number(account.cash_balance ?? 24200);
-  const pending = Number(account.pending_balance ?? 24200);
-  const portfolioValue = shownPositions.reduce((sum, p) => sum + Number(String(p.value).replace(/[₺.]/g, "").replace(",", ".") || 0), 0) || 164762.5;
+  const cash = Number(account.cash_balance || 0);
+  const pending = Number(account.pending_balance || 0);
+  const portfolioValue = (portfolio?.positions || []).reduce((sum, p) => sum + Number(p.market_value || 0), 0);
+  const profit = (portfolio?.positions || []).reduce((sum, p) => sum + Number(p.pnl || 0), 0);
+  const invested = (portfolio?.positions || []).reduce((sum, p) => sum + Number(p.quantity || 0) * Number(p.avg_price || 0), 0);
+  const profitRate = invested ? profit / invested * 100 : 0;
   const totalValue = cash + pending + portfolioValue;
   const mask = (v) => hidden ? "••••••" : v;
-  const chartData = [
-    ["Pzt 7 Eyl", -1.18], ["Sal 8 Eyl", 0.72], ["Çar 9 Eyl", 1.94],
-    ["Per 10 Eyl", 2.76], ["Cum 11 Eyl", -0.53], ["Pzt 14 Eyl", 4.63],
-  ];
-  const activeChart = chartData[chartPoint] || chartData[0];
+  const chartData = (portfolio?.positions || []).map(p => [p.symbol, Number(p.avg_price) ? (Number(p.current_price) - Number(p.avg_price)) / Number(p.avg_price) * 100 : 0]);
+  const activeChart = chartData[chartPoint] || chartData[0] || ["Pozisyon yok", 0];
   return (
     <main className="screen scroll portfolio-screen">
       <BrandHeader showAvatar={false} {...common} />
-      <div className="portfolio-carousel" aria-label="Portföy özet ve getiri kartları">
+      <div className="portfolio-heading"><div><span>Varlıklarım</span><h1>Portföyüm</h1></div><div className="carousel-controls"><button title="Portföy özeti" aria-label="Önceki grafik" onClick={() => showCard(0)} disabled={cardIndex === 0}><ChevronLeft /></button><span>{cardIndex + 1} / 2</span><button title="Getiri grafiği" aria-label="Sonraki grafik" onClick={() => showCard(1)} disabled={cardIndex === 1}><ChevronRight /></button></div></div>
+      <div ref={carouselRef} onScroll={(e) => setCardIndex(e.currentTarget.scrollLeft > e.currentTarget.clientWidth / 2 ? 1 : 0)} className="portfolio-carousel" aria-label="Portföy özet ve getiri kartları">
         <section className="portfolio-card portfolio-summary-card">
           <div className="portfolio-top"><span>Portföy özeti</span><button onClick={() => setHidden(!hidden)}>{hidden ? <EyeOff size={24} /> : <Eye size={24} />}</button></div>
-          <div className="portfolio-grid"><div><h1>{mask(money(totalValue))}</h1><p>{mask("+₺7.286,00")} toplam kâr</p><div className="balance-pair"><span>Kullanılabilir<strong>{mask(money(cash))}</strong></span><span>T+2 Bakiye<strong>{mask(money(pending))}</strong></span></div></div><div className="donut"><div>%83</div></div></div>
-          <div className="legend"><span><i /> Pozisyonlar · %83</span><span><i /> Bakiye · %13</span><span><i /> Kâr · +%4,63</span></div>
+          <div className="portfolio-grid"><div><h1>{mask(money(totalValue))}</h1><p>{mask(money(profit))} toplam kâr / zarar</p><div className="balance-pair"><span>Kullanılabilir<strong>{mask(money(cash))}</strong></span><span>T+2 Bakiye<strong>{mask(money(pending))}</strong></span></div></div><div className="donut" style={{ background: `conic-gradient(#fff 0 ${totalValue ? portfolioValue / totalValue * 100 : 0}%, #bcaeff 0 100%)` }}><div>{hidden ? "••" : `%${totalValue ? Math.round(portfolioValue / totalValue * 100) : 0}`}</div></div></div>
+          <div className="legend"><span><i /> Pozisyonlar · {mask(money(portfolioValue))}</span><span><i /> Nakit · {mask(money(cash + pending))}</span><span><i /> Getiri · {mask(pct(profitRate))}</span></div>
         </section>
         <section className="portfolio-card chart-card">
           <div className="portfolio-top"><span>Getiri grafiği</span><b>{activeChart[0]} · %{activeChart[1].toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</b></div>
-          <svg className="return-chart" viewBox="0 0 320 150" role="img" aria-label="Portföy getiri grafiği">
-            <defs><linearGradient id="lineFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#bdf7ce" stopOpacity=".55" /><stop offset="100%" stopColor="#bdf7ce" stopOpacity=".05" /></linearGradient></defs>
-            <path d="M18 124 C42 86, 58 94, 78 56 S126 42, 143 75 S188 96, 205 50 S248 30, 302 42 L302 138 L18 138 Z" fill="url(#lineFill)" />
-            <path d="M18 124 C42 86, 58 94, 78 56 S126 42, 143 75 S188 96, 205 50 S248 30, 302 42" fill="none" stroke="#9af0b4" strokeWidth="6" strokeLinecap="round" />
-            <line x1={30 + chartPoint * 54} y1="22" x2={30 + chartPoint * 54} y2="138" stroke="rgba(255,255,255,.5)" strokeDasharray="5 6" />
-            <circle cx={30 + chartPoint * 54} cy={chartPoint === 4 ? 50 : 68 - activeChart[1] * 6} r="9" fill="#9af0b4" stroke="#fff" strokeWidth="4" />
-          </svg>
-          <input className="chart-scrub" type="range" min="0" max={chartData.length - 1} value={chartPoint} onChange={(e) => setChartPoint(Number(e.target.value))} />
+          <div className="position-return-chart">{chartData.length ? chartData.map(([symbol, value], index) => <button key={symbol} onClick={() => setChartPoint(index)} className={activeChart[0] === symbol ? "selected" : ""}><span>{symbol}</span><i style={{ width: `${Math.max(2, Math.abs(value) / Math.max(1, ...chartData.map(([,v]) => Math.abs(v))) * 100)}%`, background: value >= 0 ? '#9af0b4' : '#ffb0c2' }} /><strong>{hidden ? "••••" : pct(value)}</strong></button>) : <p>Getiri grafiği için henüz açık pozisyon bulunmuyor.</p>}</div>
         </section>
       </div>
       <div className="segments">{["Pozisyonlar", "Emirler", "Geçmiş"].map((item) => <button className={segment === item ? "active" : ""} onClick={() => setSegment(item)} key={item}>{item}</button>)}</div>
@@ -610,7 +610,7 @@ function App() {
     return () => clearInterval(timer);
   }, []);
   useEffect(() => { loadPortfolio(); loadAdmin(); }, [me]);
-  if (!me && !authOpen) return <LandingPage openAuth={() => setAuthOpen(true)} />;
+  if (!me && !authOpen) return <CorporateLanding openAuth={() => setAuthOpen(true)} />;
   if (!me) return <AuthScreen onAuthed={(data) => setMe(normalizeUser(data))} back={() => setAuthOpen(false)} />;
   if (me.role === "admin") return <AdminPanel data={{ ...(adminData || {}), market_meta: marketMeta, news_meta: newsMeta }} refresh={loadAdmin} logout={logout} />;
   return <div className={`stage app-stage ${dark ? "dark-mode" : ""}`}><div className="phone">

@@ -23,6 +23,7 @@ import warnings
 import xml.etree.ElementTree as ET
 import zipfile
 from email.message import EmailMessage
+from news_feed import latest_news
 
 
 
@@ -2190,7 +2191,7 @@ class AppHandler(BaseHTTPRequestHandler):
             self.json_response({"ok": True, "reference": f"GM-DST-{int(cur.lastrowid):06d}"}, 201)
 
     def api_news(self) -> None:
-        items, meta = official_news()
+        items, meta = latest_news()
         self.json_response({"items": items, "meta": meta})
 
     def api_company_logo(self, raw_symbol: str) -> None:

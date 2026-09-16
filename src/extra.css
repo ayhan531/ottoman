@@ -452,3 +452,39 @@
 .market-tabs button {
   scroll-snap-align: start;
 }
+
+/* Portfolio sections stay in document flow; carousel owns its horizontal overflow. */
+.portfolio-screen{display:block!important}
+.portfolio-heading{display:flex;align-items:center;justify-content:space-between;margin:20px 0 20px;gap:16px}
+.portfolio-heading h1{font-size:28px;margin:4px 0 0}
+.portfolio-heading>div>span{font-size:12px;color:var(--muted)}
+.carousel-controls{display:flex;align-items:center;gap:14px}
+.carousel-controls button{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px;color:var(--purple)}
+.carousel-controls button:disabled{opacity:.3;cursor:default}
+.portfolio-screen .portfolio-carousel{width:100%;min-width:0;height:auto;min-height:0;margin:0 0 28px;gap:16px;padding:0 0 8px;align-items:stretch}
+.portfolio-screen .portfolio-carousel>.portfolio-card{flex:0 0 100%;min-width:0;min-height:310px;height:auto;box-shadow:none;padding:28px 32px;margin:0;overflow:visible;border-radius:16px}
+.portfolio-screen .portfolio-grid{grid-template-columns:minmax(0,1fr) 160px;gap:24px}
+.portfolio-screen .portfolio-grid h1{font-size:38px;margin:18px 0 12px;overflow-wrap:anywhere}
+.portfolio-screen .legend{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:12px 24px;margin:24px 0 0}
+.portfolio-screen .legend span{font-size:13px}
+.portfolio-screen .donut{width:126px;height:126px;justify-self:center}
+.portfolio-screen .donut div{width:86px;height:86px;font-size:26px}
+.portfolio-screen .return-chart{height:210px;margin:0}
+.portfolio-screen .segments{max-width:520px;margin:0 0 18px}
+.portfolio-screen .search{margin-bottom:20px}
+.portfolio-screen .position-row{padding:18px 8px;grid-template-columns:48px minmax(0,1fr) minmax(100px,auto) 24px;gap:16px}
+.portfolio-screen .stock-copy small{white-space:normal;line-height:1.5}
+.read-source{display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none}
+.position-return-chart{display:grid;gap:18px;max-height:240px;overflow:auto;margin-top:24px}
+.position-return-chart button{display:grid;grid-template-columns:70px minmax(0,1fr) 100px;gap:16px;align-items:center;color:white;text-align:left;padding:12px;border-radius:6px;background:#ffffff0d}
+.position-return-chart button.selected{background:#ffffff20}
+.position-return-chart i{height:12px;border-radius:3px;display:block}
+.position-return-chart strong{text-align:right;font-size:13px}
+.news-thumb.publisher-image{display:block;background:#eeeaf5}
+.publisher-image>img{width:100%;height:100%;position:absolute;inset:0;object-fit:cover}
+.news-thumb.publisher-image>svg{position:absolute;left:40%;top:35%;color:#837997}
+.news-excerpt{font-size:14px;color:var(--muted);line-height:1.6;margin:8px 0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.news-detail .close{z-index:2}
+.dark-mode .news-excerpt,.dark-mode .news-row small,.dark-mode .featured-news small{color:#bcc3d2}
+.dark-mode .dual-input input,.dark-mode .auth-form input,.dark-mode .amount-entry,.dark-mode .percent-row button,.dark-mode .order-type button{background:#252b38;color:#f7f8ff}
+@media(max-width:760px){.portfolio-screen .portfolio-carousel>.portfolio-card{padding:24px;min-height:340px}.portfolio-screen .portfolio-grid{grid-template-columns:minmax(0,1fr) 80px;gap:12px}.portfolio-screen .portfolio-grid h1{font-size:29px}.portfolio-screen .donut{width:80px;height:80px}.portfolio-screen .donut div{width:52px;height:52px;font-size:19px}.portfolio-screen .balance-pair{gap:18px}.portfolio-screen .balance-pair strong{font-size:17px}.portfolio-screen .legend{display:grid;gap:10px;margin-top:20px}.portfolio-screen .position-row{grid-template-columns:38px minmax(0,1fr) 20px;gap:12px}.portfolio-screen .position-price{grid-column:2;align-items:flex-start;text-align:left;flex-direction:row;flex-wrap:wrap;gap:8px}.portfolio-screen .position-row>svg{grid-column:3;grid-row:1/3}.portfolio-screen .stock-logo{width:36px;height:36px}.portfolio-screen .position-price strong{font-size:13px}.portfolio-heading h1{font-size:25px}.news-row .news-excerpt{display:none}}

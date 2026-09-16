@@ -39,4 +39,11 @@
 - Landing to E-Sube login, login, theme toggle, News navigation, Portfolio navigation, horizontal carousel geometry and responsive layouts.
 - Browser console and page errors: none.
 
+**2026-09-17 follow-up**
+
+- Landing was rebuilt around the reference's centered hero, four-service row, metrics band, reasons, regulator links, discovery links, conversion section and corporate footer. It now has separate working pages for About, Services, Fees, Blog, FAQ, Contact and Agreements.
+- News now consumes publisher metadata directly. Every returned item has a recent publication timestamp, source article URL, publisher description and publisher image. The detail dialog opens the original article using `Devamını oku`.
+- Portfolio totals and return values are calculated from every API position rather than the filtered position list. The overview and position-return cards are horizontally navigable without clipping.
+- Browser checks passed at 390 px, 768 px and 1440 px for no horizontal page overflow, publisher images, external article link, portfolio carousel and search-stable totals.
+
 final result: passed
