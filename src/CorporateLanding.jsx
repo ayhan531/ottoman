@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, ArrowUpRight, Landmark, PieChart, ArrowLeftRight, Users, Check, Menu, X, ShieldCheck, Smartphone, Headphones } from 'lucide-react';
 import './corporate.css';
 
@@ -17,6 +17,24 @@ const faqs = [
 ];
 const routes = { 'Ana Sayfa': '/', 'Hakkımızda': '/kurumsal', 'Hizmetlerimiz': '/hizmetler', 'Komisyon & Ücretler': '/ucretler', Blog: '/blog', SSS: '/sss', İletişim: '/iletisim', Sözleşmeler: '/sozlesmeler' };
 
+function AnimatedMetric({ target, label, prefix = '', suffix = '' }) {
+  const [value, setValue] = useState(0);
+  useEffect(() => {
+    const duration = 1400;
+    const startedAt = performance.now();
+    let frame;
+    const tick = (now) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(target * eased));
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [target]);
+  return <article><strong>{prefix}{value.toLocaleString('tr-TR')}{suffix}</strong><p>{label}</p></article>;
+}
+
 export default function CorporateLanding({ openAuth }) {
   const [page, setPage] = useState(() => Object.keys(routes).find(k => routes[k] === window.location.pathname) || 'Ana Sayfa');
   const [menu, setMenu] = useState(false);
@@ -31,7 +49,7 @@ export default function CorporateLanding({ openAuth }) {
     <main>{page === 'Ana Sayfa' ? <>
       <section className="corporate-hero"><div><span className="corporate-eyebrow">YATIRIMIN DİJİTAL ADRESİ</span><h1>Ottoman Yatırım</h1><h2>Güvenli yatırımın adresi.</h2><p>Borsa, yatırım fonları ve vadeli işlemlerde yatırım dünyasını keşfedin. Piyasaları takip edin, portföyünüzü tek yerden yönetin.</p><div className="corporate-actions"><button onClick={openAuth}>Hemen Başla <ArrowRight size={18} /></button><button className="outline" onClick={() => go('Hizmetlerimiz')}>Hizmetlerimiz</button></div><div className="corporate-trust"><span><ShieldCheck size={17} /> Güvenli erişim</span><span><Smartphone size={17} /> Dijital e-şube</span><span><Headphones size={17} /> Yatırımcı desteği</span></div></div></section>
       <section className="corporate-section">{heading('Yatırım Hizmetlerimiz', 'Geniş ürün yelpazemizle yatırım hedeflerinize ulaşmanız için yanınızdayız.')}{servicesGrid}<div className="corporate-center"><button className="text-link" onClick={() => go('Hizmetlerimiz')}>Tüm hizmetlerimizi görüntüleyin <ArrowRight size={17} /></button></div></section>
-      <section className="corporate-numbers">{heading('Rakamlarla Ottoman Yatırım')}<div>{[['250.000+','Aktif Müşteri'],['₺125 Md+','Yıllık İşlem Hacmi'],['20+','Yıllık Sektör Deneyimi'],['7/24','Dijital Erişim']].map(([n,t]) => <article key={t}><strong>{n}</strong><p>{t}</p></article>)}</div></section>
+      <section className="corporate-numbers">{heading('Rakamlarla Ottoman Yatırım')}<div><AnimatedMetric target={250000} suffix="+" label="Aktif Müşteri" /><AnimatedMetric target={125} prefix="₺" suffix=" Md+" label="Yıllık İşlem Hacmi" /><AnimatedMetric target={20} suffix="+" label="Yıllık Sektör Deneyimi" /><AnimatedMetric target={24} prefix="7/" label="Dijital Erişim" /></div></section>
       <section className="corporate-section corporate-why"><div>{heading('Neden Ottoman Yatırım?', 'Yatırım yolculuğunuzun her adımında anlaşılır ve erişilebilir bir deneyim.')}<ul>{['Piyasa ve portföyünüzü birlikte takip edin','Emirlerinizi ve hesap hareketlerinizi izleyin','Güncel ekonomi haberlerine kaynağından ulaşın','Mobil, tablet ve bilgisayardan erişin','Banka hesaplarınızı tek yerden yönetin','Sözleşmelerinize e-şubeden erişin'].map(t => <li key={t}><Check size={19} />{t}</li>)}</ul><button className="corporate-primary" onClick={openAuth}>Ücretsiz Hesap Aç <ArrowRight size={17} /></button></div><img src="/news/company-disclosures.jpg" alt="Finansal raporlar ve piyasa analizi" /></section>
       <section className="corporate-section">{heading('Müşterilerimiz Ne Diyor?', 'Yatırımcı deneyimi bizim için önemlidir.')}<div className="corporate-feedback"><h3>Deneyiminizi bizimle paylaşın.</h3><p>Hesap işlemleri, e-şube ve yatırım hizmetleri hakkındaki görüşleriniz için iletişim kanallarımızı kullanabilirsiniz.</p><button className="text-link" onClick={() => go('İletişim')}>Bize ulaşın <ArrowRight size={17} /></button></div></section>
       <section className="corporate-regulators"><h2>Düzenleyici Kurumlar & Piyasa Kuruluşları</h2><div>{[['Borsa İstanbul','https://www.borsaistanbul.com'],['Takasbank','https://www.takasbank.com.tr'],['SPK','https://spk.gov.tr'],['MKK','https://www.mkk.com.tr'],['TSPB','https://tspb.org.tr']].map(([t,url]) => <a key={t} href={url} target="_blank" rel="noopener noreferrer">{t}<ArrowUpRight size={15} /></a>)}</div></section>
