@@ -378,17 +378,26 @@ function ProfileMenu({ me, onClose, openSubpage, logout }) {
   return <div className="modal-layer"><section className="profile-menu-sheet"><button className="close" onClick={onClose}><X /></button><div className="profile-menu-head"><div className="avatar">İS</div><div><h2>{me?.full_name || "İsim Soyisim"}</h2><p>Müşteri No: {me?.account_no || "12345678"}</p><small>Bireysel Yatırım Hesabı</small></div></div>{rows.map(([title, desc, Icon]) => <button className="settings-row" key={title} onClick={() => { onClose(); openSubpage(title); }}><Icon /><span><strong>{title}</strong><small>{desc}</small></span><ChevronRight /></button>)}<button className="settings-row logout-row" onClick={logout}><ArrowUp /><span><strong>Çıkış Yap</strong><small>Güvenli çıkış</small></span></button></section></div>;
 }
 
+const isMarketOpen = () => {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
+  const day = now.getDay();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  return day !== 0 && day !== 6 && minutes >= 600 && minutes < 1080;
+};
+
 function TradeModal({ stock, onClose, refresh, favorites, toggleFavorite }) {
   const item = stock || stocks[0];
+  const open = useMemo(isMarketOpen, []);
   const [amount, setAmount] = useState(0);
   const [side, setSide] = useState("buy");
+  const [market, setMarket] = useState(open);
   const [message, setMessage] = useState("");
   const price = Number(item.rawPrice || 412.5);
   const total = useMemo(() => amount * price, [amount, price]);
   const submitOrder = async () => {
     if (amount < 1) { setMessage("En az 1 lot gir."); return; }
     try {
-      await api("/api/orders", { method: "POST", body: JSON.stringify({ symbol: item.code, side, order_type: "limit", quantity: Number(amount), limit_price: price }) });
+      await api("/api/orders", { method: "POST", body: JSON.stringify({ symbol: item.code, side, order_type: market ? "market" : "limit", quantity: Number(amount), limit_price: price }) });
       setMessage("Emir kaydedildi. Admin onayı bekliyor.");
       await refresh?.();
     } catch (error) {
@@ -402,17 +411,17 @@ function TradeModal({ stock, onClose, refresh, favorites, toggleFavorite }) {
         <div className="trade-head"><StockLogo item={item} /><div><h2>{item.code} <button className="inline-star" onClick={() => toggleFavorite?.(item.code)}><Star size={25} fill={favorites?.has(item.code) ? "#7054f6" : "none"} /></button></h2><p>{item.name}</p><small><i /> Canlı fiyat</small></div><div className="trade-quote"><strong>{money(price)}</strong><span>{item.change || "-%0,78"}</span></div></div>
         <label className="field-label">Ürün Türü <Info size={18} /></label><button className="select-pill">Hisse <ChevronDown size={22} /></button>
         <div className="trade-stats"><span>Portföy<strong>250 lot</strong></span><span>Maliyet<strong>₺394,17</strong></span></div>
-        <div className="order-type"><button>Piyasa</button><button className="active">Limit</button></div>
-        <div className="warning">Piyasa kapalı (10:00-18:00). Sadece limit emir verebilirsin.</div>
+        <div className="order-type"><button className={market ? "active" : ""} disabled={!open} onClick={() => open && setMarket(true)}>Piyasa</button><button className={!market ? "active" : ""} onClick={() => setMarket(false)}>Limit</button></div>
+        {!open && <div className="warning">Piyasa kapalı (10:00-18:00). Sadece limit emir verebilirsin.</div>}
         <div className="buy-sell"><button className={side === "buy" ? "buy" : ""} onClick={() => setSide("buy")}>Alış</button><button className={side === "sell" ? "sell" : ""} onClick={() => setSide("sell")}>Satış</button></div>
-        <label className="field-label">Limit fiyat (₺)</label><div className="input-like">{price.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+        {!market && <><label className="field-label">Limit fiyat (₺)</label><div className="input-like">{price.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div></>}
         <div className="dual-input"><label>Adet<input value={amount || ""} placeholder="0" onChange={(e) => setAmount(Number(e.target.value || 0))} /></label><label>Tutar (₺)<input value={total ? total.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : ""} placeholder="0,00" readOnly /></label></div>
         <div className="percent-row">{[25, 50, 75, 100].map((n) => <button onClick={() => setAmount(n)} key={n}>%{n}</button>)}<button className="text" onClick={() => setAmount(250)}>Tümü</button></div>
         <div className="range-line"><span>Oran</span><b>%{Math.min(100, Math.round((amount / 250) * 100)) || 0}</b><input type="range" min="0" max="250" value={amount} onChange={(e) => setAmount(Number(e.target.value))} /></div>
         <div className="trade-capacity"><span>Kullanılabilir bakiye <strong>₺24.200,00</strong></span><span>Maks. 58 lot</span></div>
-        <div className="total-box"><span>Toplam</span><strong>{money(total)}</strong></div>
+        <div className={`total-box ${side}`}><span>Tutar</span><strong>{money(total)}</strong></div>
         {message && <div className="warning">{message}</div>}
-        <button className={`confirm ${side === "sell" ? "danger" : ""}`} onClick={submitOrder}>{side === "buy" ? "Alış" : "Satış"} emri ver</button>
+        <button className={`confirm ${side}`} onClick={submitOrder}>{side === "buy" ? "Alış" : "Satış"} emri ver</button>
       </section>
     </div>
   );

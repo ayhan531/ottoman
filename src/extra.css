@@ -56,7 +56,13 @@
 .market-mini{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:8px;border-top:1px solid #eceef5;color:#8c929f}
 .market-mini span{display:grid;gap:4px;font-size:12px}
 .market-mini strong{color:#171925;font-size:15px}
-.confirm.danger{background:#ef4655}
+.confirm.danger,.confirm.sell{background:#d95577}
+.confirm.buy{background:#168b70}
+.total-box.buy{background:#e7f6ee;color:#168b70}
+.total-box.buy strong{color:#168b70}
+.total-box.sell{background:#fce9ef;color:#d95577}
+.total-box.sell strong{color:#d95577}
+.order-type button:disabled{opacity:.45;cursor:default}
 .buy-sell .sell{background:#ef4655;color:#fff}
 .readable-modal{line-height:1.55}
 .readable-modal .news-thumb{margin-bottom:18px}
@@ -267,7 +273,7 @@
 .dark-mode .search input{color:#f6f7fb}
 .dark-mode .market-tabs button,.dark-mode .segments button{background:#1b1e28;color:#cbd1df}
 .dark-mode .market-tabs button.active,.dark-mode .segments button.active{background:#7054f6;color:#fff}
-.dark-mode .portfolio-card{background:linear-gradient(145deg,#1d2a48,#4b63c8);box-shadow:0 14px 34px rgba(0,0,0,.32)}
+.dark-mode .portfolio-card{background:linear-gradient(180deg,#a396e8,#6052ad);box-shadow:0 14px 34px rgba(0,0,0,.32)}
 .dark-mode .total-box{background:#211d35;color:#fff}
 .dark-mode .avatar,.dark-mode .close{background:#262c39;color:#fff}
 .dark-mode .summary-line,.dark-mode .settings-row,.dark-mode .stock-row,.dark-mode .position-row,.dark-mode .news-row{border-color:#2c3444}
@@ -354,8 +360,8 @@
 }
 
 .portfolio-card {
-  background: linear-gradient(145deg, #4f7fe0 0%, #3d68c4 52%, #294f9c 100%);
-  box-shadow: 0 14px 28px rgba(41, 55, 110, .28);
+  background: linear-gradient(180deg, #9b87f9 0%, #5742c0 100%);
+  box-shadow: 0 14px 28px rgba(87, 66, 192, .28);
   margin-bottom: 22px;
 }
 .portfolio-carousel {
