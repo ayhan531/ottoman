@@ -31,7 +31,7 @@ const money = (value) => `₺${Number(value || 0).toLocaleString("tr-TR", { mini
 const pct = (value) => `${Number(value || 0) >= 0 ? "+" : "-"}%${Math.abs(Number(value || 0)).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const compactDate = () => new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
 const markFor = (symbol = "") => ({ TUPRS: "tupras", THYAO: "thy", ASELS: "aselsan", TDGYO: "bars", CEMZY: "cem", BMSTL: "bms", PATEK: "patek" }[symbol] || "bars");
-const colorFor = (symbol = "") => ({ TUPRS: "#101217", THYAO: "#d90812", ASELS: "#087fc4", CEMZY: "#f00815", PATEK: "#11151a", BIMAS: "#d71920", KCHOL: "#183b8f" }[symbol] || "#7657ff");
+const colorFor = (symbol = "") => ({ TUPRS: "#101217", THYAO: "#d90812", ASELS: "#087fc4", CEMZY: "#f00815", PATEK: "#11151a", BIMAS: "#d71920", KCHOL: "#183b8f" }[symbol] || "#7054f6");
 const quoteToStock = (q) => ({
   code: q.symbol || q.code,
   name: q.name || q.symbol || q.code,
@@ -102,7 +102,7 @@ function StockRow({ item, onClick, favorite, toggleFavorite }) {
     <button className="stock-row" onClick={onClick}>
       <StockLogo item={item} />
       <div className="stock-copy"><strong>{item.code}</strong><span>{item.name}</span></div>
-      <span className="inline-star" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); toggleFavorite?.(item.code); }}><Star size={20} fill={favorite ? "#7657ff" : "none"} /></span>
+      <span className="inline-star" role="button" tabIndex={0} onClick={(e) => { e.stopPropagation(); toggleFavorite?.(item.code); }}><Star size={20} fill={favorite ? "#7054f6" : "none"} /></span>
       <div className="stock-price"><strong>{item.price}</strong><span className={positive ? "up" : "down"}>{item.change}</span></div>
     </button>
   );
@@ -399,7 +399,7 @@ function TradeModal({ stock, onClose, refresh, favorites, toggleFavorite }) {
     <div className="modal-layer">
       <section className="trade-modal">
         <button className="close" onClick={onClose}><X size={34} /></button>
-        <div className="trade-head"><StockLogo item={item} /><div><h2>{item.code} <button className="inline-star" onClick={() => toggleFavorite?.(item.code)}><Star size={25} fill={favorites?.has(item.code) ? "#7657ff" : "none"} /></button></h2><p>{item.name}</p><small><i /> Canlı fiyat</small></div><div className="trade-quote"><strong>{money(price)}</strong><span>{item.change || "-%0,78"}</span></div></div>
+        <div className="trade-head"><StockLogo item={item} /><div><h2>{item.code} <button className="inline-star" onClick={() => toggleFavorite?.(item.code)}><Star size={25} fill={favorites?.has(item.code) ? "#7054f6" : "none"} /></button></h2><p>{item.name}</p><small><i /> Canlı fiyat</small></div><div className="trade-quote"><strong>{money(price)}</strong><span>{item.change || "-%0,78"}</span></div></div>
         <label className="field-label">Ürün Türü <Info size={18} /></label><button className="select-pill">Hisse <ChevronDown size={22} /></button>
         <div className="trade-stats"><span>Portföy<strong>250 lot</strong></span><span>Maliyet<strong>₺394,17</strong></span></div>
         <div className="order-type"><button>Piyasa</button><button className="active">Limit</button></div>
