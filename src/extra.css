@@ -283,7 +283,7 @@
 .admin-stage .phone,.admin-phone{max-width:1120px;width:min(1120px,96vw);height:min(940px,96vh);border-radius:28px}
 .admin-tabs{grid-template-columns:repeat(7,1fr)}
 .report-card{margin-top:14px}
-@media (min-width:900px){
+@media (min-width:761px){
   .stage{padding:24px}
   .phone{width:min(1120px,96vw);height:min(930px,96vh);border-radius:28px}
   .screen{padding-left:34px;padding-right:34px}
