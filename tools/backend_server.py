@@ -564,6 +564,18 @@ def init_db() -> None:
             );
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL,
+              day TEXT NOT NULL,
+              value REAL NOT NULL DEFAULT 0,
+              created_at INTEGER NOT NULL,
+              UNIQUE(user_id, day)
+            );
+            """
+        )
         migrate_db(conn)
         migrate_brand_data(conn)
         seed_admin(conn)
@@ -1643,6 +1655,8 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_notifications_read()
         if method == "GET" and path == "/api/portfolio":
             return self.api_portfolio()
+        if method == "GET" and path == "/api/portfolio/history":
+            return self.api_portfolio_history()
         if method == "GET" and path == "/api/orders":
             return self.api_orders()
         if method == "GET" and path == "/api/transactions/export":
@@ -2387,6 +2401,7 @@ class AppHandler(BaseHTTPRequestHandler):
             system_accounts = system_bank_account_rows(conn, active_only=True)
             documents = document_rows(conn, "WHERE d.user_id=?", (user["id"],))
             settings = settings_map(conn)
+            record_portfolio_snapshot(conn, user["id"])
             self.json_response(
                 {
                     "account": account,
@@ -2401,6 +2416,12 @@ class AppHandler(BaseHTTPRequestHandler):
                     "settlement_settings": {"t2_enabled": settings.get("t2_enabled", "1") == "1"},
                 }
             )
+
+    def api_portfolio_history(self) -> None:
+        with connect_db() as conn:
+            user = self.require_user(conn)
+            record_portfolio_snapshot(conn, user["id"])
+            self.json_response({"history": portfolio_history_rows(conn, user["id"])})
 
     def api_orders(self) -> None:
         with connect_db() as conn:
@@ -4072,6 +4093,37 @@ def public_user(user: dict, include_sensitive: bool = False) -> dict:
         data["sell_count"] = user.get("sell_count", 0)
         data["transaction_count"] = user.get("transaction_count", 0)
     return data
+
+
+
+def portfolio_value(conn: sqlite3.Connection, user_id: int) -> float:
+    """Pozisyonların güncel değeri + nakit; getiri grafiğinin günlük noktası."""
+    account = account_for(conn, user_id)
+    total = float(account.get("cash_balance") or 0)
+    for row in portfolio_rows(conn, user_id):
+        total += float(row.get("market_value") or 0)
+    return round(total, 2)
+
+
+def record_portfolio_snapshot(conn: sqlite3.Connection, user_id: int) -> None:
+    """Günde bir kez portföy değerini saklar; grafik bu kayıtlardan çizilir."""
+    day = time.strftime("%Y-%m-%d", time.localtime(now()))
+    value = portfolio_value(conn, user_id)
+    conn.execute(
+        "INSERT INTO portfolio_snapshots (user_id, day, value, created_at) VALUES (?, ?, ?, ?)"
+        " ON CONFLICT(user_id, day) DO UPDATE SET value=excluded.value, created_at=excluded.created_at",
+        (user_id, day, value, now()),
+    )
+    conn.execute("DELETE FROM portfolio_snapshots WHERE user_id=? AND day < date('now', '-90 day')", (user_id,))
+    conn.commit()
+
+
+def portfolio_history_rows(conn: sqlite3.Connection, user_id: int, days: int = 30) -> list[dict]:
+    rows = conn.execute(
+        "SELECT day, value FROM portfolio_snapshots WHERE user_id=? ORDER BY day DESC LIMIT ?",
+        (user_id, max(2, min(int(days), 180))),
+    ).fetchall()
+    return [{"day": row["day"], "value": float(row["value"])} for row in reversed(rows)]
 
 
 def order_rows(conn: sqlite3.Connection, where: str, params: tuple) -> list[dict]:

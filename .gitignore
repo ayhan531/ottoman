@@ -34,3 +34,9 @@ __pycache__/
 /apk-current.xml
 /qa-*.png
 /needed-contact-sheet.jpg
+
+# Local QA fixtures and screenshots
+/fixtures/
+/shots/
+fetch-fixtures.bat
+gitignore-extra.txt

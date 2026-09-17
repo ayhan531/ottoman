@@ -1,0 +1,423 @@
+// Alt sayfalar — Ayarlar, Güvenlik, Şifre, Kişisel Bilgiler, İletişim, Bildirim Ayarları, Sözleşmeler.
+import React, { useMemo, useState } from "react";
+import Icon from "./icons.jsx";
+import { Divided, Toggle, Sheet, Choices, CenteredHeader, PageHeader } from "./ui.jsx";
+import { CONTRACTS, PRIVACY } from "./contracts.js";
+
+export const SCALE_NAMES = ["Küçük", "Orta", "Büyük"];
+export const SCALE_VALUES = [0.9, 1, 1.12];
+export const ACCENT_NAMES = ["Mor", "Mavi", "Turkuaz", "Yeşil", "Turuncu", "Pembe", "Kırmızı", "Lacivert", "Gri"];
+export const ACCENT_LIGHT = ["#7054F6", "#2F72E8", "#0E9AA7", "#1E9E6A", "#E3922F", "#D9479A", "#D6453D", "#2B3A8C", "#4B5563"];
+export const ACCENT_NIGHT = ["#7B69DE", "#5187DB", "#30A7B2", "#37AF82", "#D49447", "#D061A3", "#D25E56", "#6E7BC4", "#8E949F"];
+export const LANG_NAMES = ["Türkçe", "English", "Azərbaycanca", "Deutsch", "Français"];
+export const DATA_NAMES = ["Canlı veri", "Yalnızca Wi-Fi", "Tasarruf"];
+
+/* ---------- ortak satırlar ---------- */
+
+const SettingsRow = ({ icon, label, value, chevron, onClick, tail }) => {
+  const content = (
+    <>
+      <span className="ic">{typeof icon === "string" && icon.length <= 2 ? icon : <Icon name={icon} size={20} />}</span>
+      <span className="lb">{label}</span>
+      {tail || (value ? <span className="vl">{value}</span> : <span />)}
+      {chevron ? <Icon name="chevron" size={18} color="var(--muted)" /> : <span />}
+    </>
+  );
+  return onClick
+    ? <button className="srow" onClick={onClick}>{content}</button>
+    : <div className="srow">{content}</div>;
+};
+
+export const SecRow = ({ icon, label, note, tail, chevron, onClick }) => {
+  const content = (
+    <>
+      <span className="disc"><Icon name={icon} size={20} /></span>
+      <span className="copy"><strong>{label}</strong><span>{note}</span></span>
+      {tail || <span />}
+      {chevron ? <Icon name="chevron" size={18} color="var(--muted)" /> : <span />}
+    </>
+  );
+  return onClick ? <button className="sec-row" onClick={onClick}>{content}</button> : <div className="sec-row">{content}</div>;
+};
+
+export const InfoRow = ({ title, note, chevron, tail, onClick }) => {
+  const content = (
+    <>
+      <span className="copy"><strong>{title}</strong><span>{note}</span></span>
+      {tail || <span />}
+      {chevron ? <Icon name="chevron" size={18} color="var(--muted)" /> : <span />}
+    </>
+  );
+  return onClick ? <button className="info-row" onClick={onClick}>{content}</button> : <div className="info-row">{content}</div>;
+};
+
+const Section = ({ heading, children }) => (
+  <div className="sec-section">
+    {heading && <div className="head">{heading}</div>}
+    <div className="sec-card"><Divided>{children}</Divided></div>
+  </div>
+);
+
+/* ---------- Ayarlar ---------- */
+
+export function Settings({
+  onBack, monogram, onProfile, dark, setDark, textSize, setTextSize, accent, setAccent,
+  lang, setLang, dataMode, setDataMode, onNotify, onSecurity, onContracts, onPrivacy, version,
+}) {
+  const [picker, setPicker] = useState(null);
+
+  return (
+    <div className="page gap-12">
+      <div className="page-head with-tail">
+        <button className="icon-btn" onClick={onBack} aria-label="Geri"><Icon name="back" size={21} /></button>
+        <h1 className="t22">Ayarlar</h1>
+        <button className="ava n36 lav" onClick={onProfile}>{monogram}</button>
+      </div>
+
+      <div className="settings-head">Görünüm</div>
+      <div className="scard">
+        <Divided>
+          <SettingsRow
+            icon="sun"
+            label="Tema"
+            tail={
+              <span className="seg-pill">
+                <button className={!dark ? "active" : ""} onClick={() => setDark(false)}>Açık</button>
+                <button className={dark ? "active" : ""} onClick={() => setDark(true)}>Koyu</button>
+              </span>
+            }
+          />
+          <SettingsRow icon="Aa" label="Yazı boyutu" value={SCALE_NAMES[textSize]} chevron onClick={() => setPicker("scale")} />
+          <SettingsRow
+            icon="palette"
+            label="Renk modu"
+            chevron
+            onClick={() => setPicker("accent")}
+            tail={
+              <span className="vl">
+                <i style={{ width: 12, height: 12, borderRadius: 6, background: (dark ? ACCENT_NIGHT : ACCENT_LIGHT)[accent], display: "block" }} />
+                {ACCENT_NAMES[accent]}
+              </span>
+            }
+          />
+        </Divided>
+      </div>
+
+      <div className="scard"><SettingsRow icon="bell" label="Bildirim tercihleri" chevron onClick={onNotify} /></div>
+      <div className="scard"><SettingsRow icon="shield" label="Güvenlik ayarları" chevron onClick={onSecurity} /></div>
+      <div className="scard"><SettingsRow icon="globe" label="Dil ve Bölge" value={LANG_NAMES[lang]} chevron onClick={() => setPicker("lang")} /></div>
+      <div className="scard">
+        <SettingsRow icon="bars" label="Veri kullanımı" value={DATA_NAMES[dataMode]} chevron onClick={() => setPicker("data")} />
+      </div>
+
+      <div className="settings-head">Yasal ve Uygulama</div>
+      <div className="scard">
+        <Divided>
+          <SettingsRow icon="orders" label="Sözleşmeler" chevron onClick={onContracts} />
+          <SettingsRow icon="shield" label="Gizlilik Politikası" chevron onClick={onPrivacy} />
+          <SettingsRow icon="info" label="Uygulama sürümü" value={`${version} · Sürümünüz güncel.`} />
+        </Divided>
+      </div>
+
+      {picker === "scale" && (
+        <Sheet title="Yazı boyutu" onClose={() => setPicker(null)}>
+          <Choices names={SCALE_NAMES} selected={textSize} onChoose={(index) => { setTextSize(index); setPicker(null); }} />
+        </Sheet>
+      )}
+      {picker === "lang" && (
+        <Sheet title="Dil ve Bölge" onClose={() => setPicker(null)}>
+          <Choices names={LANG_NAMES} selected={lang} onChoose={(index) => { setLang(index); setPicker(null); }} />
+        </Sheet>
+      )}
+      {picker === "data" && (
+        <Sheet title="Veri kullanımı" onClose={() => setPicker(null)}>
+          <Choices names={DATA_NAMES} selected={dataMode} onChoose={(index) => { setDataMode(index); setPicker(null); }} />
+        </Sheet>
+      )}
+      {picker === "accent" && (
+        <Sheet title="Renk modu" onClose={() => setPicker(null)}>
+          <div className="accent-grid">
+            {ACCENT_NAMES.map((name, index) => {
+              const color = (dark ? ACCENT_NIGHT : ACCENT_LIGHT)[index];
+              const on = accent === index;
+              return (
+                <button key={name} className={on ? "on" : ""} onClick={() => { setAccent(index); setPicker(null); }}>
+                  <span className="ring" style={on ? { borderColor: color } : undefined}>
+                    <span className="swatch" style={{ background: color }}>{on && <Icon name="check" size={24} />}</span>
+                  </span>
+                  <span style={on ? { color } : undefined}>{name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Güvenlik ---------- */
+
+export function Security({ onBack, onPassword, sessions, onRevoke, confirmOn, setConfirmOn, passwordChangedAt }) {
+  const [devices, setDevices] = useState(false);
+  const [openSessions, setOpenSessions] = useState(false);
+  const changed = passwordChangedAt ? new Date(passwordChangedAt) : null;
+
+  return (
+    <div className="page gap-14">
+      <CenteredHeader title="Güvenlik" onBack={onBack} />
+      <Section heading="HESAP GÜVENLİĞİ">
+        <SecRow
+          icon="lock"
+          label="Şifre Değiştir"
+          note={changed ? `Son değiştirme: ${changed.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}` : "Şifreni güncelle"}
+          chevron
+          onClick={onPassword}
+        />
+      </Section>
+      <Section heading="GİRİŞ VE CİHAZLAR">
+        <SecRow
+          icon="phone"
+          label="İşlem Onayı"
+          note="Para çekme ve kritik işlemlerde doğrulama"
+          tail={<Toggle on={confirmOn} onChange={setConfirmOn} />}
+        />
+        <SecRow icon="laptop" label="Güvenilir Cihazlar" note={`${sessions.length} kayıtlı cihaz`} chevron onClick={() => setDevices(true)} />
+        <SecRow icon="clock" label="Aktif Oturumlar" note={`${sessions.length} aktif oturum`} chevron onClick={() => setOpenSessions(true)} />
+      </Section>
+
+      {(devices || openSessions) && (
+        <Sheet title={devices ? "Güvenilir Cihazlar" : "Aktif Oturumlar"} onClose={() => { setDevices(false); setOpenSessions(false); }}>
+          <Divided>
+            {sessions.map((session) => {
+              const mobile = /Mobile|Android|iPhone/i.test(session.device || "");
+              return (
+                <div className="sec-row" key={session.id}>
+                  <span className="disc"><Icon name={mobile ? "phone" : "laptop"} size={20} /></span>
+                  <span className="copy">
+                    <strong>{(session.device || "").split(")")[0].split("(").pop() || "Cihaz"}</strong>
+                    <span>{session.ip_address} · Son giriş {session.last_seen_at}</span>
+                  </span>
+                  {session.current
+                    ? <span className="badge-sm buy" style={{ padding: "3px 8px", fontSize: "calc(11px * var(--s))" }}>Bu cihaz</span>
+                    : <button className="link-all" onClick={() => onRevoke(session.id)}>Kapat</button>}
+                  <span />
+                </div>
+              );
+            })}
+          </Divided>
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Şifre Değiştir ---------- */
+
+const RULES = ["En az 8 karakter", "Büyük ve küçük harf", "En az bir rakam", "Özel karakter"];
+const checkRules = (text = "") => [
+  text.length >= 8,
+  /[A-ZĞÜŞİÖÇ]/.test(text) && /[a-zğüşıöç]/.test(text),
+  /\d/.test(text),
+  /[^\p{L}\d\s]/u.test(text),
+];
+
+function PasswordField({ label, value, onChange }) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="pw-field">
+      <label>{label}</label>
+      <div className="box">
+        <input type={shown ? "text" : "password"} value={value} placeholder="••••••••" onChange={(event) => onChange(event.target.value)} />
+        <button className="icon-btn" onClick={() => setShown((current) => !current)} aria-label="Göster">
+          <Icon name={shown ? "eye-off" : "eye"} size={20} color="var(--muted)" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function PasswordPage({ onBack, onSubmit }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [again, setAgain] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ok = checkRules(next);
+  const count = ok.filter(Boolean).length;
+  const tone = count <= 1 ? "var(--red)" : count === 2 ? "var(--ink-orange)" : count === 3 ? "var(--purple)" : "var(--green)";
+  const grade = !next ? "" : count <= 1 ? "Zayıf" : count === 2 ? "Orta" : count === 3 ? "İyi" : "Güçlü";
+
+  const send = async () => {
+    const problem = !current ? "Mevcut şifreni gir."
+      : !ok.every(Boolean) ? "Yeni şifre dört kuralı da karşılamalı."
+        : again !== next ? "Yeni şifreler eşleşmiyor."
+          : current === next ? "Yeni şifre mevcut şifreyle aynı olamaz." : null;
+    if (problem) { setError(problem); return; }
+    setBusy(true);
+    try { await onSubmit(current, next); } catch (problemError) { setError(problemError.message); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="page gap-14">
+      <CenteredHeader title="Şifre Değiştir" onBack={onBack} />
+      <PasswordField label="Mevcut Şifre" value={current} onChange={setCurrent} />
+      <PasswordField label="Yeni Şifre" value={next} onChange={setNext} />
+      <PasswordField label="Yeni Şifre Tekrar" value={again} onChange={setAgain} />
+      <div className="sec-section">
+        <div className="head">ŞİFRE GÜVENLİĞİ</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "12px 2px" }}>
+          <div className="meter">
+            <div className="bar">{[0, 1, 2, 3].map((index) => <i key={index} style={index < count ? { background: tone } : undefined} />)}</div>
+            <span className="grade" style={{ color: tone }}>{grade}</span>
+          </div>
+          {RULES.map((rule, index) => (
+            <div className={`rule${ok[index] ? " ok" : ""}`} key={rule}>
+              <span className="disc"><Icon name="check" size={15} /></span>
+              {rule}
+            </div>
+          ))}
+        </div>
+      </div>
+      {error && <span style={{ fontSize: "calc(12.5px * var(--s))", color: "var(--red)" }}>{error}</span>}
+      <button className="btn primary-lg" disabled={busy} onClick={send}>Şifreyi Değiştir</button>
+    </div>
+  );
+}
+
+/* ---------- Kişisel Bilgiler ---------- */
+
+export function Personal({ onBack, me, onContact, onIdentity }) {
+  return (
+    <div className="page gap-14">
+      <CenteredHeader title="Kişisel Bilgiler" onBack={onBack} />
+      <div className="sec-card">
+        <Divided>
+          <InfoRow title="Kimlik Bilgileri" note="Ad soyad, müşteri no ve hesap bilgileri" chevron onClick={onIdentity} />
+          <InfoRow title="İletişim Bilgileri" note="Telefon, e-posta ve adres bilgileri" chevron onClick={onContact} />
+        </Divided>
+      </div>
+    </div>
+  );
+}
+
+export function Contact({ onBack, me, onNotice }) {
+  return (
+    <div className="page gap-14">
+      <CenteredHeader title="İletişim Bilgileri" onBack={onBack} />
+      <div className="sec-card">
+        <Divided>
+          <InfoRow title="Cep Telefonu" note={me?.phone || "—"} chevron onClick={() => onNotice("Cep Telefonu", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
+          <InfoRow title="E-posta" note={me?.email || "E-postanızı giriniz"} chevron onClick={() => onNotice("E-posta", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
+          <InfoRow title="Adres" note={me?.address || "—"} chevron onClick={() => onNotice("Adres", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
+          <InfoRow title="İl / İlçe" note={`${me?.city || "—"} / ${me?.district || "—"}`} />
+        </Divided>
+      </div>
+      <div className="contact-note">
+        <Icon name="info" size={22} color="var(--muted)" />
+        <span>Telefon ve e-posta değişiklikleri için doğrulama gerekir.</span>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Bildirim Ayarları ---------- */
+
+const NOTIFY_KEYS = ["notify-price", "notify-news", "notify-trade", "notify-referral"];
+const QUIET_HOURS = ["Kapalı", "22:00 - 08:00", "23:00 - 07:00", "00:00 - 08:00"];
+const WEEKLY = ["Kapalı", "Her pazartesi 09:00", "Her cuma 18:00", "Her pazar 20:00"];
+
+export function NotifySettings({ onBack, draft, setDraft, quiet, setQuiet, weekly, setWeekly, onSave }) {
+  const [picker, setPicker] = useState(null);
+  const anyOn = NOTIFY_KEYS.some((key) => draft[key]);
+  const setAll = (on) => setDraft(Object.fromEntries(NOTIFY_KEYS.map((key) => [key, on])));
+
+  const Type = ({ id, title, note }) => (
+    <InfoRow title={title} note={note} tail={<Toggle on={Boolean(draft[id])} onChange={(on) => setDraft({ ...draft, [id]: on })} />} />
+  );
+
+  return (
+    <div className="page gap-14">
+      <CenteredHeader title="Bildirim Ayarları" onBack={onBack} />
+      <div className="sec-card">
+        <InfoRow title="Tüm Bildirimler" note="Tüm bildirimleri tek dokunuşla aç veya kapat" tail={<Toggle on={anyOn} onChange={setAll} />} />
+      </div>
+      <Section heading="BİLDİRİM TÜRLERİ">
+        <Type id="notify-price" title="Fiyat Bildirimleri" note="İzlediğiniz hisselerde fiyat uyarıları" />
+        <Type id="notify-news" title="Haber Bildirimleri" note="Piyasa haberleri ve şirket duyuruları" />
+        <Type id="notify-trade" title="İşlem Bildirimleri" note="Alım, satım ve emir gerçekleşmeleri" />
+        <Type id="notify-referral" title="Referans Bildirimleri" note="Referansınızın işlem ve fırsat duyuruları" />
+      </Section>
+      <Section heading="ZAMANLAMA">
+        <InfoRow title="Sessiz Saatler" note={QUIET_HOURS[quiet]} chevron onClick={() => setPicker("quiet")} />
+        <InfoRow title="Haftalık Özet" note={WEEKLY[weekly]} chevron onClick={() => setPicker("weekly")} />
+      </Section>
+      <button className="btn primary-lg" onClick={onSave}>Kaydet</button>
+
+      {picker === "quiet" && (
+        <Sheet title="Sessiz Saatler" onClose={() => setPicker(null)}>
+          <Choices names={QUIET_HOURS} selected={quiet} onChoose={(index) => { setQuiet(index); setPicker(null); }} />
+        </Sheet>
+      )}
+      {picker === "weekly" && (
+        <Sheet title="Haftalık Özet" onClose={() => setPicker(null)}>
+          <Choices names={WEEKLY} selected={weekly} onChoose={(index) => { setWeekly(index); setPicker(null); }} />
+        </Sheet>
+      )}
+    </div>
+  );
+}
+
+export { NOTIFY_KEYS };
+
+/* ---------- Sözleşmeler ---------- */
+
+export function ContractsList({ onBack, onOpen }) {
+  return (
+    <div className="page gap-12">
+      <PageHeader title="Sözleşmeler" onBack={onBack} />
+      <div className="card outline" style={{ padding: "3px 16px" }}>
+        <Divided>
+          {CONTRACTS.map((item, index) => (
+            <button className="contract-row" key={item.title} onClick={() => onOpen(item)}>
+              <span className="num">{index + 1}</span>
+              <span style={{ textAlign: "left" }}>{item.title}</span>
+              <Icon name="chevron" size={18} color="var(--muted)" />
+            </button>
+          ))}
+        </Divided>
+      </div>
+      <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--muted)" }}>Bu metinler bilgilendirme amaçlıdır.</span>
+    </div>
+  );
+}
+
+export function DocumentPage({ document: doc, onBack }) {
+  const blocks = useMemo(() => {
+    const out = [];
+    for (const raw of (doc?.body || "").split("\n")) {
+      const line = raw.trim();
+      if (!line) continue;
+      if (line.startsWith("* ")) { out.push({ type: "bullet", text: line.slice(2) }); continue; }
+      const numbered = line.length > 2 && /^\d/.test(line) && line.indexOf(". ") >= 0 && line.indexOf(". ") < 4;
+      const heading = line.startsWith("Madde ") || numbered || (line.length < 64 && !".;:,".includes(line[line.length - 1]));
+      out.push({ type: heading ? "head" : "text", text: line });
+    }
+    return out;
+  }, [doc]);
+
+  return (
+    <div className="page gap-14">
+      <PageHeader title={doc?.title || "Belge"} onBack={onBack} />
+      <div className="doc-card">
+        {blocks.map((block, index) =>
+          block.type === "head" ? <h3 key={index}>{block.text}</h3>
+            : block.type === "bullet" ? <div className="bullet" key={index}><span>•</span><span>{block.text}</span></div>
+              : <p key={index}>{block.text}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export { CONTRACTS, PRIVACY };
