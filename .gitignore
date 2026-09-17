@@ -22,3 +22,15 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+__pycache__/
+*.pyc
+
+# Local reference/QA material, not part of the app
+/data/
+/apk-audit/
+/apk-focused/
+/apk-*.png
+/apk-current.xml
+/qa-*.png
+/needed-contact-sheet.jpg

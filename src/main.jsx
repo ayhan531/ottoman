@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import {
   ArrowDown, ArrowLeftRight, ArrowUp, Bell, CheckCircle2, ChevronDown, ChevronRight, ChevronLeft, ExternalLink, Menu,
-  CircleUserRound, CreditCard, Eye, EyeOff, FileText, Home, Info, Landmark, LockKeyhole,
+  CircleUserRound, CreditCard, Eye, EyeOff, FileText, Globe, Home, Info, Landmark, LockKeyhole,
   Moon, Newspaper, PieChart, Search, ShieldCheck, Star, Sun, Users, X,
 } from "lucide-react";
 import "./style.css";
@@ -58,15 +58,15 @@ function StatusBar() {
   return <div className="status"><span>20:30</span><span className="status-icons">◒ ◒ ◉</span><span className="status-right">◆ ◢ ▮</span></div>;
 }
 
-function BrandHeader({ showAvatar = true, onNotify, dark, toggleDark, openProfile, me }) {
+function BrandHeader({ showAvatar = true, showBrand = true, onNotify, unreadCount = 0, dark, toggleDark, openProfile, openAdmin, me }) {
   return (
     <header className="brand-header">
-      {showAvatar ? <button className="avatar profile-trigger" onClick={openProfile}>İS</button> : <div />}
-      <div className="brand">Ottoman</div>
+      {showAvatar ? <button className="avatar profile-trigger" onClick={openProfile}>{me?.avatar_url ? <img src={me.avatar_url} alt="" /> : "İS"}</button> : <div />}
+      <div className="brand">{showBrand ? "Ottoman" : ""}</div>
       <div className="header-actions">
-        <button onClick={onNotify} title="Bildirimler"><Bell size={27} /></button>
+        {me?.role === "admin" && <button className="admin-chip" onClick={openAdmin} title="Admin paneline git"><ShieldCheck size={14} /> Admin</button>}
+        <button className="bell-button" onClick={onNotify} title="Bildirimler"><Bell size={27} />{unreadCount > 0 && <i className="notify-dot" />}</button>
         <button onClick={toggleDark} title="Tema">{dark ? <Sun size={30} /> : <Moon size={30} />}</button>
-        {me?.role === "admin" && <button className="admin-chip" title="Admin">Admin</button>}
       </div>
     </header>
   );
@@ -230,10 +230,29 @@ function PortfolioScreen({ openTrade, portfolio, common }) {
   const [hidden, setHidden] = useState(false);
   const [search, setSearch] = useState("");
   const [chartPoint, setChartPoint] = useState(4);
+  const [detailOrder, setDetailOrder] = useState(null);
   const carouselRef = useRef(null);
+  const cardRefs = useRef([]);
   const [cardIndex, setCardIndex] = useState(0);
-  const showCard = (index) => { const el = carouselRef.current; if (el) el.scrollTo({ left: index * (el.clientWidth + 16), behavior: "smooth" }); };
+  const showCard = (index) => { cardRefs.current[index]?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" }); };
+  const onCarouselScroll = (e) => {
+    const el = e.currentTarget;
+    const step = el.clientWidth + 16;
+    setCardIndex(step ? Math.min(1, Math.max(0, Math.round(el.scrollLeft / step))) : 0);
+  };
   const account = portfolio?.account || {};
+  const [t2Toast, setT2Toast] = useState(false);
+  const prevPendingRef = useRef(null);
+  useEffect(() => {
+    const nextPending = Number(account.pending_balance || 0);
+    if (prevPendingRef.current !== null && nextPending > prevPendingRef.current) {
+      setT2Toast(true);
+      const timer = setTimeout(() => setT2Toast(false), 1800);
+      prevPendingRef.current = nextPending;
+      return () => clearTimeout(timer);
+    }
+    prevPendingRef.current = nextPending;
+  }, [account.pending_balance]);
   const apiPositions = (portfolio?.positions || []).map((p) => ({
     code: p.symbol,
     name: p.name || p.symbol,
@@ -259,15 +278,16 @@ function PortfolioScreen({ openTrade, portfolio, common }) {
   const activeChart = chartData[chartPoint] || chartData[0] || ["Pozisyon yok", 0];
   return (
     <main className="screen scroll portfolio-screen">
-      <BrandHeader showAvatar={false} {...common} />
+      <BrandHeader showAvatar={false} showBrand={false} {...common} />
+      {t2Toast && <div className="t2-toast">T2 takasta</div>}
       <div className="portfolio-heading"><div><span>Varlıklarım</span><h1>Portföyüm</h1></div><div className="carousel-controls"><button title="Portföy özeti" aria-label="Önceki grafik" onClick={() => showCard(0)} disabled={cardIndex === 0}><ChevronLeft /></button><span>{cardIndex + 1} / 2</span><button title="Getiri grafiği" aria-label="Sonraki grafik" onClick={() => showCard(1)} disabled={cardIndex === 1}><ChevronRight /></button></div></div>
-      <div ref={carouselRef} onScroll={(e) => setCardIndex(e.currentTarget.scrollLeft > e.currentTarget.clientWidth / 2 ? 1 : 0)} className="portfolio-carousel" aria-label="Portföy özet ve getiri kartları">
-        <section className="portfolio-card portfolio-summary-card">
+      <div ref={carouselRef} onScroll={onCarouselScroll} className="portfolio-carousel" aria-label="Portföy özet ve getiri kartları">
+        <section ref={(el) => (cardRefs.current[0] = el)} className="portfolio-card portfolio-summary-card">
           <div className="portfolio-top"><span>Portföy özeti</span><button onClick={() => setHidden(!hidden)}>{hidden ? <EyeOff size={24} /> : <Eye size={24} />}</button></div>
-          <div className="portfolio-grid"><div><h1>{mask(money(totalValue))}</h1><p>{mask(money(profit))} toplam kâr / zarar</p><div className="balance-pair"><span>Kullanılabilir<strong>{mask(money(cash))}</strong></span><span>T+2 Bakiye<strong>{mask(money(pending))}</strong></span></div></div><div className="donut" style={{ background: `conic-gradient(#fff 0 ${totalValue ? portfolioValue / totalValue * 100 : 0}%, #bcaeff 0 100%)` }}><div>{hidden ? "••" : `%${totalValue ? Math.round(portfolioValue / totalValue * 100) : 0}`}</div></div></div>
+          <div className="portfolio-grid"><div><h1>{mask(money(totalValue))}</h1><p>{mask(money(profit))} toplam kâr / zarar</p><div className="balance-pair"><span>Kullanılabilir<strong>{mask(money(cash))}</strong></span><span>T+2 Bakiye<strong>{mask(money(pending))}</strong></span></div></div><div className="donut" style={{ background: (() => { const posPct = totalValue ? Math.min(100, portfolioValue / totalValue * 100) : 0; const karPct = Math.min(6, Math.max(2, 100 - posPct)); const posEnd = Math.max(0, posPct - karPct); return `conic-gradient(#fff 0 ${posEnd}%, #72deb7 ${posEnd}% ${posEnd + karPct}%, #ffd47b ${posEnd + karPct}% 100%)`; })() }}><div>{hidden ? "••" : `%${totalValue ? Math.round(portfolioValue / totalValue * 100) : 0}`}</div></div></div>
           <div className="legend"><span><i /> Pozisyonlar · {mask(money(portfolioValue))}</span><span><i /> Nakit · {mask(money(cash + pending))}</span><span><i /> Getiri · {mask(pct(profitRate))}</span></div>
         </section>
-        <section className="portfolio-card chart-card">
+        <section ref={(el) => (cardRefs.current[1] = el)} className="portfolio-card chart-card">
           <div className="portfolio-top"><span>Getiri grafiği</span><b>{activeChart[0]} · %{activeChart[1].toLocaleString("tr-TR", { minimumFractionDigits: 2 })}</b></div>
           <div className="position-return-chart">{chartData.length ? chartData.map(([symbol, value], index) => <button key={symbol} onClick={() => setChartPoint(index)} className={activeChart[0] === symbol ? "selected" : ""}><span>{symbol}</span><i style={{ width: `${Math.max(2, Math.abs(value) / Math.max(1, ...chartData.map(([,v]) => Math.abs(v))) * 100)}%`, background: value >= 0 ? '#9af0b4' : '#ffb0c2' }} /><strong>{hidden ? "••••" : pct(value)}</strong></button>) : <p>Getiri grafiği için henüz açık pozisyon bulunmuyor.</p>}</div>
         </section>
@@ -275,9 +295,49 @@ function PortfolioScreen({ openTrade, portfolio, common }) {
       <div className="segments">{["Pozisyonlar", "Emirler", "Geçmiş"].map((item) => <button className={segment === item ? "active" : ""} onClick={() => setSegment(item)} key={item}>{item}</button>)}</div>
       <SearchBox placeholder="İşlem ara" value={search} onChange={setSearch} /><h1 className="page-title lower">{segment}</h1>
       {segment === "Pozisyonlar" && shownPositions.map((item) => <button className="position-row" key={item.code} onClick={() => openTrade(item)}><StockLogo item={item} pale /><div className="stock-copy"><strong>{item.code}</strong><span>{item.name}</span><small>{item.lots}</small></div><div className="position-price"><strong>{mask(item.profit)}</strong><span>{mask(item.value)}</span></div><ChevronRight size={25} /></button>)}
-      {segment === "Emirler" && <ListEmptyAware items={orders} empty="Henüz emir kaydı yok." render={(o) => <div className="admin-row" key={o.id}><span><strong>{o.symbol} · {o.side_label || o.side}</strong><small>{o.quantity} lot · {money(o.total)} · {o.status_label || o.status}</small></span></div>} />}
+      {segment === "Emirler" && <ListEmptyAware items={orders} empty="Henüz emir kaydı yok." render={(o) => {
+        const canOpenDetail = o.side === "sell" && o.status === "approved";
+        const Row = canOpenDetail ? "button" : "div";
+        return <Row className="admin-row" key={o.id} onClick={canOpenDetail ? () => setDetailOrder(o) : undefined}><span><strong>{o.symbol} · {o.side_label || o.side}</strong><small>{o.quantity} lot · {money(o.total)} · {o.status_label || o.status}</small></span>{canOpenDetail && <ChevronRight size={20} />}</Row>;
+      }} />}
       {segment === "Geçmiş" && <ListEmptyAware items={transactions} empty="Henüz işlem geçmişi yok." render={(t, i) => <div className="admin-row" key={t.id || i}><span><strong>{t.type_label || t.event_type || "İşlem"}</strong><small>{money(t.amount || t.total || 0)} · {t.status_label || t.created_at || "Tamamlandı"}</small></span></div>} />}
+      {detailOrder && <PositionDetail order={detailOrder} onClose={() => setDetailOrder(null)} />}
     </main>
+  );
+}
+
+function PositionDetail({ order, onClose }) {
+  const o = order;
+  const item = { code: o.symbol, mark: markFor(o.symbol), color: colorFor(o.symbol) };
+  const qty = Number(o.quantity || 0);
+  const sellPrice = Number(o.limit_price || 0);
+  const avgCost = Number(o.avg_cost_price || 0);
+  const totalCost = Number(o.total_cost || avgCost * qty);
+  const commission = Number(o.commission || 0);
+  const netIncome = Number(o.net_income ?? (sellPrice * qty - commission - totalCost));
+  const netResult = sellPrice * qty - commission;
+  const ratio = totalCost ? (netIncome / totalCost) * 100 : 0;
+  const loss = netIncome < 0;
+  const rows = [
+    ["Alınan adet", `${qty} lot`],
+    ["Satış tarihi", o.reviewed_at_label || o.created_at_label || "-"],
+    ["Ort. alış fiyatı", money(avgCost)],
+    ["Satış fiyatı", money(sellPrice)],
+    ["Toplam Maliyet", money(totalCost)],
+    ["Komisyon", commission ? money(commission) : "Ücretsiz"],
+    ["Net Sonuç", money(netResult)],
+  ];
+  return (
+    <div className="modal-layer">
+      <section className="trade-modal readable-modal position-detail">
+        <button className="close" onClick={onClose}><X /></button>
+        <div className="trade-head"><StockLogo item={item} /><div><h2>{o.symbol}</h2><p>{o.name || o.symbol}</p></div><span className="status-pill">{o.status_label || "Gerçekleşti"}</span></div>
+        <div className={`profit-preview${loss ? " loss" : ""}`}><span><b>Net kâr / zarar</b><strong>{netIncome >= 0 ? "+" : "-"}{money(Math.abs(netIncome))}</strong></span><span><b>K/Z Oranı</b><em>{ratio >= 0 ? "+" : "-"}{Math.abs(ratio).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</em></span></div>
+        <h3 className="muted-heading">İşlem Detayları</h3>
+        <div className="settings-card">{rows.map(([label, value]) => <div className="settings-row" key={label}><span><strong>{label}</strong></span><b>{value}</b></div>)}</div>
+        <button className="confirm" onClick={onClose}>Devam et</button>
+      </section>
+    </div>
   );
 }
 
@@ -350,7 +410,6 @@ function TradeModal({ stock, onClose, refresh, favorites, toggleFavorite }) {
         <div className="percent-row">{[25, 50, 75, 100].map((n) => <button onClick={() => setAmount(n)} key={n}>%{n}</button>)}<button className="text" onClick={() => setAmount(250)}>Tümü</button></div>
         <div className="range-line"><span>Oran</span><b>%{Math.min(100, Math.round((amount / 250) * 100)) || 0}</b><input type="range" min="0" max="250" value={amount} onChange={(e) => setAmount(Number(e.target.value))} /></div>
         <div className="trade-capacity"><span>Kullanılabilir bakiye <strong>₺24.200,00</strong></span><span>Maks. 58 lot</span></div>
-        <div className="profit-preview"><span><b>Net kâr / zarar</b><strong>+₺391,00</strong></span><span><b>K/Z Oranı</b><em>+4.97%</em></span></div>
         <div className="total-box"><span>Toplam</span><strong>{money(total)}</strong></div>
         {message && <div className="warning">{message}</div>}
         <button className={`confirm ${side === "sell" ? "danger" : ""}`} onClick={submitOrder}>{side === "buy" ? "Alış" : "Satış"} emri ver</button>
@@ -456,7 +515,7 @@ function AuthScreen({ onAuthed, back }) {
   );
 }
 
-function AdminPanel({ data, refresh, logout }) {
+function AdminPanel({ data, refresh, logout, onClose }) {
   const [tab, setTab] = useState("Özet");
   const [selectedUser, setSelectedUser] = useState(null);
   const summary = data?.summary || {};
@@ -480,6 +539,14 @@ function AdminPanel({ data, refresh, logout }) {
     await api(path, { method: "POST", body: JSON.stringify({ reason }) });
     await refresh();
   };
+  const t2Enabled = data?.system_settings?.t2_enabled === "1";
+  const toggleT2 = async () => {
+    const password = prompt("Admin şifrenizi tekrar girin");
+    if (!password) return;
+    await api("/api/admin/step-up", { method: "POST", body: JSON.stringify({ password }) });
+    await api("/api/admin/system-settings", { method: "POST", body: JSON.stringify({ t2_enabled: t2Enabled ? "0" : "1" }) });
+    await refresh();
+  };
   const setUserBalance = async (user) => {
     const input = document.getElementById(`balance-${user.id}`);
     const amount = Number(String(input?.value || "").replace(",", "."));
@@ -494,7 +561,7 @@ function AdminPanel({ data, refresh, logout }) {
   return (
     <div className="stage admin-stage"><div className="phone admin-phone"><main className="screen scroll admin-screen">
       <BrandHeader showAvatar={false} />
-      <div className="section-title"><h2>Admin Paneli</h2><button onClick={logout}>Çıkış</button></div>
+      <div className="section-title"><h2>Admin Paneli</h2><b><button onClick={onClose}>Müşteri görünümü</button><button onClick={logout}>Çıkış</button></b></div>
       <div className="segments admin-tabs">{["Özet", "Müşteriler", "Emirler", "Para", "Risk", "Sistem", "Raporlar"].map((x) => <button className={tab === x ? "active" : ""} onClick={() => setTab(x)} key={x}>{x}</button>)}</div>
       <div className="admin-grid">
         <article><span>Kullanıcı</span><strong>{summary.users_total ?? users.length}</strong></article>
@@ -508,14 +575,16 @@ function AdminPanel({ data, refresh, logout }) {
       {["Özet", "Müşteriler"].includes(tab) && <><h2 className="solo-title">Müşteriler</h2>{users.slice(0, 20).map((u) => <div className="admin-row admin-user-row" key={u.id} onClick={() => setSelectedUser(u)}><span><strong>{u.full_name}</strong><small>{u.status_label || u.status} · {u.email} · {u.account_no} · {u.phone || "telefon yok"}</small></span>{u.status !== "approved" && <b><button onClick={(e) => { e.stopPropagation(); act(`/api/admin/users/${u.id}/approve`, "approve"); }}>Onay</button></b>}</div>)}</>}
       {["Özet", "Para"].includes(tab) && <><h2 className="solo-title">Para Talepleri</h2>{moneyReqs.slice(0, 20).map((m) => <div className="admin-row" key={m.id}><span><strong>{m.type_label || m.request_type}</strong><small>{m.full_name} · {money(m.amount)} · {m.status_label || m.status}</small></span>{m.status === "pending" && <b><button onClick={() => act(`/api/admin/money/${m.id}/approve`, "approve")}>Onay</button><button onClick={() => act(`/api/admin/money/${m.id}/reject`, "reject")}>Ret</button></b>}</div>)}</>}
       {tab === "Risk" && <section className="admin-matrix">{[["Risk skoru", "İzleniyor", `${pendingUsers} kullanıcı onay/uyum kuyruğunda`], ["KYC/KVKK", "Aktif", "Sözleşme ve kimlik statüsü kullanıcı kartında"], ["Sözleşmeler", "Kayıtlı", "KVKK, risk bildirimi ve e-şube kabulü"], ["Limit aşımı", money(exposure), "Toplam emir hacmi"], ["Şüpheli işlem", pendingMoney ? "İncele" : "Temiz", `${money(pendingMoney)} bekleyen para talebi`], ["Oturum sağlığı", "Step-up", "Kritik admin işlemlerinde şifre doğrulama"]].map(([x, state, detail]) => <article key={x}><span>{x}</span><strong>{state}</strong><small>{detail}</small></article>)}</section>}
-      {tab === "Sistem" && <section className="settings-card report-card">{[["Piyasa veri akışı", `${marketMeta.ok === false ? "Yedekli" : "Çalışıyor"} · ${marketMeta.source || "trrealapi-market"}`], ["Haber servisi", `${newsMeta.ok === false ? "Yedekli" : "Çalışıyor"} · ${newsMeta.count || 0} haber`], ["Emir motoru", `${orders.length} emir · canlı fiyat doğrulama`], ["Para hareketleri", `${moneyReqs.length} talep · ${money(pendingMoney)} bekleyen`], ["Admin step-up", "Kritik işlem öncesi parola doğrulama"], ["Audit log", `${reports.audit?.length || 0} son kayıt görünür`]].map(([x, detail]) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>{detail}</small></span><CheckCircle2 /></button>)}<button className="settings-row"><span><strong>T+2 sistemi</strong><small>Varsayılan kapalı · satış sonrası admin isterse açar</small></span><Moon /></button></section>}
+      {tab === "Sistem" && <section className="settings-card report-card">{[["Piyasa veri akışı", `${marketMeta.ok === false ? "Yedekli" : "Çalışıyor"} · ${marketMeta.source || "trrealapi-market"}`], ["Haber servisi", `${newsMeta.ok === false ? "Yedekli" : "Çalışıyor"} · ${newsMeta.count || 0} haber`], ["Emir motoru", `${orders.length} emir · canlı fiyat doğrulama`], ["Para hareketleri", `${moneyReqs.length} talep · ${money(pendingMoney)} bekleyen`], ["Admin step-up", "Kritik işlem öncesi parola doğrulama"], ["Audit log", `${reports.audit?.length || 0} son kayıt görünür`]].map(([x, detail]) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>{detail}</small></span><CheckCircle2 /></button>)}<button className={`settings-row t2-toggle-row${t2Enabled ? " on" : ""}`} onClick={toggleT2}><span><strong>T+2 sistemi</strong><small>{t2Enabled ? "Açık · satış bakiyesi T+2 gününde serbest kalır" : "Kapalı · satış bakiyesi anında kullanılabilir"}</small></span><b className="toggle-pill">{t2Enabled ? "Açık" : "Kapalı"}</b></button></section>}
       {tab === "Raporlar" && <section className="settings-card report-card">{[["Risk ve Uyum", `Kullanıcı statüleri: ${(reports.users || []).length} grup`], ["Operasyon", `Bekleyen emir ${orders.filter((o) => o.status === "pending").length} · para talebi ${moneyReqs.filter((m) => m.status === "pending").length}`], ["Müşteri 360", `Bakiye, emir, para, sözleşme, güvenlik ve işlem geçmişi`], ["Mutabakat", `Nakit ${money(reports.reconciliation?.cash || summary.cash_total || 0)} · Bloke ${money(reports.reconciliation?.blocked || summary.blocked_total || 0)}`]].map(([title, detail]) => <button className="settings-row" key={title}><span><strong>{title}</strong><small>{detail}</small></span><CheckCircle2 /></button>)}</section>}
       {selectedUser && <div className="modal-layer"><section className="trade-modal readable-modal admin-profile"><button className="close" onClick={() => setSelectedUser(null)}><X /></button><h2>{selectedUser.full_name}</h2><p className="subtle-count">{selectedUser.account_no} · {selectedUser.status_label || selectedUser.status}</p><div className="admin-matrix mini">{["Ana Bakiye", "Alış", "Satış", "İşlem", "KVKK", "Risk"].map((x, i) => <article key={x}><span>{x}</span><strong>{[money(selectedUser.cash_balance || 0), selectedUser.buy_count || 0, selectedUser.sell_count || 0, selectedUser.transaction_count || 0, "Kabul", "Orta"][i]}</strong></article>)}</div><h3 className="muted-heading">Ana bakiye düzeltme</h3><div className="admin-balance-edit"><input id={`balance-${selectedUser.id}`} placeholder="Yeni ana bakiye" inputMode="decimal" defaultValue={Number(selectedUser.cash_balance || 0).toFixed(2)} /><button onClick={() => setUserBalance(selectedUser)}>Bakiyeyi Düzelt</button></div><h3 className="muted-heading">İşlem geçmişi</h3><div className="settings-card"><div className="settings-row"><span><strong>Toplam emir</strong><small>{selectedUser.order_count || 0} adet · Alış {selectedUser.buy_count || 0} · Satış {selectedUser.sell_count || 0}</small></span></div><div className="settings-row"><span><strong>Son hareket</strong><small>{selectedUser.transaction_count || 0} işlem kaydı · {money(selectedUser.cash_balance || 0)} bakiye</small></span></div><div className="settings-row"><span><strong>KYC / Sözleşme</strong><small>{selectedUser.kyc_status_label || selectedUser.kyc_status || "Onaylandı"} · Tam</small></span></div></div><button className="confirm" onClick={() => setSelectedUser(null)}>Kapat</button></section></div>}
     </main><div className="home-indicator" /></div></div>
   );
 }
 
-function Subpage({ title, onClose, refresh, me, portfolio }) {
+const TEXT_SIZE_LABEL = { sm: "Küçük", md: "Orta", lg: "Büyük" };
+
+function Subpage({ title, onClose, refresh, me, portfolio, lang = "tr", cycleLang, textSize = "md", cycleTextSize }) {
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const type = title === "Para çek" ? "withdraw" : "deposit";
@@ -538,21 +607,37 @@ function Subpage({ title, onClose, refresh, me, portfolio }) {
     {title === "Kişisel bilgiler" && <div className="settings-card"><div className="settings-row"><span><strong>Cep Telefonu</strong><small>{me?.phone || "+90 5-- -- --"}</small></span><ChevronRight /></div><div className="settings-row"><span><strong>E-posta</strong><small>{me?.email || "E-posta yok"}</small></span><ChevronRight /></div><div className="settings-row"><span><strong>Adres</strong><small>{me?.address || "Kayıtlı adres bulunmuyor"}</small></span><ChevronRight /></div><div className="settings-row"><span><strong>İl / İlçe</strong><small>{me?.city || "İstanbul"} / {me?.district || "Merkez"}</small></span><ChevronRight /></div><div className="settings-row"><span><strong>Tebligat Tercihi</strong><small>E-posta</small></span><CheckCircle2 /></div></div>}
     {title === "Güvenlik" && <div className="settings-card"><button className="settings-row"><span><strong>Şifre Değiştir</strong><small>Son değiştirme bilgisi ve parola yenileme</small></span><ChevronRight /></button><button className="settings-row"><span><strong>İşlem Onayı</strong><small>Para çekme ve kritik işlemlerde doğrulama</small></span><CheckCircle2 /></button><button className="settings-row"><span><strong>Güvenilir Cihazlar</strong><small>Bu oturuma bağlı cihazları görüntüle</small></span><ChevronRight /></button><button className="settings-row"><span><strong>Aktif Oturumlar</strong><small>1 aktif oturum</small></span><ChevronRight /></button></div>}
     {title === "Sözleşmeler" && <div className="settings-card">{["KVKK Aydınlatma Metni", "Çerçeve Sözleşme", "Risk Bildirim Formu", "E-Şube Kullanım Koşulları"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Görüntüle ve kabul durumunu incele</small></span><FileText /></button>)}</div>}
-    {title === "Bildirim ayarları" && <div className="settings-card">{["Tüm Bildirimler", "Fiyat Bildirimleri", "Haber Bildirimleri", "İşlem Bildirimleri", "Referans bildirimi"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Açık</small></span><CheckCircle2 /></button>)}</div>}
+    {title === "Bildirim ayarları" && <div className="settings-card compact">{["Tüm Bildirimler", "Fiyat Bildirimleri", "Haber Bildirimleri", "İşlem Bildirimleri", "Referans bildirimi"].map((x) => <button className="settings-row" key={x}><span><strong>{x}</strong><small>Açık</small></span><CheckCircle2 /></button>)}</div>}
     {title === "Referans Fırsatları" && <div className="bank-empty"><p>Referans fırsatları için referansınız ile iletişime geçiniz.</p><button className="confirm" onClick={onClose}>Tamam</button></div>}
     {title === "Fotoğraf yükle" && <div className="settings-card"><button className="settings-row"><span><strong>Profil fotoğrafı seç</strong><small>JPG veya PNG yükleyebilirsin.</small></span><CircleUserRound /></button></div>}
     {title === "Uygulamayı yükle" && <div className="settings-card"><button className="settings-row"><span><strong>Android</strong><small>Ana ekrana ekle ve uygulama gibi kullan.</small></span><ArrowDown /></button><button className="settings-row"><span><strong>Apple</strong><small>Safari paylaş menüsünden ana ekrana ekle.</small></span><ArrowDown /></button></div>}
-    {title === "Ayarlar" && <div className="settings-card"><button className="settings-row"><span><strong>Tema</strong><small>Açık / Koyu</small></span><Moon /></button><button className="settings-row"><span><strong>Yazı boyutu</strong><small>Orta</small></span><ChevronRight /></button><button className="settings-row"><span><strong>Renk modu</strong><small>Mavi</small></span><ChevronRight /></button></div>}
+    {title === "Ayarlar" && <div className="settings-card">
+      <button className="settings-row"><span><strong>Tema</strong><small>Açık / Koyu</small></span><Moon /></button>
+      <button className="settings-row" onClick={cycleTextSize}><span><strong>Yazı boyutu</strong><small>{TEXT_SIZE_LABEL[textSize] || "Orta"}</small></span><ChevronRight /></button>
+      <button className="settings-row"><span><strong>Renk modu</strong><small>Mavi</small></span><ChevronRight /></button>
+      <button className="settings-row" onClick={cycleLang}><span><strong>Dil ve Bölge</strong><small>{LANG_LABEL[lang] || LANG_LABEL.tr}</small></span><Globe /></button>
+      <div className="settings-row app-version-row"><span><strong>Uygulama sürümü</strong><small>1.6.3 · Sürümünüz güncel</small></span><CheckCircle2 color="#0f9f70" /></div>
+    </div>}
     {message && <div className="warning">{message}</div>}
   </section></div>;
 }
 
-function Notifications({ onClose }) {
-  return <div className="modal-layer"><section className="trade-modal readable-modal notifications-sheet"><button className="close" onClick={onClose}><X /></button><h2>Bildirimler</h2><div className="notice-empty"><Bell size={44} /><p>Henüz yeni bir bildirimin yok.</p></div></section></div>;
+function Notifications({ onClose, items = [] }) {
+  return <div className="modal-layer"><section className="trade-modal readable-modal notifications-sheet"><button className="close" onClick={onClose}><X /></button><h2>Bildirimler</h2>
+    {items.length ? <div className="settings-card">{items.map((n) => <div className="settings-row notification-row" key={n.id}><span><strong>{n.title}</strong><small>{n.body}</small><small className="notification-date">{n.created_at_label}</small></span>{!n.read_at && <i className="unread-dot" />}</div>)}</div> : <div className="notice-empty"><Bell size={44} /><p>Henüz yeni bir bildirimin yok.</p></div>}
+  </section></div>;
 }
 
-function Nav({ active, setActive }) {
-  const items = [["home", "Ana Sayfa", Home], ["news", "Haberler", Newspaper], ["trade", "Al/Sat", ArrowLeftRight], ["portfolio", "Portföy", PieChart], ["account", "Hesap", CircleUserRound]];
+const NAV_I18N = {
+  tr: { home: "Ana Sayfa", news: "Haberler", trade: "Al/Sat", portfolio: "Portföy", account: "Hesap" },
+  en: { home: "Home", news: "News", trade: "Trade", portfolio: "Portfolio", account: "Account" },
+  ar: { home: "الرئيسية", news: "الأخبار", trade: "تداول", portfolio: "المحفظة", account: "الحساب" },
+};
+const LANG_LABEL = { tr: "Türkçe", en: "English", ar: "العربية" };
+
+function Nav({ active, setActive, lang = "tr" }) {
+  const labels = NAV_I18N[lang] || NAV_I18N.tr;
+  const items = [["home", labels.home, Home], ["news", labels.news, Newspaper], ["trade", labels.trade, ArrowLeftRight], ["portfolio", labels.portfolio, PieChart], ["account", labels.account, CircleUserRound]];
   return <nav className="bottom-nav">{items.map(([id, label, Icon]) => <button className={`${active === id ? "active" : ""} ${id === "trade" ? "trade-tab" : ""}`} key={id} onClick={() => setActive(id)}><Icon size={id === "trade" ? 34 : 31} /><span>{label}</span></button>)}</nav>;
 }
 
@@ -572,6 +657,14 @@ function App() {
   const [newsMeta, setNewsMeta] = useState({});
   const [portfolio, setPortfolio] = useState(null);
   const [adminData, setAdminData] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [lang, setLang] = useState(() => localStorage.getItem("ottoman_lang") || "tr");
+  useEffect(() => { localStorage.setItem("ottoman_lang", lang); }, [lang]);
+  const [textSize, setTextSize] = useState(() => localStorage.getItem("ottoman_text_size") || "md");
+  useEffect(() => { localStorage.setItem("ottoman_text_size", textSize); }, [textSize]);
+  const cycleTextSize = () => setTextSize((t) => (t === "sm" ? "md" : t === "md" ? "lg" : "sm"));
   const normalizeUser = (data) => data?.user || (data?.id ? data : null);
   const openTrade = (stock) => setTrade(stock || stocks[0]);
   const toggleFavorite = (code) => setFavorites((old) => {
@@ -579,7 +672,9 @@ function App() {
     next.has(code) ? next.delete(code) : next.add(code);
     return next;
   });
-  const common = { onNotify: () => setNotify(true), dark, toggleDark: () => setDark((v) => !v), openProfile: () => setProfileMenu(true), me };
+  const openNotifications = () => { setNotify(true); if (unreadCount) api("/api/notifications/read", { method: "POST", body: "{}" }).then(loadNotifications).catch(() => {}); };
+  const common = { onNotify: openNotifications, unreadCount, dark, toggleDark: () => setDark((v) => !v), openProfile: () => setProfileMenu(true), openAdmin: () => setShowAdmin(true), me };
+  const cycleLang = () => setLang((l) => (l === "tr" ? "en" : l === "en" ? "ar" : "tr"));
   const loadCore = async () => {
     const [m, n] = await Promise.allSettled([api("/api/market"), api("/api/news")]);
     if (m.status === "fulfilled") {
@@ -592,16 +687,21 @@ function App() {
     }
   };
   const loadPortfolio = async () => {
-    if (!me || me.role === "admin") return;
+    if (!me) return;
     const p = await api("/api/portfolio").catch(() => null);
     if (p) setPortfolio(p);
   };
+  const loadNotifications = async () => {
+    if (!me) return;
+    const n = await api("/api/notifications").catch(() => null);
+    if (n) { setNotifications(n.notifications || []); setUnreadCount(n.unread_count || 0); }
+  };
   const loadAdmin = async () => {
     if (!me || me.role !== "admin") return;
-    const [summary, users, orders, moneyData, reports] = await Promise.all([api("/api/admin/summary"), api("/api/admin/users"), api("/api/admin/orders"), api("/api/admin/money"), api("/api/admin/reports").catch(() => ({}))]);
-    setAdminData({ ...(summary || {}), users: users.users || [], orders: orders.orders || [], money_requests: moneyData.money_requests || [], reports, market_meta: marketMeta, news_meta: newsMeta });
+    const [summary, users, orders, moneyData, reports, systemSettings] = await Promise.all([api("/api/admin/summary"), api("/api/admin/users"), api("/api/admin/orders"), api("/api/admin/money"), api("/api/admin/reports").catch(() => ({})), api("/api/admin/system-settings").catch(() => ({}))]);
+    setAdminData({ ...(summary || {}), users: users.users || [], orders: orders.orders || [], money_requests: moneyData.money_requests || [], reports, market_meta: marketMeta, news_meta: newsMeta, system_settings: systemSettings.settings || {} });
   };
-  const refresh = async () => { await loadCore(); await loadPortfolio(); await loadAdmin(); };
+  const refresh = async () => { await loadCore(); await loadPortfolio(); await loadAdmin(); await loadNotifications(); };
   const logout = async () => {
     await api("/api/logout", { method: "POST", body: "{}" }).catch(() => {});
     setMe(null); setAdminData(null); setPortfolio(null); setAuthOpen(false);
@@ -612,17 +712,17 @@ function App() {
     const timer = setInterval(loadCore, 30000);
     return () => clearInterval(timer);
   }, []);
-  useEffect(() => { loadPortfolio(); loadAdmin(); }, [me]);
+  useEffect(() => { loadPortfolio(); loadAdmin(); loadNotifications(); }, [me]);
   if (!me && !authOpen) return <CorporateLanding openAuth={() => setAuthOpen(true)} />;
   if (!me) return <AuthScreen onAuthed={(data) => setMe(normalizeUser(data))} back={() => setAuthOpen(false)} />;
-  if (me.role === "admin") return <AdminPanel data={{ ...(adminData || {}), market_meta: marketMeta, news_meta: newsMeta }} refresh={loadAdmin} logout={logout} />;
-  return <div className={`stage app-stage ${dark ? "dark-mode" : ""}`}><div className="phone">
+  if (me.role === "admin" && showAdmin) return <AdminPanel data={{ ...(adminData || {}), market_meta: marketMeta, news_meta: newsMeta }} refresh={loadAdmin} logout={logout} onClose={() => setShowAdmin(false)} />;
+  return <div className={`stage app-stage ${dark ? "dark-mode" : ""}`}><div className="phone" data-text={textSize}>
     {active === "home" && <HomeScreen openTrade={openTrade} market={market} favorites={favorites} toggleFavorite={toggleFavorite} common={common} />}
     {active === "news" && <NewsScreen items={newsItems} common={common} />}
     {active === "trade" && <TradeScreen market={market} openTrade={openTrade} favorites={favorites} toggleFavorite={toggleFavorite} common={common} />}
     {active === "portfolio" && <PortfolioScreen openTrade={openTrade} portfolio={portfolio} common={common} />}
     {active === "account" && <AccountScreen me={me} portfolio={portfolio} openSubpage={setSubpage} logout={logout} common={common} />}
-    <Nav active={active} setActive={setActive} />{trade && <TradeModal stock={trade} onClose={() => setTrade(null)} refresh={refresh} favorites={favorites} toggleFavorite={toggleFavorite} />}{subpage && <Subpage title={subpage} onClose={() => setSubpage(null)} refresh={refresh} me={me} portfolio={portfolio} />}{notify && <Notifications onClose={() => setNotify(false)} />}{profileMenu && <ProfileMenu me={me} onClose={() => setProfileMenu(false)} openSubpage={setSubpage} logout={logout} />}<div className="home-indicator" /></div></div>;
+    <Nav active={active} setActive={setActive} lang={lang} />{trade && <TradeModal stock={trade} onClose={() => setTrade(null)} refresh={refresh} favorites={favorites} toggleFavorite={toggleFavorite} />}{subpage && <Subpage title={subpage} onClose={() => setSubpage(null)} refresh={refresh} me={me} portfolio={portfolio} lang={lang} cycleLang={cycleLang} textSize={textSize} cycleTextSize={cycleTextSize} />}{notify && <Notifications onClose={() => setNotify(false)} items={notifications} />}{profileMenu && <ProfileMenu me={me} onClose={() => setProfileMenu(false)} openSubpage={setSubpage} logout={logout} />}<div className="home-indicator" /></div></div>;
 }
 
 createRoot(document.getElementById("app")).render(<App />);

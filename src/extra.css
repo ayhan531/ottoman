@@ -354,8 +354,8 @@
 }
 
 .portfolio-card {
-  background: linear-gradient(145deg, #5f93ef 0%, #4c7ed9 52%, #3562b4 100%);
-  box-shadow: 0 14px 28px rgba(76, 92, 160, .22);
+  background: linear-gradient(145deg, #4f7fe0 0%, #3d68c4 52%, #294f9c 100%);
+  box-shadow: 0 14px 28px rgba(41, 55, 110, .28);
   margin-bottom: 22px;
 }
 .portfolio-carousel {
@@ -401,6 +401,145 @@
 .chart-scrub {
   width: 100%;
   accent-color: #ffffff;
+}
+.profit-preview strong {
+  font-size: 12px;
+}
+.profit-preview.loss {
+  background: #fff0f1;
+  color: #d1273d;
+}
+.profit-preview.loss b,
+.profit-preview.loss strong {
+  color: #d1273d;
+}
+.profit-preview.loss em {
+  background: #ef4257;
+}
+.phone[data-text="sm"] {
+  zoom: 0.93;
+}
+.phone[data-text="lg"] {
+  zoom: 1.1;
+}
+.settings-card.compact .settings-row {
+  min-height: 50px;
+}
+.settings-card.compact .settings-row small {
+  font-size: 12px;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.bell-button {
+  position: relative;
+}
+.notify-dot {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4257;
+  border: 1.5px solid #fff;
+}
+.notification-row {
+  align-items: flex-start;
+}
+.notification-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.notification-date {
+  color: #9a9eab;
+}
+.unread-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--purple);
+  margin-top: 6px;
+}
+.t2-toast {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1c2233;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 18px;
+  border-radius: 999px;
+  z-index: 5;
+  animation: t2fade 1.8s ease forwards;
+}
+@keyframes t2fade {
+  0% { opacity: 0; transform: translate(-50%, -6px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -6px); }
+}
+.toggle-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #ececf5;
+  color: #6b6f80;
+}
+.t2-toggle-row.on .toggle-pill {
+  background: var(--purple);
+  color: #fff;
+}
+.app-version-row {
+  cursor: default;
+}
+.status-pill {
+  background: #eafff4;
+  color: #0f9f70;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 11px;
+  border-radius: 999px;
+  align-self: center;
+}
+.position-detail .settings-row {
+  display: flex;
+  justify-content: space-between;
+}
+.market-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+.market-tabs::-webkit-scrollbar {
+  display: none;
+}
+.section-title b {
+  display: flex;
+  gap: 14px;
+  font-weight: 400;
+}
+.admin-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--purple);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 999px;
+  line-height: 1;
+  white-space: nowrap;
 }
 @media (max-width:460px){
   .portfolio-carousel{gap:12px;margin-left:-2px;margin-right:-2px;padding-left:2px;padding-right:2px}
@@ -462,7 +601,8 @@
 .carousel-controls button{width:36px;height:36px;display:grid;place-items:center;border:1px solid var(--line);border-radius:8px;color:var(--purple)}
 .carousel-controls button:disabled{opacity:.3;cursor:default}
 .portfolio-screen .portfolio-carousel{width:100%;min-width:0;height:auto;min-height:0;margin:0 0 28px;gap:16px;padding:0 0 8px;align-items:stretch}
-.portfolio-screen .portfolio-carousel>.portfolio-card{flex:0 0 100%;min-width:0;min-height:310px;height:auto;box-shadow:none;padding:28px 32px;margin:0;overflow:visible;border-radius:16px}
+.portfolio-screen .portfolio-carousel>.portfolio-card{flex:0 0 100%;min-width:0;min-height:310px;height:auto;box-shadow:none;padding:28px 32px;margin:0;overflow:visible;border-radius:16px;scroll-snap-stop:always}
+.portfolio-screen .portfolio-carousel{scroll-behavior:smooth}
 .portfolio-screen .portfolio-grid{grid-template-columns:minmax(0,1fr) 160px;gap:24px}
 .portfolio-screen .portfolio-grid h1{font-size:38px;margin:18px 0 12px;overflow-wrap:anywhere}
 .portfolio-screen .legend{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:12px 24px;margin:24px 0 0}

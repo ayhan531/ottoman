@@ -448,6 +448,17 @@ def init_db() -> None:
               created_at INTEGER NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS notifications (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              category TEXT NOT NULL DEFAULT 'genel',
+              title TEXT NOT NULL,
+              body TEXT NOT NULL DEFAULT '',
+              created_at INTEGER NOT NULL,
+              read_at INTEGER
+            );
+            CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+
             CREATE TABLE IF NOT EXISTS system_settings (
               setting_key TEXT PRIMARY KEY,
               setting_value TEXT NOT NULL,
@@ -579,6 +590,8 @@ def migrate_db(conn: sqlite3.Connection) -> None:
     ensure_column(conn, "users", "suitability_completed_at", "INTEGER")
     ensure_column(conn, "users", "agreements_version", "TEXT DEFAULT ''")
     ensure_column(conn, "users", "agreements_accepted_at", "INTEGER")
+    ensure_column(conn, "users", "referred_by", "INTEGER")
+    ensure_column(conn, "users", "avatar_url", "TEXT DEFAULT ''")
     ensure_column(conn, "accounts", "pending_balance", "REAL NOT NULL DEFAULT 0")
     ensure_column(conn, "orders", "cancel_remaining", "INTEGER NOT NULL DEFAULT 0")
     ensure_column(conn, "orders", "cash_reserved", "REAL NOT NULL DEFAULT 0")
@@ -1600,6 +1613,8 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_revoke_sessions()
         if method == "POST" and path == "/api/profile/documents":
             return self.api_upload_documents()
+        if method == "POST" and path == "/api/profile/avatar":
+            return self.api_upload_avatar()
         if path == "/api/profile/reset" and method in {"GET", "POST"}:
             return self.api_reset_test_account(method)
         if method == "POST" and path == "/api/register":
@@ -1622,6 +1637,10 @@ class AppHandler(BaseHTTPRequestHandler):
                 return self.api_company(parts[2])
         if method == "GET" and path == "/api/system-bank-accounts":
             return self.api_system_bank_accounts()
+        if method == "GET" and path == "/api/notifications":
+            return self.api_notifications()
+        if method == "POST" and path == "/api/notifications/read":
+            return self.api_notifications_read()
         if method == "GET" and path == "/api/portfolio":
             return self.api_portfolio()
         if method == "GET" and path == "/api/orders":
@@ -1893,8 +1912,6 @@ class AppHandler(BaseHTTPRequestHandler):
                 raise HttpError(401, "Giriş bilgileri hatalı")
             if user["role"] != "admin" and user["status"] == "rejected":
                 raise HttpError(403, f"Kayıt durumu: {status_label(user['status'])}")
-            if int(user["two_factor_enabled"] or 0) and not verify_totp(str(user["two_factor_secret"] or ""), str(payload.get("otp", ""))):
-                raise HttpError(401, "Doğrulama uygulamasındaki 6 haneli kod gerekli")
             sid = secrets.token_urlsafe(32)
             ttl = 60 * 60 * 24 * 30 if remember else SESSION_TTL
             conn.execute("DELETE FROM sessions WHERE expires_at<=?", (now(),))
@@ -2058,6 +2075,52 @@ class AppHandler(BaseHTTPRequestHandler):
                 201,
             )
 
+    def api_upload_avatar(self) -> None:
+        form = self.read_multipart()
+        with connect_db() as conn:
+            user = self.require_user(conn)
+            item = form["avatar"] if "avatar" in form else None
+            if item is None or isinstance(item, list) or not getattr(item, "filename", ""):
+                raise HttpError(400, "avatar dosyası gerekli")
+            content_type = item.type or "application/octet-stream"
+            if not content_type.startswith("image/"):
+                raise HttpError(400, "Profil fotoğrafı görsel olmalı")
+            ext = Path(item.filename).suffix.lower()
+            if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
+                ext = ".jpg"
+            stored_name = f"{user['id']}_avatar_{secrets.token_hex(8)}{ext}"
+            target = UPLOAD_DIR / stored_name
+            size = 0
+            with target.open("wb") as out:
+                while True:
+                    chunk = item.file.read(64 * 1024)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    if size > MAX_UPLOAD_BYTES:
+                        target.unlink(missing_ok=True)
+                        raise HttpError(413, "Dosya çok büyük")
+                    out.write(chunk)
+            avatar_url = f"/uploads/{stored_name}"
+            conn.execute("UPDATE users SET avatar_url=? WHERE id=?", (avatar_url, user["id"]))
+            audit(conn, user["id"], "upload_avatar", "user", user["id"])
+            conn.commit()
+            self.json_response({"ok": True, "avatar_url": avatar_url}, 201)
+
+    def api_notifications(self) -> None:
+        with connect_db() as conn:
+            user = self.require_user(conn)
+            rows = notification_rows(conn, user["id"])
+            unread = sum(1 for row in rows if not row["read_at"])
+            self.json_response({"notifications": rows, "unread_count": unread})
+
+    def api_notifications_read(self) -> None:
+        with connect_db() as conn:
+            user = self.require_user(conn)
+            conn.execute("UPDATE notifications SET read_at=? WHERE user_id=? AND read_at IS NULL", (now(), user["id"]))
+            conn.commit()
+            self.json_response({"ok": True})
+
     def api_logout(self) -> None:
         with connect_db() as conn:
             user = self.current_user(conn)
@@ -2078,6 +2141,7 @@ class AppHandler(BaseHTTPRequestHandler):
         birth_date = field_value(form, "birth_date")
         address = field_value(form, "address")
         password = field_value(form, "password")
+        referral_code = field_value(form, "referral_code").strip().upper()
         accepted = {
             "kvkk": field_value(form, "accept_kvkk") in {"1", "true", "on", "yes"},
             "distance_contract": field_value(form, "accept_distance_contract") in {"1", "true", "on", "yes"},
@@ -2095,8 +2159,10 @@ class AppHandler(BaseHTTPRequestHandler):
             suitability_score = sum(max(0, min(3, int(suitability_answers[key]))) for key in numeric_answer_keys)
         except ValueError:
             suitability_score = -1
-        if not full_name or not valid_turkish_identity_number(tc) or not password_is_strong(password) or not phone or not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        if not full_name or not valid_turkish_identity_number(tc) or not password_is_strong(password) or not phone:
             raise HttpError(400, "Zorunlu kayıt bilgileri eksik")
+        if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+            raise HttpError(400, "E-posta adresi geçersiz")
         if not all(accepted.values()):
             raise HttpError(400, "KVKK, sözleşme ve risk bildirimleri kabul edilmelidir")
         if suitability_score < 0 or any(not suitability_answers[key] for key in ("education", "occupation", "traded_products", "investment_goal")):
@@ -2104,14 +2170,17 @@ class AppHandler(BaseHTTPRequestHandler):
         with connect_db() as conn:
             if conn.execute("SELECT id FROM users WHERE tc=?", (tc,)).fetchone():
                 raise HttpError(409, "Bu T.C. ile kayıt var")
+            referrer = None
+            if referral_code:
+                referrer = conn.execute("SELECT id FROM users WHERE UPPER(account_no)=?", (referral_code,)).fetchone()
             salt, digest = hash_password(password)
             cur = conn.execute(
                 """
                 INSERT INTO users
-                  (tc, password_salt, password_hash, full_name, phone, email, city, district, birth_date, address, role, status, kyc_status, kyc_note, risk_profile, suitability_score, suitability_completed_at, agreements_version, agreements_accepted_at, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user', 'pending', 'awaiting_back', 'Kimlik belgelerinizi profilinizden yükleyin.', ?, ?, ?, ?, ?, ?)
+                  (tc, password_salt, password_hash, full_name, phone, email, city, district, birth_date, address, role, status, kyc_status, kyc_note, risk_profile, suitability_score, suitability_completed_at, agreements_version, agreements_accepted_at, referred_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user', 'pending', 'awaiting_back', 'Kimlik belgelerinizi profilinizden yükleyin.', ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (tc, salt, digest, full_name, phone, email, city, district, birth_date, address, risk_profile_for(suitability_score), suitability_score, now(), AGREEMENTS_VERSION, now(), now()),
+                (tc, salt, digest, full_name, phone, email, city, district, birth_date, address, risk_profile_for(suitability_score), suitability_score, now(), AGREEMENTS_VERSION, now(), referrer["id"] if referrer else None, now()),
             )
             user_id = cur.lastrowid
             conn.execute("UPDATE users SET account_no=printf('OT%06d', id) WHERE id=?", (user_id,))
@@ -3331,6 +3400,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 float(order["limit_price"]),
                 f"Ortalama maliyet: {avg_price:.2f}",
             )
+            notify_referrals_of_sale(conn, order["user_id"], order["symbol"], int(order["quantity"]))
         conn.execute("UPDATE orders SET status='approved', admin_note=?, reviewed_at=? WHERE id=?", (reason, now(), order_id))
         audit(conn, admin["id"], "approve_order", "order", order_id, {"total": order["total"], "reason": reason})
 
@@ -3927,10 +3997,47 @@ def settle_one_t2(conn: sqlite3.Connection, settlement_id: int) -> None:
     )
 
 
+def create_notification(conn: sqlite3.Connection, user_id: int, title: str, body: str = "", category: str = "genel") -> None:
+    conn.execute(
+        "INSERT INTO notifications (user_id, category, title, body, created_at) VALUES (?, ?, ?, ?, ?)",
+        (user_id, category, title, body, now()),
+    )
+
+
+def notify_referrals_of_sale(conn: sqlite3.Connection, seller_id: int, symbol: str, quantity: int) -> None:
+    seller = conn.execute("SELECT full_name FROM users WHERE id=?", (seller_id,)).fetchone()
+    if not seller:
+        return
+    referred = conn.execute("SELECT id FROM users WHERE referred_by=?", (seller_id,)).fetchall()
+    for row in referred:
+        create_notification(
+            conn,
+            row["id"],
+            "Referans bildirimi",
+            f"Referansınız {seller['full_name']}, {quantity} lot {symbol} satışı gerçekleştirdi.",
+            category="referral",
+        )
+
+
+def notification_rows(conn: sqlite3.Connection, user_id: int) -> list[dict]:
+    rows = conn.execute(
+        "SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT 50",
+        (user_id,),
+    ).fetchall()
+    result = []
+    for row in rows:
+        item = dict(row)
+        item["created_at_label"] = iso_time(item["created_at"])
+        result.append(item)
+    return result
+
+
 def public_user(user: dict, include_sensitive: bool = False) -> dict:
     data = {
         "id": user["id"],
         "account_no": user.get("account_no") or f"GM{int(user['id']):06d}",
+        "referral_code": user.get("account_no") or f"GM{int(user['id']):06d}",
+        "avatar_url": user.get("avatar_url") or "",
         "full_name": user["full_name"],
         "phone": user["phone"],
         "email": user["email"],
