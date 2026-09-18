@@ -399,7 +399,7 @@ export function Contact({ onBack, me, onNotice, channel, setChannel }) {
           <InfoRow title={T("E-posta")} note={me?.email || T("E-postanızı giriniz")} chevron onClick={() => onNotice("E-posta", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
           <InfoRow title={T("Adres")} note={me?.address || "—"} chevron onClick={() => onNotice("Adres", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
           <InfoRow title={T("İl / İlçe")} note={`${me?.city || "—"} / ${me?.district || "—"}`} />
-          <InfoRow title={T("Posta Kodu")} note={me?.postal_code || "—"} />
+          {me?.postal_code ? <InfoRow title={T("Posta Kodu")} note={me.postal_code} /> : null}
           <InfoRow title={T("Tebligat Tercihi")} note={T(channels[channel] || channels[0])} chevron onClick={() => setPicker(true)} />
         </Divided>
       </div>
