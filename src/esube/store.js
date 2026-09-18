@@ -72,27 +72,31 @@ export function useMarket() {
   return { instruments, meta, state, reload: load };
 }
 
-export function useNews() {
-  const [items, setItems] = useState([]);
+/** Sekme başına haber akışı (APK'daki NewsFeed.LoadAsync(market) karşılığı). */
+export function useNews(market = 0) {
+  const [feeds, setFeeds] = useState({});
   const [state, setState] = useState("loading");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (which) => {
     try {
-      const data = await api("/api/news");
-      setItems(data.items || []);
-      setState("live");
+      const data = await api(`/api/market-news?market=${which}`);
+      const rows = data.items || [];
+      setFeeds((current) => ({ ...current, [which]: rows }));
+      setState(rows.length ? "live" : "failed");
     } catch {
       setState((current) => (current === "live" ? "live" : "failed"));
     }
   }, []);
 
   useEffect(() => {
-    load();
-    const timer = setInterval(load, NEWS_MS);
+    setState((current) => (feeds[market]?.length ? "live" : "loading"));
+    load(market);
+    const timer = setInterval(() => load(market), NEWS_MS);
     return () => clearInterval(timer);
-  }, [load]);
+    // feeds bilerek bağımlılık değil: her sekme değişiminde tek bir çekim yeter.
+  }, [load, market]);
 
-  return { items, state, reload: load };
+  return { items: feeds[market] || [], state, reload: () => load(market) };
 }
 
 export function usePortfolio(enabled) {

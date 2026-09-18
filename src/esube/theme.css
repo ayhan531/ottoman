@@ -134,6 +134,8 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
   background: var(--canvas);
   color: var(--ink);
   overflow: hidden;
+  /* Telefonda durum çubuğunun altına girmesin (iOS çentik / Android kesme). */
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .esube-main {
@@ -872,7 +874,18 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 .esube .pf-legend div, .overlay .pf-legend div { display: inline-flex; align-items: center; gap: 6px; font-size: calc(11.5px * var(--s)); font-weight: 700; color: rgba(255, 255, 255, 0.72); white-space: nowrap; }
 .esube .pf-legend i, .overlay .pf-legend i { width: 9px; height: 9px; border-radius: 4.5px; display: block; }
 
-.esube .masked, .overlay .masked { letter-spacing: 1px; }
+/* Gizli tutar: yıldız glifi rakamdan geniş olduğu için küçültülür ve
+   satırdan taşmaz; hizalama korunur. */
+.esube .masked, .overlay .masked {
+  letter-spacing: .06em;
+  font-size: .62em;
+  line-height: 1.9;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
 
 .esube .pf-dots, .overlay .pf-dots { display: flex; gap: 6px; justify-content: center; }
 .esube .pf-dots i, .overlay .pf-dots i { width: 8px; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--purple) 25%, transparent); display: block; }

@@ -5,18 +5,6 @@ import { SearchBox, Segments, Divided, CenteredHeader } from "./ui.jsx";
 import { MARKET_NAMES, fold } from "./market.js";
 import { T, locale } from "./lang.js";
 
-// Her piyasa sekmesinin kendi haber sorgusu (NewsFeed.cs'teki sorguların karşılığı).
-const QUERIES = [
-  ["borsa", "bist", "hisse", "endeks", "kap"],
-  ["bist 100", "bist100", "endeks", "borsa"],
-  ["bist 30", "bist30", "banka", "holding"],
-  ["katılım", "faizsiz", "islami", "endeks"],
-  ["temettü", "kar payı", "kâr payı", "dağıtım"],
-  ["halka arz", "arz", "borsada işlem"],
-  ["yatırım fonu", "fon", "portföy"],
-  ["dolar", "euro", "kur", "döviz", "altın"],
-];
-
 const newsDate = (value) =>
   value && !Number.isNaN(Date.parse(value))
     ? new Date(value).toLocaleString(locale(), { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
@@ -52,22 +40,12 @@ export function Article({ item, onBack }) {
 export default function News({ brandBar, marketTab, setMarketTab, items, state, onOpen }) {
   const [query, setQuery] = useState("");
 
-  const forTab = useMemo(() => {
-    if (!items.length) return [];
-    const keys = QUERIES[marketTab] || [];
-    const matched = items.filter((item) => {
-      const hay = fold(`${item.title || ""} ${item.summary || ""}`);
-      return keys.some((key) => hay.includes(fold(key)));
-    });
-    // Sekme için eşleşme yoksa genel akış gösterilir (kaynak tek bir Türkçe finans akışıdır).
-    return matched.length >= 4 ? matched : items;
-  }, [items, marketTab]);
-
+  // Akış zaten sekmenin kendi sorgusuyla geliyor; burada yalnızca başlık araması süzer.
   const shown = useMemo(() => {
     const needle = fold(query);
-    if (!needle) return forTab;
-    return forTab.filter((item) => fold(item.title || "").includes(needle));
-  }, [forTab, query]);
+    if (!needle) return items;
+    return items.filter((item) => fold(item.title || "").includes(needle));
+  }, [items, query]);
 
   return (
     <div className="page gap-14">

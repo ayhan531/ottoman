@@ -61,8 +61,9 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   }, [dark, accent, textSize]);
 
   /* ---- veri ---- */
+  const [marketTab, setMarketTab] = useState(0);
   const market = useMarket();
-  const newsFeed = useNews();
+  const newsFeed = useNews(marketTab);
   const portfolio = usePortfolio(true);
   const notifications = useNotifications(true);
   const holdings = useHoldings(portfolio.data, market.instruments);
@@ -89,7 +90,6 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
 
   /* ---- gezinme ---- */
   const [tab, setTab] = useState(0);
-  const [marketTab, setMarketTab] = useState(0);
   const [portfolioTab, setPortfolioTab] = useState(0);
   const [portfolioCard, setPortfolioCard] = useState(0);
   const [portfolioHidden, setPortfolioHidden] = useState(false);

@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import base64
 import io
 import hashlib
+import html
 import hmac
 import json
 import mimetypes
@@ -18,6 +19,7 @@ import smtplib
 import sqlite3
 import struct
 import time
+import urllib.parse
 import urllib.request
 import warnings
 import xml.etree.ElementTree as ET
@@ -1475,6 +1477,110 @@ def spk_bulletin_news() -> list[dict]:
     return items
 
 
+# APK'daki NewsFeed ile aynı kaynak: sekme başına ayrı bir Bing Haberler RSS
+# sorgusu, tarihe göre sıralı. Sekme sırası MarketNames ile aynıdır.
+MARKET_NEWS_QUERIES = [
+    "Borsa İstanbul", "BIST 100", "BIST 30", "katılım endeksi",
+    "temettü", "halka arz", "yatırım fonu", "dolar euro kur",
+]
+MARKET_NEWS_CACHE: dict[int, dict] = {}
+MARKET_NEWS_REFRESH_SECONDS = int(os.environ.get("MARKET_NEWS_REFRESH_SECONDS", "600"))
+NEWS_TOOL_WORDS = ("hesaplama", "cevirici", "çevirici", "converter", "hesapla")
+
+
+def _bing_image(image: str, template: str | None, width: int, height: int) -> str:
+    """Bing küçük resim ucundan istenen boyutu ister (APK'daki Sized ile aynı)."""
+    if not image or not image.startswith("http"):
+        return ""
+    image = image.replace("http://", "https://", 1)   # karışık içerik engellenmesin
+    if template and "{0}" in template:
+        return image + "&" + template.replace("{0}", str(width)).replace("{1}", str(height))
+    return f"{image}&w={width}&h={height}&c=7"
+
+
+def _bing_target(link: str) -> str:
+    """apiclick bağlantısının içindeki yayıncı adresini çıkarır (APK'daki Target)."""
+    if "apiclick.aspx" not in link:
+        return link
+    try:
+        params = parse_qs(urlparse(link).query)
+    except ValueError:
+        return link
+    target = (params.get("url") or [""])[0]
+    return target or link
+
+
+def fetch_market_news(market: int) -> list[dict]:
+    query = MARKET_NEWS_QUERIES[market]
+    url = (
+        "https://www.bing.com/news/search?q=" + urllib.parse.quote(query, safe="")
+        + "&format=rss&setlang=tr&cc=tr&qft=sortbydate%3d%221%22"
+    )
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(request, timeout=20) as response:
+            raw = response.read()
+        root = ET.fromstring(raw)
+    except (OSError, ValueError, ET.ParseError):
+        return []
+
+    # Bing'in "News" ön ekinin ad alanı sabit değil, beslemenin kendi adresidir;
+    # bu yüzden bildirimden okunur (APK'daki GetNamespaceOfPrefix ile aynı iş).
+    declaration = re.search(rb'xmlns:News="([^"]+)"', raw[:4000])
+    news_ns = ""
+    if declaration:
+        news_ns = html.unescape(declaration.group(1).decode("utf-8", "replace"))
+
+    def field(node, name: str) -> str:
+        if not news_ns:
+            return ""
+        return (node.findtext(f"{{{news_ns}}}{name}") or "").strip()
+    items: list[dict] = []
+    for node in root.findall(".//item"):
+        title = (node.findtext("title") or "").strip()
+        link = (node.findtext("link") or "").strip()
+        if not title or not link:
+            continue
+        folded = title.casefold()
+        if any(word in folded for word in NEWS_TOOL_WORDS) and "haber" not in folded:
+            continue   # "Döviz Hesaplama" gibi araç sayfaları haber değildir
+        image = field(node, "Image")
+        template = field(node, "ImageSize") or None
+        published = (node.findtext("pubDate") or "").strip()
+        stamp = 0
+        if published:
+            try:
+                stamp = int(parsedate_to_datetime(published).timestamp())
+            except (TypeError, ValueError):
+                stamp = 0
+        items.append({
+            "title": title,
+            "url": _bing_target(link),
+            "source": field(node, "Source"),
+            "summary": (node.findtext("description") or "").strip(),
+            "image_url": _bing_image(image, template, 160, 160),
+            "photo_url": _bing_image(image, template, 900, 506),
+            "published_at": published,
+            "published_ts": stamp,
+        })
+    items.sort(key=lambda item: item["published_ts"], reverse=True)
+    return items
+
+
+def market_news(market: int) -> tuple[list[dict], bool]:
+    """Sekmenin haberleri ve canlı gelip gelmediği."""
+    cached = MARKET_NEWS_CACHE.get(market)
+    if cached and cached["items"] and now() - int(cached["updated_at"]) < MARKET_NEWS_REFRESH_SECONDS:
+        return cached["items"], True
+    items = fetch_market_news(market)
+    if items:
+        MARKET_NEWS_CACHE[market] = {"items": items, "updated_at": now()}
+        return items, True
+    if cached and cached["items"]:
+        return cached["items"], True
+    return [], False
+
+
 def official_news() -> tuple[list[dict], dict]:
     if NEWS_CACHE["items"] and now() - int(NEWS_CACHE["updated_at"]) < NEWS_REFRESH_SECONDS:
         return NEWS_CACHE["items"], news_meta()
@@ -1683,6 +1789,8 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_market()
         if method == "GET" and path == "/api/news":
             return self.api_news()
+        if method == "GET" and path == "/api/market-news":
+            return self.api_market_news()
         if method == "GET" and path.startswith("/api/logo/"):
             parts = path.strip("/").split("/")
             if len(parts) == 3:
@@ -2320,6 +2428,22 @@ class AppHandler(BaseHTTPRequestHandler):
     def api_news(self) -> None:
         items, meta = latest_news()
         self.json_response({"items": items, "meta": meta})
+
+    def api_market_news(self) -> None:
+        query = parse_qs(urlparse(self.path).query)
+        try:
+            market = int((query.get("market") or ["0"])[0])
+        except ValueError:
+            market = 0
+        if not 0 <= market < len(MARKET_NEWS_QUERIES):
+            market = 0
+        items, live = market_news(market)
+        self.json_response({
+            "market": market,
+            "query": MARKET_NEWS_QUERIES[market],
+            "items": items,
+            "meta": {"ok": live, "count": len(items), "source": "Bing Haberler"},
+        })
 
     def api_company_logo(self, raw_symbol: str) -> None:
         symbol = clean_symbol(raw_symbol)

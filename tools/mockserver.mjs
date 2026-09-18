@@ -85,6 +85,12 @@ const routes = {
   "/api/me": () => read("me.json"),
   "/api/market": () => read("market.json"),
   "/api/news": () => read("news.json"),
+  "/api/market-news": (url) => {
+    const market = Number(new URL(url, "http://x").searchParams.get("market") || 0);
+    const names = ["Borsa İstanbul", "BIST 100", "BIST 30", "katılım endeksi", "temettü", "halka arz", "yatırım fonu", "dolar euro kur"];
+    const base = read("news.json").items || [];
+    return { market, query: names[market], items: base.slice(market, market + 6).map((item, index) => ({ ...item, title: `${names[market]} · ${item.title}`, id: `${market}-${index}` })), meta: { ok: true } };
+  },
   "/api/portfolio": () => read("portfolio.json"),
   "/api/orders": () => read("orders.json"),
   "/api/notifications": () => read("notifications.json"),
@@ -106,7 +112,7 @@ http.createServer((req, res) => {
   }
   const route = routes[url.pathname] || adminRoutes[url.pathname];
   if (route) {
-    const body = JSON.stringify(asAdmin(route()));
+    const body = JSON.stringify(asAdmin(route(req.url)));
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(body);
     return;
