@@ -130,7 +130,7 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 .esube {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: var(--app-height, 100dvh);
   background: var(--canvas);
   color: var(--ink);
   overflow: hidden;
@@ -1147,5 +1147,5 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 
 /* Giriş ve kayıt ekranı da durum çubuğunun altına girmesin. */
 @media (max-width: 460px) {
-  .auth-stage .auth-phone { padding-top: var(--safe-top, 0px); box-sizing: border-box; }
+  .auth-stage .auth-phone { padding-top: var(--safe-top, 0px); height: var(--app-height, 100vh); box-sizing: border-box; }
 }

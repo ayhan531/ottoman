@@ -29,12 +29,21 @@ const isApplePhone = () => {
   return iPhone || iPad;
 };
 
-/** Ölçüp <html> üzerine --safe-top yazar; ekran döndükçe tazelenir. */
+/**
+ * Ölçüp <html> üzerine --safe-top ve --app-height yazar.
+ * 100dvh, iOS Safari araç çubuğu toplanınca gerçek görünür alandan kısa
+ * kalıyor ve altta beyaz bir şerit bırakıyor; bu yüzden kabuğun yüksekliği
+ * innerHeight ile ölçülür. Klavye açılınca innerHeight değişmediği için
+ * form alanları bundan etkilenmez.
+ */
 export function trackSafeArea() {
   const apply = () => {
     const fromEnv = measureEnv();
     const top = fromEnv > 0 ? fromEnv : (isApplePhone() ? IOS_STATUS_BAR : 0);
-    document.documentElement.style.setProperty("--safe-top", `${Math.round(top)}px`);
+    const root = document.documentElement;
+    root.style.setProperty("--safe-top", `${Math.round(top)}px`);
+    const height = Math.round(window.innerHeight || 0);
+    if (height > 0) root.style.setProperty("--app-height", `${height}px`);
   };
   apply();
   window.addEventListener("orientationchange", apply);
