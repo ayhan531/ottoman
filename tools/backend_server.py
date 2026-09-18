@@ -574,6 +574,18 @@ def init_db() -> None:
               created_at INTEGER NOT NULL,
               UNIQUE(user_id, day)
             );
+
+            CREATE TABLE IF NOT EXISTS price_history (
+              symbol TEXT NOT NULL,
+              day TEXT NOT NULL,
+              close REAL NOT NULL,
+              PRIMARY KEY (symbol, day)
+            );
+
+            CREATE TABLE IF NOT EXISTS price_history_meta (
+              symbol TEXT PRIMARY KEY,
+              fetched_at INTEGER NOT NULL DEFAULT 0
+            );
             """
         )
         migrate_db(conn)
@@ -1134,9 +1146,11 @@ def refresh_company_metadata(conn: sqlite3.Connection) -> None:
     if meta and int(meta["total"] or 0) >= 500 and int(meta["funds"] or 0) >= 10 and now() - int(meta["updated"] or 0) < COMPANY_META_REFRESH_SECONDS:
         return
 
+    # APK ile aynı sorgu: "lang" verilmez; TradingView o zaman şirketin kısa
+    # açıklamasını döndürür ("Turk Hava Yollari A.O."), lang=tr ise tümü büyük
+    # harf hukuki ad gelir. Ekrandaki adlar APK ile birebir olsun diye böyle.
     body = json.dumps(
         {
-            "options": {"lang": "tr"},
             "markets": ["turkey"],
             "symbols": {"query": {"types": []}, "tickers": []},
             "columns": ["name", "description", "logoid", "sector", "industry", "type"],
@@ -1208,12 +1222,21 @@ def refresh_market(conn: sqlite3.Connection) -> list[dict]:
                 payload = json.loads(response.read().decode("utf-8"))
             quotes = normalize_market(payload)
             if quotes:
+                # Fiyatlar her yenilemede güncellenir; TradingView'dan gelen ad, logo ve sektör
+                # bilgisi korunur (INSERT OR REPLACE bunları sıfırlıyordu).
                 conn.executemany(
                     """
-                    INSERT OR REPLACE INTO market_cache
+                    INSERT INTO market_cache
                       (symbol, name, price, change_pct, volume, asset_class, updated_at)
                     VALUES
                       (:symbol, :name, :price, :change_pct, :volume, :asset_class, :updated_at)
+                    ON CONFLICT(symbol) DO UPDATE SET
+                      price=excluded.price,
+                      change_pct=excluded.change_pct,
+                      volume=excluded.volume,
+                      asset_class=CASE WHEN market_cache.metadata_updated_at>0 THEN market_cache.asset_class ELSE excluded.asset_class END,
+                      name=CASE WHEN market_cache.metadata_updated_at>0 THEN market_cache.name ELSE excluded.name END,
+                      updated_at=excluded.updated_at
                     """,
                     quotes,
                 )
@@ -2421,7 +2444,13 @@ class AppHandler(BaseHTTPRequestHandler):
         with connect_db() as conn:
             user = self.require_user(conn)
             record_portfolio_snapshot(conn, user["id"])
-            self.json_response({"history": portfolio_history_rows(conn, user["id"])})
+            symbols = [str(row.get("symbol") or "").upper() for row in portfolio_rows(conn, user["id"]) if float(row.get("quantity") or 0) > 0]
+            symbols = [symbol for symbol in dict.fromkeys(symbols) if symbol][:25]
+            try:
+                series = price_history_for(conn, symbols) if symbols else {}
+            except sqlite3.Error:
+                series = {}
+            self.json_response({"history": portfolio_history_rows(conn, user["id"]), "series": series})
 
     def api_orders(self) -> None:
         with connect_db() as conn:
@@ -4116,6 +4145,73 @@ def record_portfolio_snapshot(conn: sqlite3.Connection, user_id: int) -> None:
     )
     conn.execute("DELETE FROM portfolio_snapshots WHERE user_id=? AND day < date('now', '-90 day')", (user_id,))
     conn.commit()
+
+
+PRICE_HISTORY_TTL = 60 * 60 * 6
+PRICE_HISTORY_URL = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}.IS?range=1mo&interval=1d"
+
+
+def fetch_price_history(symbol: str) -> list[tuple[str, float]]:
+    """APK'daki PriceHistory ile aynı kaynak: Yahoo Finance günlük kapanışları (son bir ay)."""
+    if not re.fullmatch(r"[A-Z0-9.\-]{1,12}", symbol):
+        return []
+    url = PRICE_HISTORY_URL.format(symbol=symbol)
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        result = payload["chart"]["result"][0]
+        stamps = result["timestamp"]
+        closes = result["indicators"]["quote"][0]["close"]
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        return []
+    series: list[tuple[str, float]] = []
+    for stamp, close in zip(stamps, closes):
+        if close is None:
+            continue   # kapanışı olmayan gün (tatil, boş mum) atlanır
+        try:
+            day = time.strftime("%Y-%m-%d", time.localtime(int(stamp)))
+        except (ValueError, OSError):
+            continue
+        series.append((day, round(float(close), 4)))
+    return series
+
+
+def price_history_for(conn: sqlite3.Connection, symbols: list[str]) -> dict[str, list[dict]]:
+    """Eksik ya da bayatlamış sembolleri çeker, tümünü gün/kapanış listesi olarak döndürür."""
+    stamp = now()
+    for symbol in symbols:
+        meta = conn.execute("SELECT fetched_at FROM price_history_meta WHERE symbol=?", (symbol,)).fetchone()
+        if meta and stamp - int(meta["fetched_at"] or 0) < PRICE_HISTORY_TTL:
+            continue
+        series = fetch_price_history(symbol)
+        if not series:
+            conn.execute(
+                "INSERT INTO price_history_meta (symbol, fetched_at) VALUES (?, ?)"
+                " ON CONFLICT(symbol) DO UPDATE SET fetched_at=excluded.fetched_at",
+                (symbol, stamp - PRICE_HISTORY_TTL + 600),   # 10 dk sonra tekrar dene
+            )
+            continue
+        conn.executemany(
+            "INSERT INTO price_history (symbol, day, close) VALUES (?, ?, ?)"
+            " ON CONFLICT(symbol, day) DO UPDATE SET close=excluded.close",
+            [(symbol, day, close) for day, close in series],
+        )
+        conn.execute(
+            "INSERT INTO price_history_meta (symbol, fetched_at) VALUES (?, ?)"
+            " ON CONFLICT(symbol) DO UPDATE SET fetched_at=excluded.fetched_at",
+            (symbol, stamp),
+        )
+    conn.commit()
+
+    out: dict[str, list[dict]] = {}
+    for symbol in symbols:
+        rows = conn.execute(
+            "SELECT day, close FROM price_history WHERE symbol=? ORDER BY day ASC LIMIT 400", (symbol,)
+        ).fetchall()
+        if rows:
+            out[symbol] = [{"day": row["day"], "close": float(row["close"])} for row in rows]
+    return out
 
 
 def portfolio_history_rows(conn: sqlite3.Connection, user_id: int, days: int = 30) -> list[dict]:

@@ -88,7 +88,7 @@ export default function Account({
       <div className="card outline list-card">
         <Divided>
           <Row title={T("Kişisel bilgiler")} subtitle={T("Kimlik ve iletişim bilgilerinizi yönetin")} onClick={onOpenPersonal} />
-          <Row title={T("Güvenlik")} subtitle={T("Şifre, oturumlar ve güvenlik ayarları")} onClick={onOpenSecurity} />
+          <Row title={T("Güvenlik")} subtitle={T("Şifre, iki adımlı doğrulama ve güvenlik ayarları")} onClick={onOpenSecurity} />
           <Row title={T("Banka hesaplarım")} subtitle={T("Para yatırma ve çekme işlemleri için hesaplarınız")} onClick={onBankAccounts} />
           <Row title={T("Sözleşmeler")} subtitle={T("Çerçeve sözleşme, risk bildirimi ve bilgilendirme metinleri")} onClick={onOpenContracts} />
         </Divided>

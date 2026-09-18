@@ -160,7 +160,7 @@ export function Settings({
 
 /* ---------- Güvenlik ---------- */
 
-export function Security({ onBack, onPassword, sessions, onRevoke, confirmOn, setConfirmOn, passwordChangedAt }) {
+export function Security({ onBack, onPassword, onTwoFactor, sessions, onRevoke, confirmOn, setConfirmOn, passwordChangedAt, twoFactor, twoFactorMethod }) {
   const [devices, setDevices] = useState(false);
   const [openSessions, setOpenSessions] = useState(false);
   const changed = passwordChangedAt ? new Date(passwordChangedAt) : null;
@@ -175,6 +175,13 @@ export function Security({ onBack, onPassword, sessions, onRevoke, confirmOn, se
           note={changed ? `${T("Son değiştirme:")} ${changed.toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" })}` : T("Şifreni güncelle")}
           chevron
           onClick={onPassword}
+        />
+        <SecRow
+          icon="shield"
+          label={T("İki Adımlı Doğrulama")}
+          note={twoFactor ? `${T("Açık •")} ${T(twoFactorMethod === 0 ? "SMS doğrulaması" : "Doğrulama uygulaması")}` : T("Kapalı")}
+          chevron
+          onClick={onTwoFactor}
         />
       </Section>
       <Section heading={T("GİRİŞ VE CİHAZLAR")}>
@@ -210,6 +217,72 @@ export function Security({ onBack, onPassword, sessions, onRevoke, confirmOn, se
           </Divided>
         </Sheet>
       )}
+    </div>
+  );
+}
+
+/* ---------- İki Adımlı Doğrulama ---------- */
+
+// APK'daki maskeli gösterim: "+90 5•• ••• •• 42".
+export const maskPhone = (value) => {
+  const digits = String(value || "").replace(/\D/g, "").replace(/^90/, "").replace(/^0/, "");
+  return digits.length >= 10 ? `+90 ${digits[0]}•• ••• •• ${digits.slice(-2)}` : "+90 5•• ••• •• ••";
+};
+
+const Radio = ({ on }) => (
+  <span className="radio" data-on={on ? "1" : "0"}><i /></span>
+);
+
+export function TwoFactorPage({ onBack, twoFactor, twoFactorMethod, confirmOn, phone, onSave }) {
+  const [enabled, setEnabled] = useState(twoFactor);
+  const [method, setMethod] = useState(twoFactorMethod);
+  const [confirm, setConfirm] = useState(confirmOn);
+
+  return (
+    <div className="page gap-14">
+      <CenteredHeader title={T("İki Adımlı Doğrulama")} onBack={onBack} />
+      <span style={{ fontSize: "calc(14px * var(--s))", color: "var(--muted)" }}>{T("Girişte ek doğrulama ile hesabınızı koruyun.")}</span>
+
+      <div className="sec-card">
+        <Divided>
+          <SecRow
+            icon="shield"
+            label={T("İki Adımlı Doğrulama")}
+            note={T("Hesabınızı daha güvenli hale getirin.")}
+            tail={<Toggle on={enabled} onChange={setEnabled} />}
+          />
+        </Divided>
+      </div>
+
+      <Section heading={T("DOĞRULAMA YÖNTEMİ")}>
+        <SecRow
+          icon="message"
+          label={T("SMS Doğrulama")}
+          note={maskPhone(phone)}
+          tail={<Radio on={method === 0} />}
+          onClick={() => setMethod(0)}
+        />
+        <SecRow
+          icon="phone"
+          label={T("Doğrulama Uygulaması")}
+          note={T("Google Authenticator, Microsoft Authenticator")}
+          tail={<Radio on={method === 1} />}
+          onClick={() => setMethod(1)}
+        />
+      </Section>
+
+      <div className="sec-card">
+        <Divided>
+          <SecRow
+            icon="phone"
+            label={T("İşlem Onayı")}
+            note={T("Para çekme ve kritik işlemlerde ek doğrulama")}
+            tail={<Toggle on={confirm} onChange={setConfirm} />}
+          />
+        </Divided>
+      </div>
+
+      <button className="btn primary-lg" onClick={() => onSave(enabled, method, confirm)}>{T("Kaydet ve Devam Et")}</button>
     </div>
   );
 }
@@ -306,7 +379,7 @@ export function Personal({ onBack, me, onContact, onIdentity, onAvatar, monogram
             <span />
             <Icon name="chevron" size={18} color="var(--muted)" />
           </button>
-          <InfoRow title={T("Kimlik Bilgileri")} note={T("Ad soyad, müşteri no ve hesap bilgileri")} chevron onClick={onIdentity} />
+          <InfoRow title={T("Kimlik Bilgileri")} note={T("Ad soyad, T.C. kimlik no ve doğum tarihi")} chevron onClick={onIdentity} />
           <InfoRow title={T("İletişim Bilgileri")} note={T("Telefon, e-posta ve adres bilgileri")} chevron onClick={onContact} />
         </Divided>
       </div>
@@ -314,7 +387,9 @@ export function Personal({ onBack, me, onContact, onIdentity, onAvatar, monogram
   );
 }
 
-export function Contact({ onBack, me, onNotice }) {
+export function Contact({ onBack, me, onNotice, channel, setChannel }) {
+  const [picker, setPicker] = useState(false);
+  const channels = ["E-posta", "SMS", "Posta"];
   return (
     <div className="page gap-14">
       <CenteredHeader title={T("İletişim Bilgileri")} onBack={onBack} />
@@ -324,8 +399,15 @@ export function Contact({ onBack, me, onNotice }) {
           <InfoRow title={T("E-posta")} note={me?.email || T("E-postanızı giriniz")} chevron onClick={() => onNotice("E-posta", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
           <InfoRow title={T("Adres")} note={me?.address || "—"} chevron onClick={() => onNotice("Adres", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
           <InfoRow title={T("İl / İlçe")} note={`${me?.city || "—"} / ${me?.district || "—"}`} />
+          <InfoRow title={T("Posta Kodu")} note={me?.postal_code || "—"} />
+          <InfoRow title={T("Tebligat Tercihi")} note={T(channels[channel] || channels[0])} chevron onClick={() => setPicker(true)} />
         </Divided>
       </div>
+      {picker && (
+        <Sheet title={T("Tebligat Tercihi")} onClose={() => setPicker(false)}>
+          <Choices names={channels.map((item) => T(item))} selected={channel} onChoose={(index) => { setChannel(index); setPicker(false); }} />
+        </Sheet>
+      )}
       <div className="contact-note">
         <Icon name="info" size={22} color="var(--muted)" />
         <span>{T("Telefon ve e-posta değişiklikleri için doğrulama gerekir.")}</span>

@@ -63,6 +63,24 @@ const adminRoutes = {
   ] }),
 };
 
+// Yahoo kapanış serisi taklidi: son 22 iş günü, gerçekçi dalgalanma.
+const mockSeries = () => {
+  const out = {};
+  const seeds = { THYAO: [265, 289.25], ASELS: [352, 379.75] };
+  for (const [symbol, [start, end]] of Object.entries(seeds)) {
+    const rows = [];
+    for (let i = 21; i >= 0; i--) {
+      const date = new Date(Date.UTC(2026, 8, 18) - i * 86400000);
+      if (date.getUTCDay() === 0 || date.getUTCDay() === 6) continue;
+      const t = (21 - i) / 21;
+      const wobble = Math.sin(i * 1.7) * (end - start) * 0.12;
+      rows.push({ day: date.toISOString().slice(0, 10), close: Number((start + (end - start) * t + wobble).toFixed(2)) });
+    }
+    out[symbol] = rows;
+  }
+  return out;
+};
+
 const routes = {
   "/api/me": () => read("me.json"),
   "/api/market": () => read("market.json"),
@@ -72,7 +90,7 @@ const routes = {
   "/api/notifications": () => read("notifications.json"),
   "/api/system-bank-accounts": () => read("bank.json"),
   "/api/public/config": () => read("config.json"),
-  "/api/portfolio/history": () => ({ history: history() }),
+  "/api/portfolio/history": () => ({ history: history(), series: mockSeries() }),
   "/api/profile/security": () => ({ two_factor_enabled: false, sessions: [
     { id: "a", current: true, created_at: "2026-09-17 19:49", last_seen_at: "2026-09-17 19:52", ip_address: "88.23.4.9", device: "Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile Safari" },
     { id: "b", current: false, created_at: "2026-09-14 10:02", last_seen_at: "2026-09-15 08:31", ip_address: "88.23.4.9", device: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome" },

@@ -110,44 +110,18 @@ export const businessDays = (count) => {
 };
 
 
-/* ---------- şirket adı sadeleştirme ----------
-   Veri kaynağı adları tümü büyük harf ve uzun hukuki ek taşır
-   ("TÜPRAŞ-TÜRKİYE PETROL RAFİNERİLERİ A.Ş."); APK'da TradingView'in kısa
-   adı görünür. Hukuki ek atılır ve büyük harf metin başlık biçimine çevrilir. */
-
-const LEGAL = /[\s,.-]*(ANON[İI]M\s+[ŞS][İI]RKET[İI]|A\.?\s?[ŞS]\.?|A\.?\s?S\.?|A\.?O\.?|LTD\.?\s?[ŞS]T[İI]\.?|L[İI]M[İI]TED\s+[ŞS][İI]RKET[İI]|INC\.?|CORP\.?)\s*$/i;
-const SMALL = new Set(["ve", "ile", "için", "de", "da", "the", "of", "and"]);
-
-const titleWord = (word) => {
-  if (!word) return word;
-  if (word.length <= 3 && word === word.toLocaleUpperCase("tr-TR") && /^[A-ZÇĞİÖŞÜ]+$/.test(word)) return word;
-  const first = word[0].toLocaleUpperCase("tr-TR");
-  return first + word.slice(1).toLocaleLowerCase("tr-TR");
-};
-
-export const cleanName = (raw = "") => {
-  let name = String(raw).trim();
-  for (let i = 0; i < 2; i++) name = name.replace(LEGAL, "").trim();
-  const letters = name.replace(/[^\p{L}]/gu, "");
-  const upper = letters && letters === letters.toLocaleUpperCase("tr-TR");
-  if (!upper) return name;
-  return name
-    .split(/(\s+|-|\/)/)
-    .map((part) => (/^\s+$|^[-/]$/.test(part) ? part : SMALL.has(part.toLocaleLowerCase("tr-TR")) ? part.toLocaleLowerCase("tr-TR") : titleWord(part)))
-    .join("");
-};
-
+// APK'daki MarketData.Currencies tablosuyla birebir (ikinci sözcük küçük harf).
 const CURRENCY_NAMES = {
-  USDTRY: "Amerikan Doları",
+  USDTRY: "Amerikan doları",
   EURTRY: "Euro",
-  GBPTRY: "İngiliz Sterlini",
-  CHFTRY: "İsviçre Frangı",
-  JPYTRY: "Japon Yeni",
-  CADTRY: "Kanada Doları",
-  AUDTRY: "Avustralya Doları",
-  SEKTRY: "İsveç Kronu",
-  NOKTRY: "Norveç Kronu",
-  DKKTRY: "Danimarka Kronu",
+  GBPTRY: "İngiliz sterlini",
+  CHFTRY: "İsviçre frangı",
+  JPYTRY: "Japon yeni",
+  CADTRY: "Kanada doları",
+  AUDTRY: "Avustralya doları",
+  SEKTRY: "İsveç kronu",
+  NOKTRY: "Norveç kronu",
+  DKKTRY: "Danimarka kronu",
 };
 
 /** API kaydını APK'daki Instrument biçimine çevirir. */
@@ -160,7 +134,7 @@ export const toInstrument = (quote) => {
   return {
     symbol: isFx ? symbol.replace(/TRY$/, "/TRY") : symbol,
     code: symbol,
-    name: isFx ? CURRENCY_NAMES[symbol] || quote.name || symbol : cleanName(quote.name || symbol),
+    name: isFx ? CURRENCY_NAMES[symbol] || quote.name || symbol : String(quote.name || symbol).trim(),
     price,
     change: changePct,
     dayDelta: price - previous,

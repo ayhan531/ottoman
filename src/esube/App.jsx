@@ -8,7 +8,7 @@ import Portfolio from "./Portfolio.jsx";
 import Account from "./Account.jsx";
 import { TradeHeader, TradePanel, ReviewOrder, OrderResult, QuickTrade } from "./Trade.jsx";
 import {
-  Settings, Security, PasswordPage, Personal, Contact, NotifySettings, ContractsList, DocumentPage,
+  Settings, Security, TwoFactorPage, PasswordPage, Personal, Contact, NotifySettings, ContractsList, DocumentPage,
   SCALE_VALUES, ACCENT_NAMES, LANG_NAMES, NOTIFY_KEYS, PRIVACY,
 } from "./Subpages.jsx";
 import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHoldings, readPref, writePref } from "./store.js";
@@ -16,6 +16,12 @@ import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS,
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
 export const APP_VERSION = "1.6.3";
+
+// APK'da kimlik bilgileri maskeli görünür: "1•• ••• ••• 46".
+const maskTc = (value) => {
+  const digits = String(value || "").replace(/\D/g, "");
+  return digits.length >= 11 ? `${digits[0]}•• ••• ••• ${digits.slice(-2)}` : "1•• ••• ••• ••";
+};
 
 const NAV = [
   { title: "Ana Sayfa", icon: "home" },
@@ -34,6 +40,9 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const [dataMode, setDataMode] = usePref("dataMode", 0);
   const [watchlist, setWatchlist] = usePref("watchlist", ["TUPRS", "THYAO", "ASELS"]);
   const [confirmOn, setConfirmOn] = usePref("confirm", true);
+  const [twoFactor, setTwoFactor] = usePref("twofactor", true);
+  const [twoFactorMethod, setTwoFactorMethod] = usePref("twofactor-method", 0);
+  const [noticeChannel, setNoticeChannel] = usePref("notice-channel", 0);
 
   // Dil, çizimden önce kurulur ki T() bu turda doğru karşılığı versin.
   setLangIndex(lang);
@@ -59,11 +68,13 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const holdings = useHoldings(portfolio.data, market.instruments);
 
   const [history, setHistory] = useState([]);
+  const [series, setSeries] = useState({});
   const [historyState, setHistoryState] = useState("loading");
   const loadHistory = useCallback(async () => {
     try {
       const data = await api("/api/portfolio/history");
       setHistory(data.history || []);
+      setSeries(data.series || {});
       setHistoryState("live");
     } catch {
       setHistoryState("failed");
@@ -201,6 +212,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             transactions={transactions}
             instruments={market.instruments}
             history={history}
+            series={series}
             historyState={historyState}
             onRetryHistory={loadHistory}
             tab={portfolioTab}
@@ -264,6 +276,9 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
           <Security
             onBack={() => go(returnTo)}
             onPassword={() => go(9, 8)}
+            onTwoFactor={() => go(10, 8)}
+            twoFactor={twoFactor}
+            twoFactorMethod={twoFactorMethod}
             sessions={security.sessions || []}
             passwordChangedAt={security.password_changed_at}
             confirmOn={confirmOn}
@@ -285,6 +300,23 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             }}
           />
         );
+      case 10:
+        return (
+          <TwoFactorPage
+            onBack={() => go(8)}
+            twoFactor={twoFactor}
+            twoFactorMethod={twoFactorMethod}
+            confirmOn={confirmOn}
+            phone={me?.phone}
+            onSave={(enabled, method, confirm) => {
+              setTwoFactor(enabled);
+              setTwoFactorMethod(method);
+              setConfirmOn(confirm);
+              go(8);
+              showNotice("Kaydedildi", "Doğrulama tercihlerin güncellendi.");
+            }}
+          />
+        );
       case 11:
         return (
           <Personal
@@ -297,7 +329,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
           />
         );
       case 12:
-        return <Contact onBack={() => go(11)} me={me} onNotice={showNotice} />;
+        return <Contact onBack={() => go(11)} me={me} onNotice={showNotice} channel={noticeChannel} setChannel={setNoticeChannel} />;
       case 13:
         return <NotifyHost onBack={() => go(returnTo)} onSaved={() => { go(returnTo); showNotice("Kaydedildi", "Bildirim tercihlerin güncellendi."); }} />;
       case 14:
@@ -420,9 +452,9 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         <Sheet title={T("Kimlik Bilgileri")} onClose={() => setOverlay(null)}>
           <Divided>
             <ValueRow label={T("Ad Soyad")} value={me?.full_name || "—"} />
+            <ValueRow label={T("T.C. Kimlik No")} value={maskTc(me?.tc)} />
+            <ValueRow label={T("Doğum Tarihi")} value={me?.birth_date || "••.••.••••"} />
             <ValueRow label={T("Müşteri No")} value={me?.account_no || "—"} />
-            <ValueRow label={T("Telefon")} value={me?.phone || "—"} />
-            <ValueRow label={T("Hesap Durumu")} value={me?.status_label || "—"} />
           </Divided>
         </Sheet>
       )}

@@ -127,6 +127,7 @@ export function TradePanel({
   const submit = async () => {
     setError("");
     if (quantity <= 0) { setError(T(isFund ? "En az 1 pay gir." : "En az 1 lot gir.")); return; }
+    if (!(price > 0) || price > 1000000) { setError(T("Geçerli bir fiyat gir.")); return; }
     if (isFund || isIpo) {
       onNotice(
         isIpo ? "Halka arz talebi" : "Fon işlemleri",
@@ -134,7 +135,7 @@ export function TradePanel({
       );
       return;
     }
-    if (buy && total > cash) { setError(T("Yetersiz bakiye.")); return; }
+    if (buy && total + Math.round(total * 0.001 * 100) / 100 > cash) { setError(T("Yetersiz bakiye.")); return; }
     if (!buy && quantity > availableLots) { setError(T("Satılabilir lot adedini aşıyorsun.")); return; }
     onSubmitted({ stock, buy, quantity, price, market: market && !closed, duration: market ? "Günlük" : "İptale kadar" });
   };

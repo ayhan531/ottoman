@@ -75,17 +75,62 @@ function SummaryCard({ total, profit, ratio, available, t2, stockValue, cost, ca
 
 /* ---------- getiri kartı ---------- */
 
-function ReturnsCard({ holdings, profit, ratio, history, historyState, onRetry }) {
+/* APK'daki PriceHistory.Portfolio: günler bütün serilerin birleşimidir; bir hissenin
+   o gün kapanışı yoksa önceki kapanış taşınır, henüz hiç kapanışı yoksa gün atlanır. */
+const portfolioSeries = (series, holdings) => {
+  const held = holdings.filter((item) => item.quantity > 0 && Array.isArray(series?.[item.symbol]) && series[item.symbol].length > 1);
+  if (!held.length) return [];
+  const days = [...new Set(held.flatMap((item) => series[item.symbol].map((row) => row.day)))].sort();
+  const out = [];
+  for (const day of days) {
+    let total = 0;
+    let complete = true;
+    for (const item of held) {
+      const rows = series[item.symbol];
+      let close = null;
+      for (const row of rows) { if (row.day <= day) close = row.close; else break; }
+      if (close === null) { complete = false; break; }
+      total += item.quantity * close;
+    }
+    if (complete) out.push({ day, value: total });
+  }
+  return out;
+};
+
+/* Değer ağırlıklı 1 hafta / 1 ay getirisi (APK: Perf.W / Perf.1M karşılığı). */
+const weightedPerf = (series, holdings, back) => {
+  let value = 0;
+  let sum = 0;
+  for (const item of holdings) {
+    const rows = series?.[item.symbol];
+    if (!(item.quantity > 0) || !Array.isArray(rows) || rows.length < 2) continue;
+    const last = rows[rows.length - 1].close;
+    const target = rows[Math.max(0, rows.length - 1 - back)].close;
+    if (!target) continue;
+    const worth = item.quantity * last;
+    value += worth;
+    sum += worth * ((last / target - 1) * 100);
+  }
+  return value === 0 ? null : sum / value;
+};
+
+function ReturnsCard({ holdings, profit, ratio, series, history, historyState, onRetry }) {
   const tone = profit >= 0 ? MINT_SOFT : ROSE_SOFT;
   const best = holdings
     .filter((item) => item.quantity > 0 && item.cost > 0)
     .sort((a, b) => b.profit / b.cost - a.profit / a.cost)[0];
 
+  // Gerçek kapanışlardan çizilen seri; yoksa günlük portföy anlık görüntülerine düşer.
+  const curve = useMemo(() => {
+    const live = portfolioSeries(series, holdings);
+    return live.length >= 2 ? live : (history || []);
+  }, [series, holdings, history]);
+
   const points = useMemo(() => {
-    if (!history || history.length < 2) return [];
-    const base = history[0].value || 1;
-    return history.map((row, index) => {
-      const daily = index === 0 ? 0 : (row.value / (history[index - 1].value || 1) - 1) * 100;
+    if (curve.length < 2) return [];
+    const base = curve[0].value || 1;
+    return curve.map((row, index) => {
+      const daily = index === 0 ? 0 : (row.value / (curve[index - 1].value || 1) - 1) * 100;
       return {
         value: (row.value / base - 1) * 100,
         date: new Date(row.day).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }),
@@ -93,21 +138,10 @@ function ReturnsCard({ holdings, profit, ratio, history, historyState, onRetry }
         up: daily >= 0,
       };
     });
-  }, [history]);
+  }, [curve]);
 
-  const weekChange = useMemo(() => {
-    if (!history || history.length < 2) return null;
-    const last = history[history.length - 1].value;
-    const target = history[Math.max(0, history.length - 6)].value;
-    return target ? (last / target - 1) * 100 : 0;
-  }, [history]);
-
-  const monthChange = useMemo(() => {
-    if (!history || history.length < 2) return null;
-    const last = history[history.length - 1].value;
-    const first = history[0].value;
-    return first ? (last / first - 1) * 100 : 0;
-  }, [history]);
+  const weekChange = useMemo(() => weightedPerf(series, holdings, 5), [series, holdings]);
+  const monthChange = useMemo(() => weightedPerf(series, holdings, 21), [series, holdings]);
 
   const line = points.length && points[points.length - 1].value >= 0 ? MINT : ROSE;
 
@@ -132,7 +166,7 @@ function ReturnsCard({ holdings, profit, ratio, history, historyState, onRetry }
             <Spark points={points} line={line} fill={`${line}2e`} upBubble={MINT_SOFT} downBubble={ROSE_SOFT} height={116} />
           ) : (
             <button onClick={onRetry} style={{ color: FAINT, fontSize: "calc(12px * var(--s))", textAlign: "right" }}>
-              {T(historyState === "failed" ? "Grafik alınamadı. Dokunup yeniden dene." : "Grafik verisi birikiyor…")}
+              {T(historyState === "failed" ? "Grafik alınamadı. Dokunup yeniden dene." : "Grafik yükleniyor…")}
             </button>
           )}
         </div>
@@ -276,7 +310,7 @@ export function TransactionDetail({ trade, logo, onClose }) {
 /* ---------- ekran ---------- */
 
 export default function Portfolio({
-  brand, holdings, account, orders, transactions, instruments, history, historyState, onRetryHistory,
+  brand, holdings, account, orders, transactions, instruments, series, history, historyState, onRetryHistory,
   tab, setTab, card, setCard, hidden, setHidden, openPosition, onCancelOrder, onCreateOrder,
 }) {
   const lane = useRef(null);
@@ -384,7 +418,7 @@ export default function Portfolio({
             <Deck>
               <ReturnsCard
                 holdings={holdings} profit={profit} ratio={ratio}
-                history={history} historyState={historyState} onRetry={onRetryHistory}
+                series={series} history={history} historyState={historyState} onRetry={onRetryHistory}
               />
             </Deck>
           </div>
