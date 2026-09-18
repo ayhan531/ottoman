@@ -65,8 +65,11 @@ const Section = ({ heading, children }) => (
 export function Settings({
   onBack, monogram, onProfile, dark, setDark, textSize, setTextSize, accent, setAccent,
   lang, setLang, dataMode, setDataMode, onNotify, onSecurity, onContracts, onPrivacy, version,
+  me, accounts = [], onSwitchAccount, onAddAccount, onRemoveAccount,
 }) {
   const [picker, setPicker] = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(null);
+  const currentNo = me?.account_no || "";
 
   return (
     <div className="page gap-12">
@@ -112,6 +115,31 @@ export function Settings({
         <SettingsRow icon="bars" label={T("Veri kullanımı")} value={T(DATA_NAMES[dataMode])} chevron onClick={() => setPicker("data")} />
       </div>
 
+      <div className="settings-head">{T("Hesaplar")}</div>
+      <div className="scard">
+        <Divided>
+          {accounts.map((item) => {
+            const current = Boolean(currentNo) && item.accountNo === currentNo;
+            return (
+              <div className="acc-row" key={item.tc}>
+                <span className="ava n36 lav">{(item.name || "?").trim().slice(0, 1).toLocaleUpperCase("tr-TR")}</span>
+                <span className="copy">
+                  <strong>{item.name}</strong>
+                  <span>{item.accountNo || item.tc}</span>
+                </span>
+                {current
+                  ? <span className="badge-sm buy">{T("Bu hesap")}</span>
+                  : <button className="link-all" onClick={() => onSwitchAccount?.(item.tc)}>{T("Geçiş yap")}</button>}
+                <button className="icon-btn" aria-label={T("Hesabı sil")} disabled={current} onClick={() => setConfirmRemove(item)}>
+                  <Icon name="trash" size={18} color={current ? "var(--edge)" : "var(--muted)"} />
+                </button>
+              </div>
+            );
+          })}
+          <SettingsRow icon="plus" label={T("Hesap ekle")} chevron onClick={onAddAccount} />
+        </Divided>
+      </div>
+
       <div className="settings-head">{T("Yasal ve Uygulama")}</div>
       <div className="scard">
         <Divided>
@@ -121,6 +149,18 @@ export function Settings({
         </Divided>
       </div>
 
+      {confirmRemove && (
+        <Sheet title={T("Hesabı sil")} onClose={() => setConfirmRemove(null)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <span style={{ fontSize: "calc(13.5px * var(--s))", color: "var(--muted)" }}>
+              {T("Hesap yalnızca bu cihazdaki hızlı geçiş listesinden çıkar; e-şube hesabın kapanmaz.")}
+            </span>
+            <strong style={{ fontSize: "calc(15px * var(--s))" }}>{confirmRemove.name}</strong>
+            <button className="btn primary-lg" onClick={() => { onRemoveAccount?.(confirmRemove.tc); setConfirmRemove(null); }}>{T("Listeden çıkar")}</button>
+            <button className="btn ghost" onClick={() => setConfirmRemove(null)}>{T("Vazgeç")}</button>
+          </div>
+        </Sheet>
+      )}
       {picker === "scale" && (
         <Sheet title={T("Yazı boyutu")} onClose={() => setPicker(null)}>
           <Choices names={SCALE_NAMES.map(T)} selected={textSize} onChoose={(index) => { setTextSize(index); setPicker(null); }} />
@@ -380,7 +420,7 @@ export function Personal({ onBack, me, onContact, onIdentity, onAvatar, monogram
             <Icon name="chevron" size={18} color="var(--muted)" />
           </button>
           <InfoRow title={T("Kimlik Bilgileri")} note={T("Ad soyad, T.C. kimlik no ve doğum tarihi")} chevron onClick={onIdentity} />
-          <InfoRow title={T("İletişim Bilgileri")} note={T("Telefon, e-posta ve adres bilgileri")} chevron onClick={onContact} />
+          <InfoRow title={T("İletişim Bilgileri")} note={T("E-posta ve tebligat tercihiniz")} chevron onClick={onContact} />
         </Divided>
       </div>
     </div>
@@ -395,11 +435,7 @@ export function Contact({ onBack, me, onNotice, channel, setChannel }) {
       <CenteredHeader title={T("İletişim Bilgileri")} onBack={onBack} />
       <div className="sec-card">
         <Divided>
-          <InfoRow title={T("Cep Telefonu")} note={me?.phone || "—"} chevron onClick={() => onNotice("Cep Telefonu", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
           <InfoRow title={T("E-posta")} note={me?.email || T("E-postanızı giriniz")} chevron onClick={() => onNotice("E-posta", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
-          <InfoRow title={T("Adres")} note={me?.address || "—"} chevron onClick={() => onNotice("Adres", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
-          <InfoRow title={T("İl / İlçe")} note={`${me?.city || "—"} / ${me?.district || "—"}`} />
-          {me?.postal_code ? <InfoRow title={T("Posta Kodu")} note={me.postal_code} /> : null}
           <InfoRow title={T("Tebligat Tercihi")} note={T(channels[channel] || channels[0])} chevron onClick={() => setPicker(true)} />
         </Divided>
       </div>
@@ -410,7 +446,7 @@ export function Contact({ onBack, me, onNotice, channel, setChannel }) {
       )}
       <div className="contact-note">
         <Icon name="info" size={22} color="var(--muted)" />
-        <span>{T("Telefon ve e-posta değişiklikleri için doğrulama gerekir.")}</span>
+        <span>{T("E-posta değişiklikleri için doğrulama gerekir.")}</span>
       </div>
     </div>
   );

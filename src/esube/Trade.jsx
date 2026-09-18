@@ -378,10 +378,17 @@ export function ReviewOrder({ order, onCancel, onConfirmed }) {
 
 /* ---------- sonuç kutusu (OrderResult) ---------- */
 
-export function OrderResult({ order, onClose, onHistory, onOrders }) {
+export function OrderResult({ order, onClose, onHistory, onOrders, t2Enabled }) {
   const { stock, buy, quantity, price, market } = order;
   const isFund = stock.kind === "fund";
   const isIpo = stock.kind === "ipo";
+  // T+2 açıkken satış tutarı takasa düşer; kısa bir "Takasta" ibaresi görünüp kaybolur.
+  const [settling, setSettling] = useState(Boolean(t2Enabled) && market && !buy);
+  useEffect(() => {
+    if (!settling) return undefined;
+    const timer = setTimeout(() => setSettling(false), 2000);
+    return () => clearTimeout(timer);
+  }, [settling]);
   return (
     <Dialog
       title={T(market ? (buy ? "Alış gerçekleşti" : "Satış gerçekleşti") : isIpo ? "Talebin alındı" : "Emrin alındı")}
@@ -391,6 +398,7 @@ export function OrderResult({ order, onClose, onHistory, onOrders }) {
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "center" }}>
         <div className="result-mark"><Icon name="check" size={30} /></div>
+        {settling && <span className="settling-pill">{T("Takasta")}</span>}
         <strong style={{ fontSize: "calc(16px * var(--s))" }}>
           {stock.symbol} · {quantity} {T(isFund ? "pay" : "lot")} · {money(price)}
         </strong>

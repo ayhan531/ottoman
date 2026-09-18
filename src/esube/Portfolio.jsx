@@ -298,13 +298,15 @@ export function TransactionDetail({ trade, logo, onClose }) {
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <span style={{ fontSize: "calc(12.5px * var(--s))", fontWeight: 700, color: "var(--muted)" }}>{T("İşlem detayları")}</span>
-          <Row label={T(trade.buy ? "Alınan adet" : "Satılan adet")} value={`${trade.quantity} ${T("lot")}`} />
-          <Row label={T(trade.buy ? "Alış tarihi" : "Satış tarihi")} value={trade.date.toLocaleString(locale(), { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })} />
-          {!trade.buy && <Row label={T("Ort. alış fiyatı")} value={money(trade.avgCost)} />}
+          <Row label={T("Adet")} value={`${trade.quantity} ${T("lot")}`} />
           <Row label={T(trade.buy ? "Alış fiyatı" : "Satış fiyatı")} value={money(trade.price)} />
-          <Row label={T("Toplam Maliyet")} value={money(trade.buy ? trade.total : trade.quantity * trade.avgCost)} />
-          <Row label={T("Komisyon")} value={trade.fee > 0 ? money(trade.fee) : T("Ücretsiz")} />
-          <Row label={T("Net Sonuç")} value={money(trade.net)} strong />
+          <Row label={T("Toplam")} value={money(trade.total)} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <span style={{ fontSize: "calc(12.5px * var(--s))", fontWeight: 700, color: "var(--muted)" }}>{T("Maliyet analizi")}</span>
+          {!trade.buy && <Row label={T("Ort. alış")} value={money(trade.avgCost)} />}
+          <Row label={T("Maliyet")} value={money(trade.buy ? trade.total : trade.quantity * trade.avgCost)} />
+          <Row label={T(trade.buy ? "Net sonuç" : "Getiri")} value={money(trade.net)} strong />
         </div>
         <div className="hline" />
         <button className="btn tall" onClick={onClose}>{T("Devam et")}</button>
@@ -316,7 +318,7 @@ export function TransactionDetail({ trade, logo, onClose }) {
 /* ---------- ekran ---------- */
 
 export default function Portfolio({
-  brand, holdings, account, orders, transactions, instruments, series, history, historyState, onRetryHistory,
+  holdings, account, orders, transactions, instruments, series, history, historyState, onRetryHistory,
   tab, setTab, card, setCard, hidden, setHidden, openPosition, onCancelOrder, onCreateOrder,
 }) {
   const lane = useRef(null);
@@ -402,8 +404,6 @@ export default function Portfolio({
 
   return (
     <div className="page gap-16">
-      {brand}
-
       <div
         className="pf-viewport"
         ref={viewport}
@@ -417,7 +417,7 @@ export default function Portfolio({
           ref={lane}
           style={{ transform: `translateX(${offset}px)`, transition: drag === null ? "transform .26s cubic-bezier(.33,1,.68,1)" : "none" }}
         >
-          <div style={{ width: width || "100%", flex: "none" }}>
+          <div className="pf-slot" style={{ width: width || "100%" }}>
             <Deck>
               <SummaryCard
                 total={total} profit={profit} ratio={ratio} available={available} t2={t2}
@@ -426,7 +426,7 @@ export default function Portfolio({
               />
             </Deck>
           </div>
-          <div style={{ width: width || "100%", flex: "none" }}>
+          <div className="pf-slot" style={{ width: width || "100%" }}>
             <Deck>
               <ReturnsCard
                 holdings={holdings} profit={profit} ratio={ratio}

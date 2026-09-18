@@ -134,7 +134,9 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
   background: var(--canvas);
   color: var(--ink);
   overflow: hidden;
-  /* Telefonda durum çubuğunun altına girmesin (iOS çentik / Android kesme). */
+  /* Telefonda durum çubuğunun altına girmesin (iOS çentik / Android kesme).
+     border-box olmazsa dolgu yüksekliğe eklenir ve altta boşluk kalır. */
+  box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
 }
 
@@ -835,8 +837,11 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 
 /* ---------- portföy ---------- */
 .esube .pf-viewport, .overlay .pf-viewport { overflow: hidden; margin: 0 -12px -14px 0; padding: 0 0 14px; }
-.esube .pf-lane, .overlay .pf-lane { display: flex; gap: 12px; will-change: transform; }
-.esube .pf-deck, .overlay .pf-deck { position: relative; flex: none; padding: 0 12px 16px 0; }
+.esube .pf-lane, .overlay .pf-lane { display: flex; gap: 12px; align-items: stretch; will-change: transform; }
+/* İki kart aynı boyda dursun: şerit gerilir, kart yuvayı doldurur. */
+.esube .pf-slot, .overlay .pf-slot { flex: none; display: flex; }
+.esube .pf-deck, .overlay .pf-deck { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0 12px 16px 0; }
+.esube .pf-deck > .pf-card, .overlay .pf-deck > .pf-card { flex: 1; }
 .esube .pf-deck .under, .overlay .pf-deck .under { position: absolute; inset: 0 12px 16px 0; border-radius: 22px; }
 .esube .pf-deck .under.u1, .overlay .pf-deck .under.u1 { transform: translate(12px, 16px); background: color-mix(in srgb, var(--purple) 38%, #fff 62%); opacity: 0.55; }
 .esube .pf-deck .under.u2, .overlay .pf-deck .under.u2 { transform: translate(6px, 8px); background: color-mix(in srgb, var(--purple) 55%, #fff 45%); opacity: 0.6; }
@@ -951,13 +956,13 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 .esube .returns-figures .lbl, .overlay .returns-figures .lbl { font-size: calc(12.5px * var(--s)); color: rgba(255, 255, 255, 0.72); }
 .esube .returns-figures .amt, .overlay .returns-figures .amt { font-size: calc(24px * var(--s)); font-weight: 700; white-space: nowrap; }
 .esube .returns-figures .rat, .overlay .returns-figures .rat { font-size: calc(16px * var(--s)); font-weight: 700; }
-.esube .returns-stats, .overlay .returns-stats { display: grid; grid-template-columns: auto auto 1fr; gap: 26px; align-items: end; }
+.esube .returns-stats, .overlay .returns-stats { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: clamp(10px, 4vw, 26px); align-items: end; min-width: 0; }
 .esube .returns-stats .st, .overlay .returns-stats .st { display: flex; flex-direction: column; gap: 3px; }
 .esube .returns-stats .st span, .overlay .returns-stats .st span { font-size: calc(12px * var(--s)); color: rgba(255, 255, 255, 0.72); }
 .esube .returns-stats .st b, .overlay .returns-stats .st b { font-size: calc(17px * var(--s)); font-weight: 700; }
 .esube .returns-best, .overlay .returns-best { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .esube .returns-best .lbl, .overlay .returns-best .lbl { font-size: calc(12.5px * var(--s)); color: rgba(255, 255, 255, 0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.esube .returns-best .row, .overlay .returns-best .row { display: inline-flex; align-items: center; gap: 8px; font-size: calc(15px * var(--s)); font-weight: 700; }
+.esube .returns-best .row, .overlay .returns-best .row { display: flex; align-items: center; gap: 8px; font-size: calc(15px * var(--s)); font-weight: 700; min-width: 0; white-space: nowrap; overflow: hidden; }
 .esube .spark, .overlay .spark { width: 100%; height: 100%; min-height: 96px; display: block; touch-action: none; }
 
 /* ---------- sözleşme okuyucu ---------- */
@@ -1093,3 +1098,34 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 .esube .notify-page .sec-card, .overlay .notify-page .sec-card { padding: 2px 12px; }
 .esube .notify-page .toggle, .overlay .notify-page .toggle { transform: scale(.88); transform-origin: right center; }
 .esube .notify-page .btn.primary-lg, .overlay .notify-page .btn.primary-lg { height: 48px; }
+
+/* Satış sonrası kısa süre görünen takas ibaresi. */
+.esube .settling-pill, .overlay .settling-pill {
+  align-self: center;
+  padding: 4px 12px;
+  border-radius: 10px;
+  background: var(--tint-orange);
+  color: var(--ink-orange);
+  font-size: calc(11.5px * var(--s));
+  font-weight: 700;
+  animation: settlingFade 2s ease forwards;
+}
+@keyframes settlingFade {
+  0% { opacity: 0; transform: translateY(-4px); }
+  12%, 72% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+/* Ayarlar > Hesaplar satırı. */
+.esube .acc-row, .overlay .acc-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  width: 100%;
+}
+.esube .acc-row .copy, .overlay .acc-row .copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.esube .acc-row .copy strong, .overlay .acc-row .copy strong { font-size: calc(14.5px * var(--s)); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.esube .acc-row .copy span, .overlay .acc-row .copy span { font-size: calc(12px * var(--s)); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.esube .acc-row .badge-sm, .overlay .acc-row .badge-sm { padding: 3px 8px; font-size: calc(11px * var(--s)); }

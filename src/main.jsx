@@ -7,6 +7,7 @@ import CorporateLanding from "./CorporateLanding";
 import Esube from "./esube/App.jsx";
 import { AuthScreen, AdminPanel } from "./legacy.jsx";
 import { api } from "./esube/store.js";
+import { hasPendingTc } from "./esube/accounts.js";
 
 const normalize = (data) => data?.user || (data?.id ? data : null);
 
@@ -60,7 +61,8 @@ function Root() {
     setMe(null);
     setAdminData(null);
     setShowAdmin(false);
-    setAuthOpen(false);
+    // Hesap değiştirilirken giriş ekranı açık kalsın; normal çıkışta ana sayfaya dönülür.
+    setAuthOpen(hasPendingTc());
   };
 
   if (!ready) return null;

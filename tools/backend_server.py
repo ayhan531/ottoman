@@ -1803,6 +1803,8 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_system_bank_accounts()
         if method == "GET" and path == "/api/notifications":
             return self.api_notifications()
+        if method == "POST" and path == "/api/notifications/event":
+            return self.api_notification_event()
         if method == "POST" and path == "/api/notifications/read":
             return self.api_notifications_read()
         if method == "GET" and path == "/api/portfolio":
@@ -2280,6 +2282,29 @@ class AppHandler(BaseHTTPRequestHandler):
             unread = sum(1 for row in rows if not row["read_at"])
             self.json_response({"notifications": rows, "unread_count": unread})
 
+    # Uygulama içi olaylar için bildirim (şimdilik "ana ekrana eklendi").
+    NOTIFICATION_EVENTS = {
+        "installed": ("Uygulama eklendi", "Ottoman e-şube ana ekranına eklendi; bildirimleri buradan takip edebilirsin.", "genel"),
+    }
+
+    def api_notification_event(self) -> None:
+        payload, _form = self.read_json_or_multipart()
+        kind = str((payload or {}).get("kind") or "").strip()
+        event = self.NOTIFICATION_EVENTS.get(kind)
+        if not event:
+            raise HttpError(400, "Bilinmeyen bildirim olayı")
+        title, body, category = event
+        with connect_db() as conn:
+            user = self.require_user(conn)
+            recent = conn.execute(
+                "SELECT id FROM notifications WHERE user_id=? AND title=? AND created_at>? LIMIT 1",
+                (user["id"], title, now() - 60 * 60 * 24),
+            ).fetchone()
+            if not recent:
+                create_notification(conn, user["id"], title, body, category=category)
+                conn.commit()
+            self.json_response({"ok": True})
+
     def api_notifications_read(self) -> None:
         with connect_db() as conn:
             user = self.require_user(conn)
@@ -2735,6 +2760,8 @@ class AppHandler(BaseHTTPRequestHandler):
                 avg_price = position_avg_price(conn, user["id"], symbol)
                 reduce_position(conn, user["id"], symbol, quantity)
                 credit_sale_proceeds(conn, user["id"], order_id, symbol, quote["name"], total, quantity, price, f"Ortalama maliyet: {avg_price:.2f} · Brüt: {gross_total:.2f} · Komisyon: {commission:.2f}")
+                # Bu kullanıcıyı referans gösterenlere satış bildirimi gider.
+                notify_referrals_of_sale(conn, user["id"], symbol, quantity)
             audit(conn, user["id"], "create_order", "order", order_id, {"symbol": symbol, "side": side, "total": total, "order_type": order_type})
             conn.commit()
             self.json_response({"order": order_rows(conn, "WHERE o.id=?", (order_id,))[0]}, 201)

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Bell, CheckCircle2, Moon, ShieldCheck, Sun, X } from "lucide-react";
 import { api } from "./esube/store.js";
+import { rememberAccount, takePendingTc } from "./esube/accounts.js";
 
 const money = (value) => `₺${Number(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const compactDate = () => new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
@@ -33,6 +34,8 @@ function LiveDataStrip({ marketMeta, newsMeta }) {
 function AuthScreen({ onAuthed, back }) {
   const [mode, setMode] = useState("login");
   const [message, setMessage] = useState("");
+  // Hesap değiştirilirken kimlik numarası hazır gelir; şifre her zaman istenir.
+  const [prefillTc] = useState(() => takePendingTc());
   const submit = async (event) => {
     event.preventDefault();
     setMessage("");
@@ -48,7 +51,9 @@ function AuthScreen({ onAuthed, back }) {
         setMessage("Başvurun alındı. Admin onayından sonra giriş yapabilirsin.");
         return;
       }
-      onAuthed(await api("/api/me"));
+      const data = await api("/api/me");
+      rememberAccount({ ...(data?.user || data || {}), tc: String(form.tc || "") });
+      onAuthed(data);
     } catch (error) {
       setMessage(error.message);
     }
@@ -63,7 +68,7 @@ function AuthScreen({ onAuthed, back }) {
         <div className="segments"><button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Giriş</button><button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>Kayıt</button></div>
         <form className="auth-form" onSubmit={submit}>
           {mode === "register" && <><input name="full_name" placeholder="Ad Soyad" required /><input name="phone" placeholder="Telefon" required /><input name="email" type="email" placeholder="E-posta (opsiyonel)" /><input name="city" placeholder="Şehir" defaultValue="İstanbul" /></>}
-          <input name="tc" inputMode="numeric" maxLength="11" placeholder="T.C. kimlik / müşteri no" required />
+          <input name="tc" inputMode="numeric" maxLength="11" placeholder="T.C. kimlik / müşteri no" defaultValue={mode === "login" ? prefillTc : ""} required />
           <input name="password" type="password" placeholder="Şifre" required />
           {mode === "register" && <><input name="password_confirm" type="password" placeholder="Şifre tekrar" required /><input type="hidden" name="accept_kvkk" value="1" /><input type="hidden" name="accept_distance_contract" value="1" /><input type="hidden" name="accept_risk_disclosure" value="1" /><input type="hidden" name="risk_experience" value="2" /><input type="hidden" name="risk_horizon" value="2" /><input type="hidden" name="risk_loss" value="2" /><input type="hidden" name="risk_income" value="2" /><input type="hidden" name="trade_frequency" value="2" /><input type="hidden" name="knowledge_level" value="2" /><label className="checkline"><input name="agreements" value="1" type="checkbox" required /> KVKK, risk bildirimi ve e-şube sözleşmelerini kabul ediyorum.</label></>}
           {message && <div className="warning">{message}</div>}

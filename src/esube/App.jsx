@@ -12,6 +12,7 @@ import {
   SCALE_VALUES, ACCENT_NAMES, LANG_NAMES, NOTIFY_KEYS, PRIVACY,
 } from "./Subpages.jsx";
 import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHoldings, readPref, writePref } from "./store.js";
+import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
 import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, parseAmount } from "./market.js";
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
@@ -34,7 +35,7 @@ const NAV = [
 export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   /* ---- tercihler ---- */
   const [dark, setDark] = usePref("dark", () => window.matchMedia?.("(prefers-color-scheme: dark)").matches || false);
-  const [accent, setAccent] = usePref("accent", 0);
+  const [accent, setAccent] = usePref("accent", 1);   // varsayılan renk modu: Mavi
   const [textSize, setTextSize] = usePref("textSize", 1);
   const [lang, setLang] = usePref("lang", 0);
   const [dataMode, setDataMode] = usePref("dataMode", 0);
@@ -82,6 +83,43 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
     }
   }, []);
   useEffect(() => { loadHistory(); }, [loadHistory]);
+
+  // Cihazda kayıtlı hesaplar; geçiş yaparken şifre yeniden istenir.
+  const [accounts, setAccounts] = useState(() => savedAccounts());
+  useEffect(() => { setAccounts(savedAccounts()); }, [me?.account_no]);
+  const switchAccount = useCallback((tc) => {
+    setPendingTc(tc);
+    onLogout?.();
+  }, [onLogout]);
+
+  // Bildirim türü anahtarları kapalıysa o kayıtlar listede görünmez.
+  const visibleNotifications = useMemo(() => {
+    const allow = {
+      price: readPref("notify-price", true),
+      news: readPref("notify-news", true),
+      trade: readPref("notify-trade", true),
+      referral: readPref("notify-referral", false),
+    };
+    return (notifications.items || []).filter((item) => {
+      const category = String(item.category || "");
+      if (category === "referral") return allow.referral;
+      if (category === "fiyat" || category === "price") return allow.price;
+      if (category === "haber" || category === "news") return allow.news;
+      if (category === "islem" || category === "trade" || category === "emir") return allow.trade;
+      return true;
+    });
+  }, [notifications.items]);
+
+  // Ana ekrana eklendiğinde tek seferlik bildirim.
+  useEffect(() => {
+    const onInstalled = () => {
+      api("/api/notifications/event", { method: "POST", body: JSON.stringify({ kind: "installed" }) })
+        .then(() => notifications.reload?.())
+        .catch(() => { /* bildirim kritik değil */ });
+    };
+    window.addEventListener("appinstalled", onInstalled);
+    return () => window.removeEventListener("appinstalled", onInstalled);
+  }, [notifications]);
 
   const [security, setSecurity] = useState({ sessions: [] });
   const loadSecurity = useCallback(async () => {
@@ -205,7 +243,6 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       case 3:
         return (
           <Portfolio
-            brand={<div className="brand-word">Ottoman</div>}
             holdings={holdings}
             account={account}
             orders={orders}
@@ -265,6 +302,11 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             onContracts={() => go(6, 5)}
             onPrivacy={() => { setDocument_(PRIVACY); go(7, 5); }}
             version={APP_VERSION}
+            me={me}
+            accounts={accounts}
+            onSwitchAccount={switchAccount}
+            onAddAccount={() => { setPendingTc(""); onLogout?.(); }}
+            onRemoveAccount={(tc) => { forgetAccount(tc); setAccounts(savedAccounts()); }}
           />
         );
       case 6:
@@ -420,7 +462,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       )}
 
       {overlay?.kind === "notifications" && (
-        <NotificationsCard items={notifications.items} onClose={() => setOverlay(null)} />
+        <NotificationsCard items={visibleNotifications} onClose={() => setOverlay(null)} />
       )}
 
       {overlay?.kind === "install" && (
@@ -548,6 +590,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       {orderResult && (
         <OrderResult
           order={orderResult}
+          t2Enabled={Boolean(portfolio.data?.settlement_settings?.t2_enabled)}
           onClose={() => setOrderResult(null)}
           onHistory={() => { setOrderResult(null); setPortfolioTab(2); go(3); }}
           onOrders={() => { setOrderResult(null); setPortfolioTab(1); go(3); }}
