@@ -184,9 +184,17 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   }, [holdingByCode]);
 
   const [lastStock, setLastStock] = useState(null);
+  const REFERRAL_ONLY = {
+    fund: ["Fon işlemleri", "Fon alış satışları için referansınız ile iletişime geçiniz."],
+    ipo: ["Halka arz talebi", "Halka arz alış satışları için referansınız ile iletişime geçiniz."],
+    currency: ["Döviz işlemleri", "Döviz alış satışları için referansınız ile iletişime geçiniz."],
+  };
   const openTrade = (item, { sheet = false, buying = true, searchable = false } = {}) => {
     const stock = asStock(item);
     if (!stock) return;
+    // Fon, halka arz ve döviz için emir ekranı hiç açılmaz; yönlendirme notu çıkar.
+    const blocked = REFERRAL_ONLY[stock.kind];
+    if (blocked) { showNotice(blocked[0], blocked[1]); return; }
     setLastStock(stock);
     setOverlay({ kind: "trade", stock, sheet, buying, searchable });
   };
@@ -387,7 +395,8 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             watchlist={watchlist}
             openTrade={(item) => {
               if (!TRADABLE_MARKETS.has(marketTab)) {
-                showNotice(MARKET_NAMES[marketTab], "Bu ürün grubunda işlem e-şube üzerinden yapılmıyor. Referansınız ile iletişime geçiniz.");
+                const kind = marketTab === 6 ? "fund" : marketTab === 5 ? "ipo" : "currency";
+                showNotice(REFERRAL_ONLY[kind][0], REFERRAL_ONLY[kind][1]);
                 return;
               }
               openTrade(item);

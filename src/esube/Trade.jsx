@@ -438,7 +438,8 @@ export function OrderResult({ order, onClose, onHistory, onOrders, t2Enabled }) 
 /* ---------- panel kabuğu: ortalanmış kutu ya da alttan sayfa ---------- */
 
 export function QuickTrade({ asSheet, header, children, onClose }) {
+  // fit: panel ekrana sığmazsa küçülür, kaydırma gerekmez.
   return asSheet
-    ? <Sheet title={header} onClose={onClose} closable={false}>{children}</Sheet>
-    : <Dialog title={header} onClose={onClose} closable={false}>{children}</Dialog>;
+    ? <Sheet title={header} onClose={onClose} closable={false} fit>{children}</Sheet>
+    : <Dialog title={header} onClose={onClose} closable={false} fit>{children}</Dialog>;
 }

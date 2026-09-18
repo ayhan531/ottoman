@@ -103,10 +103,43 @@ export function Overlay({ onClose, children, className = "" }) {
   );
 }
 
-export function Sheet({ title, onClose, children, closable = true }) {
+/**
+ * Panel ekrana sığmıyorsa içeriği ölçüp küçültür; böylece Al/Sat gibi uzun
+ * panellerde kaydırma gerekmez. Ölçüm her zaman ölçeksiz hâlde yapılır.
+ */
+function useFitToScreen(enabled) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const node = ref.current;
+    if (!enabled || !node) return undefined;
+    let frame = 0;
+    const fit = () => {
+      node.style.zoom = "1";
+      const available = node.clientHeight;
+      const content = node.scrollHeight;
+      if (content > available + 1 && available > 0) {
+        node.style.zoom = String(Math.max(0.7, Math.floor((available / content) * 100) / 100));
+      }
+    };
+    const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(fit); };
+    schedule();
+    const observer = new ResizeObserver(schedule);
+    observer.observe(node);
+    window.addEventListener("resize", schedule);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener("resize", schedule);
+    };
+  }, [enabled]);
+  return ref;
+}
+
+export function Sheet({ title, onClose, children, closable = true, fit = false }) {
+  const panel = useFitToScreen(fit);
   return (
     <Overlay onClose={onClose}>
-      <div className="sheet-panel" onClick={(event) => event.stopPropagation()}>
+      <div className="sheet-panel" ref={panel} onClick={(event) => event.stopPropagation()}>
         <div className="shandle" />
         <div className="sheet-stack">
           {closable ? (
@@ -122,10 +155,11 @@ export function Sheet({ title, onClose, children, closable = true }) {
   );
 }
 
-export function Dialog({ title, onClose, children, closable = true, center = false }) {
+export function Dialog({ title, onClose, children, closable = true, center = false, fit = false }) {
+  const panel = useFitToScreen(fit);
   return (
     <Overlay onClose={onClose}>
-      <div className="dialog-panel" onClick={(event) => event.stopPropagation()}>
+      <div className="dialog-panel" ref={panel} onClick={(event) => event.stopPropagation()}>
         <div className="dialog-stack">
           {closable ? (
             <div className="rowline">

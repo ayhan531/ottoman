@@ -107,6 +107,8 @@ body,
 }
 
 body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
+/* Kabuk sabit konumlu; gövde de görünür alanı aşmasın ki tarayıcı çubuğu toplanmasın. */
+html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: none; }
 
 .esube button, .overlay button,
 .esube input, .overlay input { font: inherit; color: inherit; }
@@ -128,15 +130,20 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 
 /* ---------- uygulama kabuğu ---------- */
 .esube {
+  /* Kabuk görünür alana sabitlenir. iOS Safari araç çubuklarını toplayınca
+     ne 100dvh ne de innerHeight gerçek yüksekliği veriyordu; position:fixed
+     ile tarayıcı kendisi görünür alana oturtuyor, altta şerit kalmıyor.
+     Üstteki dolgu durum çubuğu payıdır (safearea.js ölçer). */
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   display: flex;
   flex-direction: column;
-  height: var(--app-height, 100dvh);
   background: var(--canvas);
   color: var(--ink);
   overflow: hidden;
-  /* Telefonda durum çubuğunun altına girmesin. --safe-top açılışta ölçülür
-     (safearea.js); env() 0 dönen iOS Safari'de bile doğru payı verir.
-     border-box olmazsa dolgu yüksekliğe eklenir ve altta boşluk kalır. */
   box-sizing: border-box;
   padding-top: var(--safe-top, env(safe-area-inset-top, 0px));
 }
@@ -1042,9 +1049,12 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
   .esube .pf-legend div, .overlay .pf-legend div { font-size: calc(10.5px * var(--s)); gap: 5px; }
   .esube .pf-legend i, .overlay .pf-legend i { width: 8px; height: 8px; }
   .esube .pf-mini, .overlay .pf-mini { gap: 8px; }
-  .esube .pf-mini b, .overlay .pf-mini b { font-size: calc(14.5px * var(--s)); }
-  .esube .pf-mini span, .overlay .pf-mini span { font-size: calc(11.5px * var(--s)); }
-  .esube .pf-total, .overlay .pf-total { font-size: calc(30px * var(--s)); }
+  /* Büyük yazı ölçeğinde de karta sığsın: genişliğe göre tavan konur. */
+  .esube .pf-mini b, .overlay .pf-mini b { font-size: min(calc(14.5px * var(--s)), 4.1vw); }
+  .esube .pf-mini span, .overlay .pf-mini span { font-size: min(calc(11.5px * var(--s)), 3.4vw); }
+  .esube .pf-total, .overlay .pf-total { font-size: min(calc(30px * var(--s)), 7.8vw); }
+  /* halka da küçülür ki soldaki rakamlara yer kalsın */
+  .esube .pf-alloc svg, .overlay .pf-alloc svg { width: 66px; height: 66px; }
   .esube .pf-gain, .overlay .pf-gain { font-size: calc(12.5px * var(--s)); }
   .esube .inst-row.holding .inst-price .pl, .overlay .inst-row.holding .inst-price .pl { font-size: calc(13.5px * var(--s)); }
   .esube .inst-row.holding .inst-price .val, .overlay .inst-row.holding .inst-price .val { font-size: calc(12px * var(--s)); }
@@ -1052,7 +1062,7 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 
 @media (max-width: 360px) {
   :root { --page-pad: 13px; }
-  .esube .pf-total, .overlay .pf-total { font-size: calc(27px * var(--s)); }
+  .esube .pf-total, .overlay .pf-total { font-size: min(calc(27px * var(--s)), 7.4vw); }
   .esube .quick-grid, .overlay .quick-grid { gap: 7px; }
 }
 
@@ -1148,4 +1158,42 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 /* Giriş ve kayıt ekranı da durum çubuğunun altına girmesin. */
 @media (max-width: 460px) {
   .auth-stage .auth-phone { padding-top: var(--safe-top, 0px); height: var(--app-height, 100vh); box-sizing: border-box; }
+}
+
+/* çok dar telefonlar (320-360): halka ve rakamlar bir tık daha küçük */
+@media (max-width: 360px) {
+  .esube .pf-alloc svg, .overlay .pf-alloc svg { width: 56px; height: 56px; }
+  .esube .pf-mini b, .overlay .pf-mini b { font-size: min(calc(14.5px * var(--s)), 3.9vw); }
+  .esube .pf-mini span, .overlay .pf-mini span { font-size: min(calc(11.5px * var(--s)), 3.2vw); }
+  .esube .pf-alloc, .overlay .pf-alloc { gap: 6px; }
+  .esube .pf-legend div, .overlay .pf-legend div { font-size: min(calc(10.5px * var(--s)), 3.1vw); }
+  .esube .inst-copy strong, .overlay .inst-copy strong { font-size: min(calc(15.5px * var(--s)), 4.4vw); }
+  .esube .inst-price strong, .overlay .inst-price strong { font-size: min(calc(15.5px * var(--s)), 4.4vw); }
+  /* pozisyon satırında sağdaki kâr/zarar yazısı sola yer bıraksın */
+  .esube .inst-row.holding .inst-price .pl, .overlay .inst-row.holding .inst-price .pl { font-size: min(calc(13.5px * var(--s)), 3.7vw); }
+  .esube .inst-row.holding .inst-price .val, .overlay .inst-row.holding .inst-price .val { font-size: min(calc(12px * var(--s)), 3.3vw); }
+}
+
+/* ---------- Al/Sat paneli ekrana tam otursun (kaydırma olmasın) ---------- */
+.esube .overlay-root .sheet-panel, .overlay .sheet-panel,
+.esube .overlay-root .dialog-panel, .overlay .dialog-panel { max-height: calc(100% - 16px); }
+
+/* Emir paneli sıkılaştırılır: dikey ritim, alan yükseklikleri ve rozetler. */
+.esube .trade-body, .overlay .trade-body { gap: 9px; }
+.esube .trade-body .field label, .overlay .trade-body .field label { margin-bottom: 4px; }
+.esube .trade-body .field .box, .overlay .trade-body .field .box,
+.esube .trade-body input[inputmode], .overlay .trade-body input[inputmode] { height: 42px; }
+.esube .trade-body .seg2 button, .overlay .trade-body .seg2 button { padding: 7px 0; }
+.esube .trade-body .closed-note, .overlay .trade-body .closed-note { padding: 8px 10px; line-height: 1.3; }
+.esube .trade-body .shortcuts button.chip, .overlay .trade-body .shortcuts button.chip { padding: 5px 0; }
+.esube .trade-body .trade-total, .overlay .trade-body .trade-total { padding: 10px 14px; }
+.esube .trade-body > button.btn, .overlay .trade-body > button.btn { height: 44px !important; }
+.esube .trade-head, .overlay .trade-head { margin-bottom: 2px; }
+
+/* Çok kısa ekranlarda bir tık daha sıkışır. */
+@media (max-height: 740px) {
+  .esube .trade-body, .overlay .trade-body { gap: 7px; }
+  .esube .trade-body .field .box, .overlay .trade-body .field .box,
+  .esube .trade-body input[inputmode], .overlay .trade-body input[inputmode] { height: 38px; }
+  .esube .trade-body .tstats, .overlay .trade-body .tstats { display: none; }
 }
