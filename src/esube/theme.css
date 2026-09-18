@@ -134,10 +134,11 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
   background: var(--canvas);
   color: var(--ink);
   overflow: hidden;
-  /* Telefonda durum çubuğunun altına girmesin (iOS çentik / Android kesme).
+  /* Telefonda durum çubuğunun altına girmesin. --safe-top açılışta ölçülür
+     (safearea.js); env() 0 dönen iOS Safari'de bile doğru payı verir.
      border-box olmazsa dolgu yüksekliğe eklenir ve altta boşluk kalır. */
   box-sizing: border-box;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--safe-top, env(safe-area-inset-top, 0px));
 }
 
 .esube-main {
@@ -1129,3 +1130,22 @@ body.esube-open { margin: 0; background: var(--canvas); overflow: hidden; }
 .esube .acc-row .copy strong, .overlay .acc-row .copy strong { font-size: calc(14.5px * var(--s)); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .esube .acc-row .copy span, .overlay .acc-row .copy span { font-size: calc(12px * var(--s)); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .esube .acc-row .badge-sm, .overlay .acc-row .badge-sm { padding: 3px 8px; font-size: calc(11px * var(--s)); }
+
+/* Fon / halka arz / döviz: emir formu yerine yönlendirme notu. */
+.esube .referral-note, .overlay .referral-note {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 14px;
+  align-items: center;
+  background: var(--soft);
+  border-radius: 14px;
+  padding: 16px;
+  font-size: calc(13.5px * var(--s));
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+/* Giriş ve kayıt ekranı da durum çubuğunun altına girmesin. */
+@media (max-width: 460px) {
+  .auth-stage .auth-phone { padding-top: var(--safe-top, 0px); box-sizing: border-box; }
+}

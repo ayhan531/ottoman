@@ -8,6 +8,7 @@ import Esube from "./esube/App.jsx";
 import { AuthScreen, AdminPanel } from "./legacy.jsx";
 import { api } from "./esube/store.js";
 import { hasPendingTc } from "./esube/accounts.js";
+import { trackSafeArea } from "./esube/safearea.js";
 
 const normalize = (data) => data?.user || (data?.id ? data : null);
 
@@ -73,5 +74,7 @@ function Root() {
   }
   return <Esube me={me} onLogout={logout} onAdmin={() => setShowAdmin(true)} refreshMe={loadMe} />;
 }
+
+trackSafeArea();
 
 createRoot(document.getElementById("app")).render(<Root />);

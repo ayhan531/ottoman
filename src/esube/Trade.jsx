@@ -10,6 +10,11 @@ import { api } from "./store.js";
 import { T, locale } from "./lang.js";
 
 const KIND_NAMES = ["Hisse", "Fon", "Halka Arz"];
+const REFERRAL_TEXT = {
+  fund: "Fon alış satışları için referansınız ile iletişime geçiniz.",
+  ipo: "Halka arz alış satışları için referansınız ile iletişime geçiniz.",
+  currency: "Döviz alış satışları için referansınız ile iletişime geçiniz.",
+};
 const KIND_MARKETS = [BIST, FUNDS, IPO];
 
 const dateTime = (value) =>
@@ -67,6 +72,8 @@ export function TradePanel({
 }) {
   const isFund = stock.kind === "fund";
   const isIpo = stock.kind === "ipo";
+  const isCurrency = stock.kind === "currency";
+  const referralOnly = isFund || isIpo || isCurrency;
   const unit = isFund ? "pay" : "lot";
   const closed = !isFund && !isIpo && !isMarketOpen();
 
@@ -212,6 +219,15 @@ export function TradePanel({
         </div>
       )}
 
+      {/* Fon, halka arz ve döviz e-şube üzerinden alınıp satılmıyor: emir
+          formu hiç açılmaz, yerine yönlendirme notu görünür. */}
+      {referralOnly ? (
+        <div className="referral-note">
+          <Icon name="headset" size={22} color="var(--muted)" />
+          <span>{T(REFERRAL_TEXT[stock.kind] || REFERRAL_TEXT.fund)}</span>
+        </div>
+      ) : (<>
+
       {!isIpo && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div className="seg2">
@@ -308,6 +324,7 @@ export function TradePanel({
       >
         {T(isIpo ? "Talep oluştur" : buy ? "Alış emri ver" : "Satış emri ver")}
       </button>
+      </>)}
     </div>
   );
 }

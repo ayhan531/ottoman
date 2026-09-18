@@ -1103,6 +1103,24 @@ export const LANG = {
     "Le compte quitte seulement la liste de ce terminal ; votre compte reste ouvert.",
   ],
   "Uygulama eklendi": ["App added", "Tətbiq əlavə edildi", "App hinzugefügt", "Application ajoutée"],
+  "Fon alış satışları için referansınız ile iletişime geçiniz.": [
+    "For fund purchases and sales, please contact your representative.",
+    "Fond alış-satışları üçün nümayəndənizlə əlaqə saxlayın.",
+    "Für Fondskäufe und -verkäufe wenden Sie sich bitte an Ihren Berater.",
+    "Pour les achats et ventes de fonds, contactez votre conseiller.",
+  ],
+  "Halka arz alış satışları için referansınız ile iletişime geçiniz.": [
+    "For public offering orders, please contact your representative.",
+    "İlkin yerləşdirmə sifarişləri üçün nümayəndənizlə əlaqə saxlayın.",
+    "Für Zeichnungen bei Börsengängen wenden Sie sich bitte an Ihren Berater.",
+    "Pour les introductions en bourse, contactez votre conseiller.",
+  ],
+  "Döviz alış satışları için referansınız ile iletişime geçiniz.": [
+    "For currency purchases and sales, please contact your representative.",
+    "Valyuta alış-satışları üçün nümayəndənizlə əlaqə saxlayın.",
+    "Für Devisenkäufe und -verkäufe wenden Sie sich bitte an Ihren Berater.",
+    "Pour les opérations de change, contactez votre conseiller.",
+  ],
   "Maliyet analizi": [
    "Cost analysis",
    "Maya dəyəri analizi",
