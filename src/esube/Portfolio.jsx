@@ -283,11 +283,14 @@ export function TransactionDetail({ trade, logo, onClose }) {
         <span className="spill">{T("Gerçekleşti")}</span>
         {!trade.buy && (
           <div className={`pl-box ${trade.profit >= 0 ? "plus" : "minus"}`}>
-            <div className="cap">
+            <div className="side">
+              <span className="t">{T("Net kâr / zarar")}</span>
+              <span className="amt" style={{ color: tone }}>{signed(trade.profit)}</span>
+            </div>
+            <div className="side end">
               <span className="t">{T("K/Z Oranı")}</span>
               <span className="pct" style={{ color: tone }}>{pctText(trade.profitPercent)}</span>
             </div>
-            <span className="amt" style={{ color: tone, fontSize: "calc(12px * var(--s))" }}>{signed(trade.profit)}</span>
           </div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -370,6 +373,12 @@ export default function Portfolio({
   const logoOf = useMemo(() => {
     const map = new Map(instruments.map((item) => [item.code, item.logo]));
     return (code) => map.get(code) || "";
+  }, [instruments]);
+
+  // İşlem kaydında şirket adı yoksa piyasa listesinden tamamlanır.
+  const nameOf = useMemo(() => {
+    const map = new Map(instruments.map((item) => [item.code, item.name]));
+    return (code, fallback) => (fallback && fallback !== code ? fallback : map.get(code) || fallback || code);
   }, [instruments]);
 
   const positions = useMemo(() => {
@@ -553,7 +562,7 @@ export default function Portfolio({
         </Sheet>
       )}
 
-      {detail && <TransactionDetail trade={detail} logo={logoOf(detail.symbol)} onClose={() => setDetail(null)} />}
+      {detail && <TransactionDetail trade={{ ...detail, name: nameOf(detail.symbol, detail.name) }} logo={logoOf(detail.symbol)} onClose={() => setDetail(null)} />}
     </div>
   );
 }

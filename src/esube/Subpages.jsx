@@ -117,7 +117,7 @@ export function Settings({
         <Divided>
           <SettingsRow icon="orders" label={T("Sözleşmeler")} chevron onClick={onContracts} />
           <SettingsRow icon="shield" label={T("Gizlilik Politikası")} chevron onClick={onPrivacy} />
-          <SettingsRow icon="info" label={T("Uygulama sürümü")} value={`${version} · ${T("Sürümünüz güncel.")}`} />
+          <SettingsRow icon="info" label={T("Uygulama sürümü")} value={version} />
         </Divided>
       </div>
 
@@ -432,7 +432,7 @@ export function NotifySettings({ onBack, draft, setDraft, quiet, setQuiet, weekl
   );
 
   return (
-    <div className="page gap-14">
+    <div className="page gap-12 notify-page">
       <CenteredHeader title={T("Bildirim Ayarları")} onBack={onBack} />
       <div className="sec-card">
         <InfoRow title={T("Tüm Bildirimler")} note={T("Tüm bildirimleri tek dokunuşla aç veya kapat")} tail={<Toggle on={anyOn} onChange={setAll} />} />
