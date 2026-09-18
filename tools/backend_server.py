@@ -574,14 +574,20 @@ def init_db() -> None:
               created_at INTEGER NOT NULL,
               UNIQUE(user_id, day)
             );
-
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS price_history (
               symbol TEXT NOT NULL,
               day TEXT NOT NULL,
               close REAL NOT NULL,
               PRIMARY KEY (symbol, day)
             );
-
+            """
+        )
+        conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS price_history_meta (
               symbol TEXT PRIMARY KEY,
               fetched_at INTEGER NOT NULL DEFAULT 0
@@ -1139,11 +1145,21 @@ def normalize_market(payload: dict) -> list[dict]:
     return quotes
 
 
+# Şirket adı kaynağı değişince (lang=tr kaldırıldı) eski kayıtların bir kez
+# yenilenmesi gerekir; sürüm artınca yenileme zorlanır.
+COMPANY_META_VERSION = "2"
+
+
 def refresh_company_metadata(conn: sqlite3.Connection) -> None:
+    stored = conn.execute(
+        "SELECT setting_value FROM system_settings WHERE setting_key='company_meta_version'"
+    ).fetchone()
+    forced = (stored["setting_value"] if stored else "") != COMPANY_META_VERSION
+
     meta = conn.execute(
         "SELECT COUNT(*) AS total, COALESCE(MAX(metadata_updated_at), 0) AS updated, SUM(CASE WHEN asset_class='fund' THEN 1 ELSE 0 END) AS funds FROM market_cache WHERE logo_url<>''"
     ).fetchone()
-    if meta and int(meta["total"] or 0) >= 500 and int(meta["funds"] or 0) >= 10 and now() - int(meta["updated"] or 0) < COMPANY_META_REFRESH_SECONDS:
+    if not forced and meta and int(meta["total"] or 0) >= 500 and int(meta["funds"] or 0) >= 10 and now() - int(meta["updated"] or 0) < COMPANY_META_REFRESH_SECONDS:
         return
 
     # APK ile aynı sorgu: "lang" verilmez; TradingView o zaman şirketin kısa
@@ -1203,6 +1219,11 @@ def refresh_company_metadata(conn: sqlite3.Connection) -> None:
         WHERE symbol=:symbol
         """,
         metadata,
+    )
+    conn.execute(
+        "INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES ('company_meta_version', ?, ?)"
+        " ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value, updated_at=excluded.updated_at",
+        (COMPANY_META_VERSION, now()),
     )
     conn.commit()
 
