@@ -40,3 +40,4 @@ __pycache__/
 /shots/
 fetch-fixtures.bat
 gitignore-extra.txt
+*.bat
