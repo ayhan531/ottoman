@@ -3,6 +3,8 @@ import React, { useMemo, useState } from "react";
 import Icon from "./icons.jsx";
 import { Divided, Toggle, Sheet, Choices, CenteredHeader, PageHeader } from "./ui.jsx";
 import { CONTRACTS, PRIVACY } from "./contracts.js";
+import { locale } from "./lang.js";
+import { T } from "./lang.js";
 
 export const SCALE_NAMES = ["Küçük", "Orta", "Büyük"];
 export const SCALE_VALUES = [0.9, 1, 1.12];
@@ -69,73 +71,73 @@ export function Settings({
   return (
     <div className="page gap-12">
       <div className="page-head with-tail">
-        <button className="icon-btn" onClick={onBack} aria-label="Geri"><Icon name="back" size={21} /></button>
-        <h1 className="t22">Ayarlar</h1>
+        <button className="icon-btn" onClick={onBack} aria-label={T("Geri")}><Icon name="back" size={21} /></button>
+        <h1 className="t22">{T("Ayarlar")}</h1>
         <button className="ava n36 lav" onClick={onProfile}>{monogram}</button>
       </div>
 
-      <div className="settings-head">Görünüm</div>
+      <div className="settings-head">{T("Görünüm")}</div>
       <div className="scard">
         <Divided>
           <SettingsRow
             icon="sun"
-            label="Tema"
+            label={T("Tema")}
             tail={
               <span className="seg-pill">
-                <button className={!dark ? "active" : ""} onClick={() => setDark(false)}>Açık</button>
-                <button className={dark ? "active" : ""} onClick={() => setDark(true)}>Koyu</button>
+                <button className={!dark ? "active" : ""} onClick={() => setDark(false)}>{T("Açık")}</button>
+                <button className={dark ? "active" : ""} onClick={() => setDark(true)}>{T("Koyu")}</button>
               </span>
             }
           />
-          <SettingsRow icon="Aa" label="Yazı boyutu" value={SCALE_NAMES[textSize]} chevron onClick={() => setPicker("scale")} />
+          <SettingsRow icon="Aa" label={T("Yazı boyutu")} value={T(SCALE_NAMES[textSize])} chevron onClick={() => setPicker("scale")} />
           <SettingsRow
             icon="palette"
-            label="Renk modu"
+            label={T("Renk modu")}
             chevron
             onClick={() => setPicker("accent")}
             tail={
               <span className="vl">
                 <i style={{ width: 12, height: 12, borderRadius: 6, background: (dark ? ACCENT_NIGHT : ACCENT_LIGHT)[accent], display: "block" }} />
-                {ACCENT_NAMES[accent]}
+                {T(ACCENT_NAMES[accent])}
               </span>
             }
           />
         </Divided>
       </div>
 
-      <div className="scard"><SettingsRow icon="bell" label="Bildirim tercihleri" chevron onClick={onNotify} /></div>
-      <div className="scard"><SettingsRow icon="shield" label="Güvenlik ayarları" chevron onClick={onSecurity} /></div>
-      <div className="scard"><SettingsRow icon="globe" label="Dil ve Bölge" value={LANG_NAMES[lang]} chevron onClick={() => setPicker("lang")} /></div>
+      <div className="scard"><SettingsRow icon="bell" label={T("Bildirim tercihleri")} chevron onClick={onNotify} /></div>
+      <div className="scard"><SettingsRow icon="shield" label={T("Güvenlik ayarları")} chevron onClick={onSecurity} /></div>
+      <div className="scard"><SettingsRow icon="globe" label={T("Dil ve Bölge")} value={LANG_NAMES[lang]} chevron onClick={() => setPicker("lang")} /></div>
       <div className="scard">
-        <SettingsRow icon="bars" label="Veri kullanımı" value={DATA_NAMES[dataMode]} chevron onClick={() => setPicker("data")} />
+        <SettingsRow icon="bars" label={T("Veri kullanımı")} value={T(DATA_NAMES[dataMode])} chevron onClick={() => setPicker("data")} />
       </div>
 
-      <div className="settings-head">Yasal ve Uygulama</div>
+      <div className="settings-head">{T("Yasal ve Uygulama")}</div>
       <div className="scard">
         <Divided>
-          <SettingsRow icon="orders" label="Sözleşmeler" chevron onClick={onContracts} />
-          <SettingsRow icon="shield" label="Gizlilik Politikası" chevron onClick={onPrivacy} />
-          <SettingsRow icon="info" label="Uygulama sürümü" value={`${version} · Sürümünüz güncel.`} />
+          <SettingsRow icon="orders" label={T("Sözleşmeler")} chevron onClick={onContracts} />
+          <SettingsRow icon="shield" label={T("Gizlilik Politikası")} chevron onClick={onPrivacy} />
+          <SettingsRow icon="info" label={T("Uygulama sürümü")} value={`${version} · ${T("Sürümünüz güncel.")}`} />
         </Divided>
       </div>
 
       {picker === "scale" && (
-        <Sheet title="Yazı boyutu" onClose={() => setPicker(null)}>
-          <Choices names={SCALE_NAMES} selected={textSize} onChoose={(index) => { setTextSize(index); setPicker(null); }} />
+        <Sheet title={T("Yazı boyutu")} onClose={() => setPicker(null)}>
+          <Choices names={SCALE_NAMES.map(T)} selected={textSize} onChoose={(index) => { setTextSize(index); setPicker(null); }} />
         </Sheet>
       )}
       {picker === "lang" && (
-        <Sheet title="Dil ve Bölge" onClose={() => setPicker(null)}>
+        <Sheet title={T("Dil ve Bölge")} onClose={() => setPicker(null)}>
           <Choices names={LANG_NAMES} selected={lang} onChoose={(index) => { setLang(index); setPicker(null); }} />
         </Sheet>
       )}
       {picker === "data" && (
-        <Sheet title="Veri kullanımı" onClose={() => setPicker(null)}>
-          <Choices names={DATA_NAMES} selected={dataMode} onChoose={(index) => { setDataMode(index); setPicker(null); }} />
+        <Sheet title={T("Veri kullanımı")} onClose={() => setPicker(null)}>
+          <Choices names={DATA_NAMES.map(T)} selected={dataMode} onChoose={(index) => { setDataMode(index); setPicker(null); }} />
         </Sheet>
       )}
       {picker === "accent" && (
-        <Sheet title="Renk modu" onClose={() => setPicker(null)}>
+        <Sheet title={T("Renk modu")} onClose={() => setPicker(null)}>
           <div className="accent-grid">
             {ACCENT_NAMES.map((name, index) => {
               const color = (dark ? ACCENT_NIGHT : ACCENT_LIGHT)[index];
@@ -145,7 +147,7 @@ export function Settings({
                   <span className="ring" style={on ? { borderColor: color } : undefined}>
                     <span className="swatch" style={{ background: color }}>{on && <Icon name="check" size={24} />}</span>
                   </span>
-                  <span style={on ? { color } : undefined}>{name}</span>
+                  <span style={on ? { color } : undefined}>{T(name)}</span>
                 </button>
               );
             })}
@@ -165,29 +167,29 @@ export function Security({ onBack, onPassword, sessions, onRevoke, confirmOn, se
 
   return (
     <div className="page gap-14">
-      <CenteredHeader title="Güvenlik" onBack={onBack} />
-      <Section heading="HESAP GÜVENLİĞİ">
+      <CenteredHeader title={T("Güvenlik")} onBack={onBack} />
+      <Section heading={T("HESAP GÜVENLİĞİ")}>
         <SecRow
           icon="lock"
-          label="Şifre Değiştir"
-          note={changed ? `Son değiştirme: ${changed.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}` : "Şifreni güncelle"}
+          label={T("Şifre Değiştir")}
+          note={changed ? `${T("Son değiştirme:")} ${changed.toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" })}` : T("Şifreni güncelle")}
           chevron
           onClick={onPassword}
         />
       </Section>
-      <Section heading="GİRİŞ VE CİHAZLAR">
+      <Section heading={T("GİRİŞ VE CİHAZLAR")}>
         <SecRow
           icon="phone"
-          label="İşlem Onayı"
-          note="Para çekme ve kritik işlemlerde doğrulama"
+          label={T("İşlem Onayı")}
+          note={T("Para çekme ve kritik işlemlerde doğrulama")}
           tail={<Toggle on={confirmOn} onChange={setConfirmOn} />}
         />
-        <SecRow icon="laptop" label="Güvenilir Cihazlar" note={`${sessions.length} kayıtlı cihaz`} chevron onClick={() => setDevices(true)} />
-        <SecRow icon="clock" label="Aktif Oturumlar" note={`${sessions.length} aktif oturum`} chevron onClick={() => setOpenSessions(true)} />
+        <SecRow icon="laptop" label={T("Güvenilir Cihazlar")} note={`${sessions.length} ${T("kayıtlı cihaz")}`} chevron onClick={() => setDevices(true)} />
+        <SecRow icon="clock" label={T("Aktif Oturumlar")} note={`${sessions.length} ${T("aktif oturum")}`} chevron onClick={() => setOpenSessions(true)} />
       </Section>
 
       {(devices || openSessions) && (
-        <Sheet title={devices ? "Güvenilir Cihazlar" : "Aktif Oturumlar"} onClose={() => { setDevices(false); setOpenSessions(false); }}>
+        <Sheet title={T(devices ? "Güvenilir Cihazlar" : "Aktif Oturumlar")} onClose={() => { setDevices(false); setOpenSessions(false); }}>
           <Divided>
             {sessions.map((session) => {
               const mobile = /Mobile|Android|iPhone/i.test(session.device || "");
@@ -196,11 +198,11 @@ export function Security({ onBack, onPassword, sessions, onRevoke, confirmOn, se
                   <span className="disc"><Icon name={mobile ? "phone" : "laptop"} size={20} /></span>
                   <span className="copy">
                     <strong>{(session.device || "").split(")")[0].split("(").pop() || "Cihaz"}</strong>
-                    <span>{session.ip_address} · Son giriş {session.last_seen_at}</span>
+                    <span>{session.ip_address} · {T("Son giriş")} {session.last_seen_at}</span>
                   </span>
                   {session.current
-                    ? <span className="badge-sm buy" style={{ padding: "3px 8px", fontSize: "calc(11px * var(--s))" }}>Bu cihaz</span>
-                    : <button className="link-all" onClick={() => onRevoke(session.id)}>Kapat</button>}
+                    ? <span className="badge-sm buy" style={{ padding: "3px 8px", fontSize: "calc(11px * var(--s))" }}>{T("Bu cihaz")}</span>
+                    : <button className="link-all" onClick={() => onRevoke(session.id)}>{T("Kapat")}</button>}
                   <span />
                 </div>
               );
@@ -229,7 +231,7 @@ function PasswordField({ label, value, onChange }) {
       <label>{label}</label>
       <div className="box">
         <input type={shown ? "text" : "password"} value={value} placeholder="••••••••" onChange={(event) => onChange(event.target.value)} />
-        <button className="icon-btn" onClick={() => setShown((current) => !current)} aria-label="Göster">
+        <button className="icon-btn" onClick={() => setShown((current) => !current)} aria-label={T("Göster")}>
           <Icon name={shown ? "eye-off" : "eye"} size={20} color="var(--muted)" />
         </button>
       </div>
@@ -246,26 +248,26 @@ export function PasswordPage({ onBack, onSubmit }) {
   const ok = checkRules(next);
   const count = ok.filter(Boolean).length;
   const tone = count <= 1 ? "var(--red)" : count === 2 ? "var(--ink-orange)" : count === 3 ? "var(--purple)" : "var(--green)";
-  const grade = !next ? "" : count <= 1 ? "Zayıf" : count === 2 ? "Orta" : count === 3 ? "İyi" : "Güçlü";
+  const grade = !next ? "" : T(count <= 1 ? "Zayıf" : count === 2 ? "Orta" : count === 3 ? "İyi" : "Güçlü");
 
   const send = async () => {
     const problem = !current ? "Mevcut şifreni gir."
       : !ok.every(Boolean) ? "Yeni şifre dört kuralı da karşılamalı."
         : again !== next ? "Yeni şifreler eşleşmiyor."
           : current === next ? "Yeni şifre mevcut şifreyle aynı olamaz." : null;
-    if (problem) { setError(problem); return; }
+    if (problem) { setError(T(problem)); return; }
     setBusy(true);
     try { await onSubmit(current, next); } catch (problemError) { setError(problemError.message); } finally { setBusy(false); }
   };
 
   return (
     <div className="page gap-14">
-      <CenteredHeader title="Şifre Değiştir" onBack={onBack} />
-      <PasswordField label="Mevcut Şifre" value={current} onChange={setCurrent} />
-      <PasswordField label="Yeni Şifre" value={next} onChange={setNext} />
-      <PasswordField label="Yeni Şifre Tekrar" value={again} onChange={setAgain} />
+      <CenteredHeader title={T("Şifre Değiştir")} onBack={onBack} />
+      <PasswordField label={T("Mevcut Şifre")} value={current} onChange={setCurrent} />
+      <PasswordField label={T("Yeni Şifre")} value={next} onChange={setNext} />
+      <PasswordField label={T("Yeni Şifre Tekrar")} value={again} onChange={setAgain} />
       <div className="sec-section">
-        <div className="head">ŞİFRE GÜVENLİĞİ</div>
+        <div className="head">{T("ŞİFRE GÜVENLİĞİ")}</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "12px 2px" }}>
           <div className="meter">
             <div className="bar">{[0, 1, 2, 3].map((index) => <i key={index} style={index < count ? { background: tone } : undefined} />)}</div>
@@ -274,27 +276,38 @@ export function PasswordPage({ onBack, onSubmit }) {
           {RULES.map((rule, index) => (
             <div className={`rule${ok[index] ? " ok" : ""}`} key={rule}>
               <span className="disc"><Icon name="check" size={15} /></span>
-              {rule}
+              {T(rule)}
             </div>
           ))}
         </div>
       </div>
       {error && <span style={{ fontSize: "calc(12.5px * var(--s))", color: "var(--red)" }}>{error}</span>}
-      <button className="btn primary-lg" disabled={busy} onClick={send}>Şifreyi Değiştir</button>
+      <button className="btn primary-lg" disabled={busy} onClick={send}>{T("Şifreyi Değiştir")}</button>
     </div>
   );
 }
 
 /* ---------- Kişisel Bilgiler ---------- */
 
-export function Personal({ onBack, me, onContact, onIdentity }) {
+export function Personal({ onBack, me, onContact, onIdentity, onAvatar, monogram }) {
   return (
     <div className="page gap-14">
-      <CenteredHeader title="Kişisel Bilgiler" onBack={onBack} />
+      <CenteredHeader title={T("Kişisel Bilgiler")} onBack={onBack} />
       <div className="sec-card">
         <Divided>
-          <InfoRow title="Kimlik Bilgileri" note="Ad soyad, müşteri no ve hesap bilgileri" chevron onClick={onIdentity} />
-          <InfoRow title="İletişim Bilgileri" note="Telefon, e-posta ve adres bilgileri" chevron onClick={onContact} />
+          <button className="sec-row" onClick={onAvatar}>
+            <span className="ava n44 lav" style={{ overflow: "hidden" }}>
+              {me?.avatar_url ? <img src={me.avatar_url} alt="" /> : monogram}
+            </span>
+            <span className="copy">
+              <strong>{T("Profil fotoğrafı")}</strong>
+              <span>{me?.avatar_url ? T("Fotoğrafı değiştir") : T("Fotoğraf yükle")}</span>
+            </span>
+            <span />
+            <Icon name="chevron" size={18} color="var(--muted)" />
+          </button>
+          <InfoRow title={T("Kimlik Bilgileri")} note={T("Ad soyad, müşteri no ve hesap bilgileri")} chevron onClick={onIdentity} />
+          <InfoRow title={T("İletişim Bilgileri")} note={T("Telefon, e-posta ve adres bilgileri")} chevron onClick={onContact} />
         </Divided>
       </div>
     </div>
@@ -304,18 +317,18 @@ export function Personal({ onBack, me, onContact, onIdentity }) {
 export function Contact({ onBack, me, onNotice }) {
   return (
     <div className="page gap-14">
-      <CenteredHeader title="İletişim Bilgileri" onBack={onBack} />
+      <CenteredHeader title={T("İletişim Bilgileri")} onBack={onBack} />
       <div className="sec-card">
         <Divided>
-          <InfoRow title="Cep Telefonu" note={me?.phone || "—"} chevron onClick={() => onNotice("Cep Telefonu", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
-          <InfoRow title="E-posta" note={me?.email || "E-postanızı giriniz"} chevron onClick={() => onNotice("E-posta", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
-          <InfoRow title="Adres" note={me?.address || "—"} chevron onClick={() => onNotice("Adres", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
-          <InfoRow title="İl / İlçe" note={`${me?.city || "—"} / ${me?.district || "—"}`} />
+          <InfoRow title={T("Cep Telefonu")} note={me?.phone || "—"} chevron onClick={() => onNotice("Cep Telefonu", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
+          <InfoRow title={T("E-posta")} note={me?.email || T("E-postanızı giriniz")} chevron onClick={() => onNotice("E-posta", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
+          <InfoRow title={T("Adres")} note={me?.address || "—"} chevron onClick={() => onNotice("Adres", "Değişiklik için kayıtlı telefonuna doğrulama kodu gönderilir; bu sürümde kapalı.")} />
+          <InfoRow title={T("İl / İlçe")} note={`${me?.city || "—"} / ${me?.district || "—"}`} />
         </Divided>
       </div>
       <div className="contact-note">
         <Icon name="info" size={22} color="var(--muted)" />
-        <span>Telefon ve e-posta değişiklikleri için doğrulama gerekir.</span>
+        <span>{T("Telefon ve e-posta değişiklikleri için doğrulama gerekir.")}</span>
       </div>
     </div>
   );
@@ -338,30 +351,30 @@ export function NotifySettings({ onBack, draft, setDraft, quiet, setQuiet, weekl
 
   return (
     <div className="page gap-14">
-      <CenteredHeader title="Bildirim Ayarları" onBack={onBack} />
+      <CenteredHeader title={T("Bildirim Ayarları")} onBack={onBack} />
       <div className="sec-card">
-        <InfoRow title="Tüm Bildirimler" note="Tüm bildirimleri tek dokunuşla aç veya kapat" tail={<Toggle on={anyOn} onChange={setAll} />} />
+        <InfoRow title={T("Tüm Bildirimler")} note={T("Tüm bildirimleri tek dokunuşla aç veya kapat")} tail={<Toggle on={anyOn} onChange={setAll} />} />
       </div>
-      <Section heading="BİLDİRİM TÜRLERİ">
-        <Type id="notify-price" title="Fiyat Bildirimleri" note="İzlediğiniz hisselerde fiyat uyarıları" />
-        <Type id="notify-news" title="Haber Bildirimleri" note="Piyasa haberleri ve şirket duyuruları" />
-        <Type id="notify-trade" title="İşlem Bildirimleri" note="Alım, satım ve emir gerçekleşmeleri" />
-        <Type id="notify-referral" title="Referans Bildirimleri" note="Referansınızın işlem ve fırsat duyuruları" />
+      <Section heading={T("BİLDİRİM TÜRLERİ")}>
+        <Type id="notify-price" title={T("Fiyat Bildirimleri")} note={T("İzlediğiniz hisselerde fiyat uyarıları")} />
+        <Type id="notify-news" title={T("Haber Bildirimleri")} note={T("Piyasa haberleri ve şirket duyuruları")} />
+        <Type id="notify-trade" title={T("İşlem Bildirimleri")} note={T("Alım, satım ve emir gerçekleşmeleri")} />
+        <Type id="notify-referral" title={T("Referans Bildirimleri")} note={T("Referansınızın işlem ve fırsat duyuruları")} />
       </Section>
-      <Section heading="ZAMANLAMA">
-        <InfoRow title="Sessiz Saatler" note={QUIET_HOURS[quiet]} chevron onClick={() => setPicker("quiet")} />
-        <InfoRow title="Haftalık Özet" note={WEEKLY[weekly]} chevron onClick={() => setPicker("weekly")} />
+      <Section heading={T("ZAMANLAMA")}>
+        <InfoRow title={T("Sessiz Saatler")} note={T(QUIET_HOURS[quiet])} chevron onClick={() => setPicker("quiet")} />
+        <InfoRow title={T("Haftalık Özet")} note={T(WEEKLY[weekly])} chevron onClick={() => setPicker("weekly")} />
       </Section>
-      <button className="btn primary-lg" onClick={onSave}>Kaydet</button>
+      <button className="btn primary-lg" onClick={onSave}>{T("Kaydet")}</button>
 
       {picker === "quiet" && (
-        <Sheet title="Sessiz Saatler" onClose={() => setPicker(null)}>
-          <Choices names={QUIET_HOURS} selected={quiet} onChoose={(index) => { setQuiet(index); setPicker(null); }} />
+        <Sheet title={T("Sessiz Saatler")} onClose={() => setPicker(null)}>
+          <Choices names={QUIET_HOURS.map(T)} selected={quiet} onChoose={(index) => { setQuiet(index); setPicker(null); }} />
         </Sheet>
       )}
       {picker === "weekly" && (
-        <Sheet title="Haftalık Özet" onClose={() => setPicker(null)}>
-          <Choices names={WEEKLY} selected={weekly} onChoose={(index) => { setWeekly(index); setPicker(null); }} />
+        <Sheet title={T("Haftalık Özet")} onClose={() => setPicker(null)}>
+          <Choices names={WEEKLY.map(T)} selected={weekly} onChoose={(index) => { setWeekly(index); setPicker(null); }} />
         </Sheet>
       )}
     </div>
@@ -375,7 +388,7 @@ export { NOTIFY_KEYS };
 export function ContractsList({ onBack, onOpen }) {
   return (
     <div className="page gap-12">
-      <PageHeader title="Sözleşmeler" onBack={onBack} />
+      <PageHeader title={T("Sözleşmeler")} onBack={onBack} />
       <div className="card outline" style={{ padding: "3px 16px" }}>
         <Divided>
           {CONTRACTS.map((item, index) => (
@@ -387,7 +400,7 @@ export function ContractsList({ onBack, onOpen }) {
           ))}
         </Divided>
       </div>
-      <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--muted)" }}>Bu metinler bilgilendirme amaçlıdır.</span>
+      <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--muted)" }}>{T("Bu metinler bilgilendirme amaçlıdır.")}</span>
     </div>
   );
 }

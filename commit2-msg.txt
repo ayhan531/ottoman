@@ -1,0 +1,30 @@
+Work through the OMLET review list on top of the APK-matched e-sube
+
+Second pass over the feedback in "duzeltilmesi gerekenler", keeping the APK's
+own number and date formats where the two disagreed.
+
+- Interface language now really switches: UI/Lang.cs's table is ported
+  (405 Turkish keys with English, Azerbaijani, German and French), every screen
+  reads through T(), and dates follow the selected culture while money stays TL.
+- Profile photo: the identity circle in the profile menu and a new row under
+  Kisisel Bilgiler both open the picker and upload to /api/profile/avatar.
+- Gecmis: the calendar button opens a date sheet, filters the list and shows the
+  active day with a one-tap "show all dates".
+- The eye button no longer blurs: amounts, the donut and its legend turn into
+  stars, as asked.
+- Destek is replaced by "Uygulamayi yukle" with Android and iPhone steps, the
+  profile menu opens with "Referans Firsatlari", and notification settings trade
+  "Portfoy Ozeti" for "Referans Bildirimleri" (off by default).
+- Two-factor and biometric login are gone from Guvenlik and Ayarlar.
+- Islem detayi follows the requested order: quantity, date, average buy price,
+  sell price, total cost, commission, net result, with "K/Z Orani" over the
+  percentage.
+- Fon, Halka Arz and Doviz rows no longer open an order panel; they say to
+  contact your referrer.
+- Admin: the selected customer's transaction history is listed in their card
+  with the balance after each move, and T+2 settlement now defaults to off.
+- Text scale checked at Kucuk and Buyuk: no horizontal overflow on any screen;
+  the portfolio card tightens below 430px so the figures stay on one line.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_016snPNpDy8yNyeYj8SeYtnV

@@ -7,6 +7,7 @@ import {
   listFor, indexFor, breadth, turnover, movers, search, money, amount, move, percent,
   volumeText, isMarketOpen, parseAmount,
 } from "./market.js";
+import { T } from "./lang.js";
 
 export function InstrumentRow({ item, onClick, extra }) {
   const up = item.change >= 0;
@@ -38,13 +39,13 @@ export function MarketStatus({ market, list, instruments, state }) {
   return (
     <section className="card outline market-status">
       <div className="rowline">
-        <span className="h-title" style={{ fontSize: "calc(15.5px * var(--s))" }}>Piyasa Durumu</span>
-        <span className={`pill ${open ? "open" : "closed"}`}><i className="dot" />{open ? "Açık" : "Kapalı"}</span>
+        <span className="h-title" style={{ fontSize: "calc(15.5px * var(--s))" }}>{T("Piyasa Durumu")}</span>
+        <span className={`pill ${open ? "open" : "closed"}`}><i className="dot" />{T(open ? "Açık" : "Kapalı")}</span>
       </div>
 
       {state !== "live" || !list.length ? (
         <span style={{ fontSize: "calc(12.5px * var(--s))", color: "var(--muted)" }}>
-          {state === "failed" ? "Piyasa verisi alınamadı. Sayfayı yenile." : "Piyasa verisi yükleniyor…"}
+          {T(state === "failed" ? "Piyasa verisi alınamadı. Sayfayı yenile." : "Piyasa verisi yükleniyor…")}
         </span>
       ) : (
         <>
@@ -59,8 +60,8 @@ export function MarketStatus({ market, list, instruments, state }) {
             </div>
           )}
           <div className="breadth-labels">
-            <span className="up"><Icon name="trend" size={14} />Yükselenler</span>
-            <span className="down">Düşenler<Icon name="trend-down" size={14} /></span>
+            <span className="up"><Icon name="trend" size={14} />{T("Yükselenler")}</span>
+            <span className="down">{T("Düşenler")}<Icon name="trend-down" size={14} /></span>
           </div>
           <div className="breadth-bar">
             <i className="g" style={{ flex: Math.max(risePercent, 1) }}>%{risePercent}</i>
@@ -68,7 +69,7 @@ export function MarketStatus({ market, list, instruments, state }) {
           </div>
           <div className="volume-badge">
             <i className="dot" />
-            <span>Toplam Hacim:</span>
+            <span>{T("Toplam Hacim:")}</span>
             <b>{volumeText(value)}</b>
           </div>
         </>
@@ -96,7 +97,7 @@ function Converter({ rates, onNotice }) {
           <input inputMode="decimal" value={amountText} onChange={(event) => setAmountText(event.target.value)} placeholder="0" />
           <button className="fx-unit" onClick={() => setPicking(true)}>{toTry ? code : "₺"}<Icon name="down" size={16} /></button>
         </div>
-        <button className="icon-btn lav" onClick={() => setToTry((current) => !current)} aria-label="Yönü çevir">
+        <button className="icon-btn lav" onClick={() => setToTry((current) => !current)} aria-label={T("Yönü çevir")}>
           <Icon name="swap" size={21} />
         </button>
         <div className="fx-box">
@@ -107,11 +108,11 @@ function Converter({ rates, onNotice }) {
         </div>
       </div>
       <span className="note">
-        {rate ? `1 ${code} = ${money(rate.price)} · ECB kuru` : "Kur henüz yüklenmedi."}
+        {rate ? `1 ${code} = ${money(rate.price)} · ${T("ECB kuru")}` : T("Kur henüz yüklenmedi.")}
       </span>
 
       {picking && (
-        <Sheet title="Döviz seç" onClose={() => setPicking(false)}>
+        <Sheet title={T("Döviz seç")} onClose={() => setPicking(false)}>
           <Divided>
             {rates.map((item) => {
               const short = item.code.slice(0, 3);
@@ -155,15 +156,15 @@ export default function Home({
   const rising = useMemo(() => (marketTab === BIST ? movers(list, true) : []), [marketTab, list]);
   const falling = useMemo(() => (marketTab === BIST ? movers(list, false) : []), [marketTab, list]);
 
-  let heading = "Takip listem";
+  let heading = T("Takip listem");
   let body = null;
 
   if (trimmed) {
-    heading = "Arama sonuçları";
+    heading = T("Arama sonuçları");
     body = results.length ? (
       <Divided>{results.slice(0, 120).map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}</Divided>
     ) : (
-      <div className="notice-box">{state === "live" ? `“${trimmed}” için sonuç bulunamadı.` : "Liste henüz yüklenmedi."}</div>
+      <div className="notice-box">{state === "live" ? `“${trimmed}”${T(" için sonuç bulunamadı.")}` : T("Liste henüz yüklenmedi.")}</div>
     );
   } else if (marketTab === BIST) {
     body = (
@@ -171,15 +172,15 @@ export default function Home({
         <Divided>
           {watched.map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}
         </Divided>
-        {!watched.length && <div className="notice-box">Takip listen boş. Bir hisseye dokunup yıldıza bas.</div>}
+        {!watched.length && <div className="notice-box">{T("Takip listen boş. Bir hisseye dokunup yıldıza bas.")}</div>}
         {state === "live" && (
           <>
             <div style={{ paddingTop: 16 }}>
-              <div className="h-title">Öne çıkan yükselenler</div>
+              <div className="h-title">{T("Öne çıkan yükselenler")}</div>
               <Divided>{rising.map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}</Divided>
             </div>
             <div style={{ paddingTop: 16 }}>
-              <div className="h-title">Öne çıkan düşenler</div>
+              <div className="h-title">{T("Öne çıkan düşenler")}</div>
               <Divided>{falling.map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}</Divided>
             </div>
           </>
@@ -187,11 +188,11 @@ export default function Home({
       </>
     );
   } else {
-    heading = MARKET_NAMES[marketTab];
+    heading = T(MARKET_NAMES[marketTab]);
     body = list.length ? (
       <Divided>{list.slice(0, 200).map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}</Divided>
     ) : (
-      <div className="notice-box">{state === "failed" ? "Fiyatlar alınamadı. Bağlantını kontrol et." : "Fiyatlar yükleniyor…"}</div>
+      <div className="notice-box">{T(state === "failed" ? "Fiyatlar alınamadı. Bağlantını kontrol et." : "Fiyatlar yükleniyor…")}</div>
     );
   }
 
@@ -200,14 +201,14 @@ export default function Home({
   return (
     <div className="page gap-14">
       {brandBar}
-      <SearchBox placeholder="Ara" value={query} onChange={setQuery} />
-      <Segments titles={MARKET_NAMES} active={marketTab} onSelect={setMarketTab} />
+      <SearchBox placeholder={T("Ara")} value={query} onChange={setQuery} />
+      <Segments titles={MARKET_NAMES.map(T)} active={marketTab} onSelect={setMarketTab} />
       {showStatus && <MarketStatus market={marketTab} list={list} instruments={instruments} state={state} />}
       {marketTab === CURRENCY && rates.length > 0 && <Converter rates={rates} onNotice={onNotice} />}
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <div className="rowline">
           <span className="h-title">{heading}</span>
-          <button className="link-all" onClick={onAllStocks}>Tümü</button>
+          <button className="link-all" onClick={onAllStocks}>{T("Tümü")}</button>
         </div>
         {body}
       </div>

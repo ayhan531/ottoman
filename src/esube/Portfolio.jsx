@@ -3,11 +3,15 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./icons.jsx";
 import { Symbol, SearchBox, Divided, Donut, Spark, Sheet } from "./ui.jsx";
 import { money, percent, signed, delta, fold } from "./market.js";
+import { T, locale } from "./lang.js";
 
 const MINT = "#7FE3C4", ROSE = "#FF9EB5", MINT_SOFT = "#CFF5E6", ROSE_SOFT = "#FFD6E0", CASH_TONE = "#FFD48A";
 const FAINT = "rgba(255,255,255,.72)";
 
 const pctText = (value) => (value >= 0 ? "+" : "−") + percent(Math.abs(value || 0));
+/** Yerel saate göre YYYY-AA-GG; tarih süzgeci bununla karşılaştırır. */
+const localDay = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const stars = (text) => "★".repeat(Math.min(8, Math.max(4, String(text).length - 2)));
 
 /* ---------- kart yığını (Deck) ---------- */
@@ -34,8 +38,8 @@ function SummaryCard({ total, profit, ratio, available, t2, stockValue, cost, ca
     <div className="pf-card">
       <div className="pf-grid">
         <div className="pf-head" style={{ gridColumn: "1 / -1" }}>
-          <span>Portföy özeti</span>
-          <button className="pf-eye" onClick={onToggleHidden} aria-label="Tutarları gizle">
+          <span>{T("Portföy özeti")}</span>
+          <button className="pf-eye" onClick={onToggleHidden} aria-label={T("Tutarları gizle")}>
             <Icon name={hidden ? "eye-off" : "eye"} size={18} />
           </button>
         </div>
@@ -43,24 +47,25 @@ function SummaryCard({ total, profit, ratio, available, t2, stockValue, cost, ca
         <div className={`pf-total${hidden ? " masked" : ""}`}>{mask(money(total))}</div>
 
         <div className={`pf-gain ${profit >= 0 ? "plus" : "minus"}${hidden ? " masked" : ""}`}>
-          {hidden ? stars("xxxxxxx") : `${delta(profit, ratio)} ${profit >= 0 ? "toplam kâr" : "toplam zarar"}`}
+          {hidden ? stars("xxxxxxx") : `${delta(profit, ratio)} ${T(profit >= 0 ? "toplam kâr" : "toplam zarar")}`}
         </div>
 
         <div className="pf-mini">
-          <div><span>Kullanılabilir</span><b className={hidden ? "masked" : ""}>{mask(money(available))}</b></div>
-          <div><span>T+2 Bakiye</span><b className={hidden ? "masked" : ""}>{mask(money(t2))}</b></div>
+          <div><span>{T("Kullanılabilir")}</span><b className={hidden ? "masked" : ""}>{mask(money(available))}</b></div>
+          <div><span>{T("T+2 Bakiye")}</span><b className={hidden ? "masked" : ""}>{mask(money(t2))}</b></div>
         </div>
 
-        <div className="pf-alloc" style={hidden ? { filter: "blur(9px)", opacity: 0.85 } : undefined}>
+        {/* Göz kapalıyken rakamlar bulanıklaşmaz, yıldızla gizlenir; halka da paysız çizilir. */}
+        <div className="pf-alloc">
           <Donut
-            parts={[[stockShare, "#fff"], [gainShare, gainTone], [cashShare, CASH_TONE]]}
-            center={`%${Math.round(stockShare * 100)}`}
+            parts={hidden ? [[1, "rgba(255,255,255,.45)"]] : [[stockShare, "#fff"], [gainShare, gainTone], [cashShare, CASH_TONE]]}
+            center={hidden ? "★★" : `%${Math.round(stockShare * 100)}`}
             size={76}
           />
           <div className="pf-legend">
-            <div><i style={{ background: "#fff" }} />Pozisyonlar · %{Math.round(stockShare * 100)}</div>
-            <div><i style={{ background: CASH_TONE }} />Bakiye · %{Math.round(cashShare * 100)}</div>
-            <div><i style={{ background: gainTone }} />{profit >= 0 ? "Kâr" : "Zarar"} · {pctText(ratio)}</div>
+            <div><i style={{ background: "#fff" }} />{T("Pozisyonlar")} · {hidden ? "★★" : `%${Math.round(stockShare * 100)}`}</div>
+            <div><i style={{ background: CASH_TONE }} />{T("Bakiye")} · {hidden ? "★★" : `%${Math.round(cashShare * 100)}`}</div>
+            <div><i style={{ background: gainTone }} />{T(profit >= 0 ? "Kâr" : "Zarar")} · {hidden ? "★★" : pctText(ratio)}</div>
           </div>
         </div>
       </div>
@@ -83,7 +88,7 @@ function ReturnsCard({ holdings, profit, ratio, history, historyState, onRetry }
       const daily = index === 0 ? 0 : (row.value / (history[index - 1].value || 1) - 1) * 100;
       return {
         value: (row.value / base - 1) * 100,
-        date: new Date(row.day).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" }),
+        date: new Date(row.day).toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" }),
         label: pctText(daily),
         up: daily >= 0,
       };
@@ -109,7 +114,7 @@ function ReturnsCard({ holdings, profit, ratio, history, historyState, onRetry }
   return (
     <div className="pf-card" style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
       <div className="rowline">
-        <strong style={{ fontSize: "calc(16px * var(--s))" }}>Getiri Özeti</strong>
+        <strong style={{ fontSize: "calc(16px * var(--s))" }}>{T("Getiri Özeti")}</strong>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, color: FAINT, fontSize: "calc(12px * var(--s))" }}>
           <Icon name="bars" size={18} />
           Pozisyon sayısı: {holdings.filter((item) => item.quantity > 0).length}
@@ -118,7 +123,7 @@ function ReturnsCard({ holdings, profit, ratio, history, historyState, onRetry }
 
       <div className="returns-body" style={{ flex: 1 }}>
         <div className="returns-figures">
-          <span className="lbl">Toplam getiri</span>
+          <span className="lbl">{T("Toplam getiri")}</span>
           <span className="amt" style={{ color: tone }}>{signed(profit)}</span>
           <span className="rat" style={{ color: tone }}>({pctText(ratio)})</span>
         </div>
@@ -127,7 +132,7 @@ function ReturnsCard({ holdings, profit, ratio, history, historyState, onRetry }
             <Spark points={points} line={line} fill={`${line}2e`} upBubble={MINT_SOFT} downBubble={ROSE_SOFT} height={116} />
           ) : (
             <button onClick={onRetry} style={{ color: FAINT, fontSize: "calc(12px * var(--s))", textAlign: "right" }}>
-              {historyState === "failed" ? "Grafik alınamadı. Dokunup yeniden dene." : "Grafik verisi birikiyor…"}
+              {T(historyState === "failed" ? "Grafik alınamadı. Dokunup yeniden dene." : "Grafik verisi birikiyor…")}
             </button>
           )}
         </div>
@@ -135,15 +140,15 @@ function ReturnsCard({ holdings, profit, ratio, history, historyState, onRetry }
 
       <div className="returns-stats">
         <div className="st">
-          <span>1 Hafta</span>
+          <span>{T("1 Hafta")}</span>
           <b style={{ color: weekChange === null ? FAINT : weekChange >= 0 ? MINT_SOFT : ROSE_SOFT }}>{weekChange === null ? "—" : pctText(weekChange)}</b>
         </div>
         <div className="st">
-          <span>1 Ay</span>
+          <span>{T("1 Ay")}</span>
           <b style={{ color: monthChange === null ? FAINT : monthChange >= 0 ? MINT_SOFT : ROSE_SOFT }}>{monthChange === null ? "—" : pctText(monthChange)}</b>
         </div>
         <div className="returns-best">
-          <span className="lbl">En yüksek getiri</span>
+          <span className="lbl">{T("En yüksek getiri")}</span>
           {best ? (
             <span className="row">
               <Symbol logo={best.logo} letter={best.symbol} size={24} />
@@ -203,14 +208,14 @@ function TransactionCard({ trade, logo, onOpen }) {
       <span className="c">
         <span className="hd">
           <strong>{trade.symbol}</strong>
-          <span className={`badge-sm ${sell ? "sell" : "buy"}`}>{sell ? "SATIŞ" : "ALIŞ"}</span>
+          <span className={`badge-sm ${sell ? "sell" : "buy"}`}>{T(sell ? "SATIŞ" : "ALIŞ")}</span>
         </span>
-        <span>{trade.quantity} lot &nbsp;{money(trade.price)}</span>
+        <span>{trade.quantity} {T("lot")} &nbsp;{money(trade.price)}</span>
       </span>
       <span className="r">
         {sell && <span className="pl" style={{ color: trade.profit >= 0 ? "var(--green)" : "var(--red)" }}>{delta(trade.profit, trade.profitPercent)}</span>}
         <span className={`tot${sell ? "" : " b"}`}>{money(trade.total)}</span>
-        <span className="dt">{trade.date.toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} {trade.date.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
+        <span className="dt">{trade.date.toLocaleDateString(locale(), { day: "numeric", month: "short" })} {trade.date.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}</span>
       </span>
     </div>
   );
@@ -241,28 +246,28 @@ export function TransactionDetail({ trade, logo, onClose }) {
   return (
     <Sheet title={head} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-        <span className="spill">Gerçekleşti</span>
+        <span className="spill">{T("Gerçekleşti")}</span>
         {!trade.buy && (
           <div className={`pl-box ${trade.profit >= 0 ? "plus" : "minus"}`}>
             <div className="cap">
-              <span className="t">K/Z Oranı</span>
+              <span className="t">{T("K/Z Oranı")}</span>
               <span className="pct" style={{ color: tone }}>{pctText(trade.profitPercent)}</span>
             </div>
             <span className="amt" style={{ color: tone, fontSize: "calc(12px * var(--s))" }}>{signed(trade.profit)}</span>
           </div>
         )}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <span style={{ fontSize: "calc(12.5px * var(--s))", fontWeight: 700, color: "var(--muted)" }}>İşlem detayları</span>
-          <Row label={trade.buy ? "Alınan adet" : "Satılan adet"} value={`${trade.quantity} lot`} />
-          <Row label={trade.buy ? "Alış tarihi" : "Satış tarihi"} value={trade.date.toLocaleString("tr-TR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })} />
-          {!trade.buy && <Row label="Ort. alış fiyatı" value={money(trade.avgCost)} />}
-          <Row label={trade.buy ? "Alış fiyatı" : "Satış fiyatı"} value={money(trade.price)} />
-          <Row label="Toplam Maliyet" value={money(trade.buy ? trade.total : trade.quantity * trade.avgCost)} />
-          <Row label="Komisyon" value={trade.fee > 0 ? money(trade.fee) : "Ücretsiz"} />
-          <Row label="Net Sonuç" value={money(trade.net)} strong />
+          <span style={{ fontSize: "calc(12.5px * var(--s))", fontWeight: 700, color: "var(--muted)" }}>{T("İşlem detayları")}</span>
+          <Row label={T(trade.buy ? "Alınan adet" : "Satılan adet")} value={`${trade.quantity} ${T("lot")}`} />
+          <Row label={T(trade.buy ? "Alış tarihi" : "Satış tarihi")} value={trade.date.toLocaleString(locale(), { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })} />
+          {!trade.buy && <Row label={T("Ort. alış fiyatı")} value={money(trade.avgCost)} />}
+          <Row label={T(trade.buy ? "Alış fiyatı" : "Satış fiyatı")} value={money(trade.price)} />
+          <Row label={T("Toplam Maliyet")} value={money(trade.buy ? trade.total : trade.quantity * trade.avgCost)} />
+          <Row label={T("Komisyon")} value={trade.fee > 0 ? money(trade.fee) : T("Ücretsiz")} />
+          <Row label={T("Net Sonuç")} value={money(trade.net)} strong />
         </div>
         <div className="hline" />
-        <button className="btn tall" onClick={onClose}>Devam et</button>
+        <button className="btn tall" onClick={onClose}>{T("Devam et")}</button>
       </div>
     </Sheet>
   );
@@ -281,6 +286,9 @@ export default function Portfolio({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState(0);
   const [detail, setDetail] = useState(null);
+  const [day, setDay] = useState("");        // Geçmiş sekmesindeki tarih süzgeci (YYYY-AA-GG)
+  const [dayPicker, setDayPicker] = useState(false);
+  const [dayDraft, setDayDraft] = useState("");
 
   useEffect(() => {
     const node = viewport.current;
@@ -340,9 +348,11 @@ export default function Portfolio({
     return transactions
       .filter((row) => row.transaction_type === "trade_buy" || row.transaction_type === "trade_sell" || row.transaction_type === "stock_sale")
       .map(toTrade)
-      .filter((trade) => (filter === 0 || (filter === 1 ? trade.buy : !trade.buy)) && (!needle || trade.symbol.includes(needle)))
+      .filter((trade) => (filter === 0 || (filter === 1 ? trade.buy : !trade.buy))
+        && (!needle || trade.symbol.includes(needle))
+        && (!day || localDay(trade.date) === day))
       .sort((a, b) => b.date - a.date);
-  }, [transactions, filter, query]);
+  }, [transactions, filter, query, day]);
 
   return (
     <div className="page gap-16">
@@ -388,16 +398,16 @@ export default function Portfolio({
 
       <div className="pf-tabs">
         {["Pozisyonlar", "Emirler", "Geçmiş"].map((name, index) => (
-          <button key={name} className={tab === index ? "on" : ""} onClick={() => setTab(index)}>{name}</button>
+          <button key={name} className={tab === index ? "on" : ""} onClick={() => setTab(index)}>{T(name)}</button>
         ))}
       </div>
 
       {tab === 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <SearchBox placeholder="İşlem ara" value={query} onChange={setQuery} />
+          <SearchBox placeholder={T("İşlem ara")} value={query} onChange={setQuery} />
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ fontSize: "calc(18px * var(--s))", fontWeight: 700 }}>Pozisyonlarım</span>
-            <span style={{ fontSize: "calc(11.5px * var(--s))", color: "var(--muted)" }}>{positions.length} pozisyon</span>
+            <span style={{ fontSize: "calc(18px * var(--s))", fontWeight: 700 }}>{T("Pozisyonlarım")}</span>
+            <span style={{ fontSize: "calc(11.5px * var(--s))", color: "var(--muted)" }}>{positions.length} {T("pozisyon")}</span>
           </div>
           {positions.length ? (
             <Divided>
@@ -409,7 +419,7 @@ export default function Portfolio({
                     <span className="inst-copy">
                       <strong>{item.symbol}</strong>
                       <span>{item.name}</span>
-                      <small>{item.quantity} lot · Ort. maliyet {money(item.avgCost)}</small>
+                      <small>{item.quantity} {T("lot")} · {T("Ort. maliyet")} {money(item.avgCost)}</small>
                     </span>
                     <span className="inst-tail">
                       <span className="inst-price">
@@ -423,7 +433,7 @@ export default function Portfolio({
               })}
             </Divided>
           ) : (
-            <div className="notice-box">{query ? `“${query}” için pozisyon bulunamadı.` : "Portföyünde henüz hisse yok."}</div>
+            <div className="notice-box">{query ? `“${query}”${T(" için pozisyon bulunamadı.")}` : T("Portföyünde henüz hisse yok.")}</div>
           )}
         </div>
       )}
@@ -435,18 +445,18 @@ export default function Portfolio({
               <div className="rowline">
                 <strong style={{ fontSize: "calc(15.5px * var(--s))" }}>{order.symbol}</strong>
                 <span style={{ fontSize: "calc(12px * var(--s))", fontWeight: 700, color: order.side === "buy" ? "var(--green)" : "var(--red)" }}>
-                  {order.side === "buy" ? "Alış" : "Satış"}
+                  {T(order.side === "buy" ? "Alış" : "Satış")}
                 </span>
               </div>
               <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--muted)" }}>
-                {order.quantity} lot &nbsp;{money(order.limit_price)} &nbsp;{order.status_label || "Beklemede"}
+                {order.quantity} {T("lot")} &nbsp;{money(order.limit_price)} &nbsp;{order.status_label || T("Beklemede")}
               </span>
-              <button className="btn ghost" onClick={() => onCancelOrder(order)}>Emri iptal et</button>
+              <button className="btn ghost" onClick={() => onCancelOrder(order)}>{T("Emri iptal et")}</button>
             </div>
           )) : (
             <>
-              <div className="empty-note">Bekleyen emir bulunmuyor.</div>
-              <button className="btn" onClick={onCreateOrder}>Emir oluştur</button>
+              <div className="empty-note">{T("Bekleyen emir bulunmuyor.")}</div>
+              <button className="btn" onClick={onCreateOrder}>{T("Emir oluştur")}</button>
             </>
           )}
         </div>
@@ -454,26 +464,59 @@ export default function Portfolio({
 
       {tab === 2 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <SearchBox placeholder="İşlem ara" value={query} onChange={setQuery} />
+          <SearchBox placeholder={T("İşlem ara")} value={query} onChange={setQuery} />
           <div className="rowline">
             <div className="chips">
               {["Tümü", "Alış", "Satış"].map((name, index) => (
-                <button key={name} className={filter === index ? "on" : ""} onClick={() => setFilter(index)}>{name}</button>
+                <button key={name} className={filter === index ? "on" : ""} onClick={() => setFilter(index)}>{T(name)}</button>
               ))}
             </div>
-            <button className="icon-btn" aria-label="Tarihe göre filtrele"><Icon name="calendar" size={20} color="var(--muted)" /></button>
+            <button
+              className={`icon-btn${day ? " lav" : ""}`}
+              aria-label={T("Tarihe göre filtrele")}
+              onClick={() => { setDayDraft(day || localDay(new Date())); setDayPicker(true); }}
+            >
+              <Icon name="calendar" size={20} color={day ? "var(--purple)" : "var(--muted)"} />
+            </button>
           </div>
+          {day && (
+            <button className="rowline" style={{ width: "100%" }} onClick={() => setDay("")}>
+              <span style={{ fontSize: "calc(12.5px * var(--s))", color: "var(--muted)" }}>
+                {new Date(`${day}T00:00:00`).toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" })}
+              </span>
+              <span className="link-all">{T("Tüm tarihleri göster")}</span>
+            </button>
+          )}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {trades.length ? trades.map((trade, index) => (
               <TransactionCard key={index} trade={trade} logo={logoOf(trade.symbol)} onOpen={setDetail} />
             )) : (
               <div className="notice-box" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <strong style={{ fontSize: "calc(18px * var(--s))", color: "var(--ink)" }}>İşlem bulunamadı</strong>
-                <span>Arama veya filtreni değiştirebilirsin.</span>
+                <strong style={{ fontSize: "calc(18px * var(--s))", color: "var(--ink)" }}>{T("İşlem bulunamadı")}</strong>
+                <span>{T("Arama veya filtreni değiştirebilirsin.")}</span>
               </div>
             )}
           </div>
         </div>
+      )}
+
+      {dayPicker && (
+        <Sheet title={T("Tarihe göre filtrele")} onClose={() => setDayPicker(false)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 15 }}>
+            <div className="field">
+              <div className="box">
+                <input
+                  type="date"
+                  value={dayDraft}
+                  onChange={(event) => setDayDraft(event.target.value)}
+                  style={{ height: 46, width: "100%", fontSize: "calc(16px * var(--s))" }}
+                />
+              </div>
+            </div>
+            <button className="btn" onClick={() => { setDay(dayDraft); setDayPicker(false); }}>{T("Tarihi uygula")}</button>
+            <button className="btn ghost" onClick={() => { setDay(""); setDayPicker(false); }}>{T("Tüm tarihleri göster")}</button>
+          </div>
+        </Sheet>
       )}
 
       {detail && <TransactionDetail trade={detail} logo={logoOf(detail.symbol)} onClose={() => setDetail(null)} />}

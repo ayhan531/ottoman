@@ -13,6 +13,7 @@ import {
 } from "./Subpages.jsx";
 import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHoldings, readPref, writePref } from "./store.js";
 import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, parseAmount } from "./market.js";
+import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
 export const APP_VERSION = "1.6.3";
 
@@ -33,6 +34,13 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const [dataMode, setDataMode] = usePref("dataMode", 0);
   const [watchlist, setWatchlist] = usePref("watchlist", ["TUPRS", "THYAO", "ASELS"]);
   const [confirmOn, setConfirmOn] = usePref("confirm", true);
+
+  // Dil, çizimden önce kurulur ki T() bu turda doğru karşılığı versin.
+  setLangIndex(lang);
+
+  useEffect(() => {
+    document.documentElement.lang = LANG_CODES[lang] || "tr";
+  }, [lang]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -92,7 +100,23 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const [pendingOrder, setPendingOrder] = useState(null);
   const [orderResult, setOrderResult] = useState(null);
 
-  const showNotice = (title, text) => setNotice({ title, text });
+  const showNotice = (title, text) => setNotice({ title: T(title), text: T(text) });
+
+  /* ---- profil fotoğrafı ---- */
+  const avatarInput = useRef(null);
+  const pickAvatar = () => avatarInput.current?.click();
+  const uploadAvatar = async (file) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { showNotice("Profil fotoğrafı", "Yalnızca görsel dosyası yükleyebilirsin."); return; }
+    const form = new FormData();
+    form.append("avatar", file);
+    try {
+      await api("/api/profile/avatar", { method: "POST", body: form });
+      await refreshMe?.();
+    } catch (error) {
+      showNotice("Profil fotoğrafı", error.message || "Fotoğraf yüklenemedi.");
+    }
+  };
 
   const instrumentByCode = useMemo(() => new Map(market.instruments.map((item) => [item.code, item])), [market.instruments]);
   const holdingByCode = useMemo(() => new Map(holdings.map((item) => [item.symbol, item])), [holdings]);
@@ -134,7 +158,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   /* ---- üst şerit ---- */
   const brandBar = (
     <div className="brandbar">
-      <button className="ava" onClick={() => setOverlay({ kind: "profile" })} aria-label="Profil">
+      <button className="ava" onClick={() => setOverlay({ kind: "profile" })} aria-label={T("Profil")}>
         {me?.avatar_url ? <img src={me.avatar_url} alt="" /> : monogram}
       </button>
       <div className="brand-word">Ottoman</div>
@@ -142,11 +166,11 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         {me?.role === "admin" && (
           <button className="icon-btn lav" onClick={onAdmin} title="Admin"><Icon name="shield" size={20} /></button>
         )}
-        <button className="icon-btn" onClick={() => { setOverlay({ kind: "notifications" }); notifications.markRead(); }} aria-label="Bildirimler">
+        <button className="icon-btn" onClick={() => { setOverlay({ kind: "notifications" }); notifications.markRead(); }} aria-label={T("Bildirimler")}>
           <Icon name="bell" size={21} />
           {notifications.unread > 0 && <i className="dot" />}
         </button>
-        <button className="icon-btn" onClick={() => setDark(!dark)} aria-label="Tema">
+        <button className="icon-btn" onClick={() => setDark(!dark)} aria-label={T("Tema")}>
           <Icon name={dark ? "sun" : "moon"} size={21} />
         </button>
       </div>
@@ -266,6 +290,8 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
           <Personal
             onBack={() => go(returnTo)}
             me={me}
+            monogram={monogram}
+            onAvatar={pickAvatar}
             onContact={() => go(12, 11)}
             onIdentity={() => setOverlay({ kind: "identity" })}
           />
@@ -317,7 +343,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         {NAV.map((item, index) => (
           <button key={item.title} className={index === 2 ? "trade-cta" : navActive(index) ? "active" : ""} onClick={() => navigate(index)}>
             <Icon name={item.icon} size={20} />
-            {item.title}
+            {T(item.title)}
           </button>
         ))}
       </nav>
@@ -330,11 +356,20 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
               {index === 2
                 ? <span className="nav-center"><Icon name="trade" size={20} /></span>
                 : <span className="nav-icon"><Icon name={item.icon} size={20} /></span>}
-              <span>{item.title}</span>
+              <span>{T(item.title)}</span>
             </button>
           ))}
         </nav>
       </div>
+
+      {/* Profil fotoğrafı seçici: kimlik dairesinden ve Kişisel Bilgiler'den açılır. */}
+      <input
+        ref={avatarInput}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={(event) => { uploadAvatar(event.target.files?.[0]); event.target.value = ""; }}
+      />
 
       {/* ---- katmanlar ---- */}
 
@@ -342,6 +377,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         <ProfileMenu
           me={me}
           monogram={monogram}
+          onAvatar={pickAvatar}
           onClose={() => setOverlay(null)}
           onSecurity={() => { setOverlay(null); loadSecurity(); go(8, tab); }}
           onSettings={() => { setOverlay(null); go(5, tab); }}
@@ -356,43 +392,43 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       )}
 
       {overlay?.kind === "install" && (
-        <Sheet title="Uygulamayı yükle" onClose={() => setOverlay(null)}>
+        <Sheet title={T("Uygulamayı yükle")} onClose={() => setOverlay(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <span style={{ fontSize: "calc(13.5px * var(--s))", color: "var(--muted)" }}>
-              Ottoman E-Şube'yi telefonunun ana ekranına ekleyerek uygulama gibi kullanabilirsin.
+              {T("Ottoman E-Şube'yi telefonunun ana ekranına ekleyerek uygulama gibi kullanabilirsin.")}
             </span>
             <div className="sec-card">
               <Divided>
                 <div className="sec-row">
                   <span className="disc"><Icon name="android" size={20} /></span>
-                  <span className="copy"><strong>Android</strong><span>Chrome menüsü → “Ana ekrana ekle”</span></span>
+                  <span className="copy"><strong>Android</strong><span>{T("Chrome menüsü → “Ana ekrana ekle”")}</span></span>
                   <span /><span />
                 </div>
                 <div className="sec-row">
                   <span className="disc"><Icon name="apple" size={20} /></span>
-                  <span className="copy"><strong>iPhone / iPad</strong><span>Safari paylaş → “Ana Ekrana Ekle”</span></span>
+                  <span className="copy"><strong>{T("iPhone / iPad")}</strong><span>{T("Safari paylaş → “Ana Ekrana Ekle”")}</span></span>
                   <span /><span />
                 </div>
               </Divided>
             </div>
-            <button className="btn" onClick={() => setOverlay(null)}>Tamam</button>
+            <button className="btn" onClick={() => setOverlay(null)}>{T("Tamam")}</button>
           </div>
         </Sheet>
       )}
 
       {overlay?.kind === "identity" && (
-        <Sheet title="Kimlik Bilgileri" onClose={() => setOverlay(null)}>
+        <Sheet title={T("Kimlik Bilgileri")} onClose={() => setOverlay(null)}>
           <Divided>
-            <ValueRow label="Ad Soyad" value={me?.full_name || "—"} />
-            <ValueRow label="Müşteri No" value={me?.account_no || "—"} />
-            <ValueRow label="Telefon" value={me?.phone || "—"} />
-            <ValueRow label="Hesap Durumu" value={me?.status_label || "—"} />
+            <ValueRow label={T("Ad Soyad")} value={me?.full_name || "—"} />
+            <ValueRow label={T("Müşteri No")} value={me?.account_no || "—"} />
+            <ValueRow label={T("Telefon")} value={me?.phone || "—"} />
+            <ValueRow label={T("Hesap Durumu")} value={me?.status_label || "—"} />
           </Divided>
         </Sheet>
       )}
 
       {overlay?.kind === "banks" && (
-        <Sheet title="Banka hesaplarım" onClose={() => setOverlay(null)}>
+        <Sheet title={T("Banka hesaplarım")} onClose={() => setOverlay(null)}>
           {bankAccounts.length ? (
             <Divided>
               {bankAccounts.map((bank) => (
@@ -403,7 +439,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
               ))}
             </Divided>
           ) : (
-            <span style={{ fontSize: "calc(14px * var(--s))", color: "var(--muted)" }}>Tanımlı banka hesabı bulunmuyor.</span>
+            <span style={{ fontSize: "calc(14px * var(--s))", color: "var(--muted)" }}>{T("Tanımlı banka hesabı bulunmuyor.")}</span>
           )}
         </Sheet>
       )}
@@ -490,7 +526,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         <Sheet title={notice.title} onClose={() => setNotice(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <span style={{ fontSize: "calc(15px * var(--s))", color: "var(--muted)" }}>{notice.text}</span>
-            <button className="btn" onClick={() => setNotice(null)}>Tamam</button>
+            <button className="btn" onClick={() => setNotice(null)}>{T("Tamam")}</button>
           </div>
         </Sheet>
       )}
@@ -507,29 +543,33 @@ const ValueRow = ({ label, value }) => (
   </div>
 );
 
-function ProfileMenu({ me, monogram, onClose, onSecurity, onSettings, onLogout, onReferral, onInstall }) {
+function ProfileMenu({ me, monogram, onClose, onSecurity, onSettings, onLogout, onReferral, onInstall, onAvatar }) {
   return (
     <Overlay onClose={onClose}>
       <div className="popcard" style={{ top: 56, left: 16 }}>
         <i className="arrow" style={{ top: -6, left: 28 }} />
         <div className="pop-profile">
-          <span className="ava n50 lav">{me?.avatar_url ? <img src={me.avatar_url} alt="" /> : monogram}</span>
+          {/* Daireye dokununca profil fotoğrafı seçilir. */}
+          <button className="ava n50 lav avatar-edit" onClick={onAvatar} aria-label={T("Profil fotoğrafı")}>
+            {me?.avatar_url ? <img src={me.avatar_url} alt="" /> : monogram}
+            <i className="pen"><Icon name="plus" size={12} /></i>
+          </button>
           <span className="who">
             <strong>{me?.full_name || "İsim Soyisim"}</strong>
-            <span>Müşteri No: {me?.account_no || "—"}</span>
-            <small>Bireysel Yatırım Hesabı</small>
+            <span>{T("Müşteri No:")} {me?.account_no || "—"}</span>
+            <small>{T("Bireysel Yatırım Hesabı")}</small>
           </span>
         </div>
         <div className="hline" />
         <div className="menu">
           <Divided>
-            <button className="menu-row" onClick={onReferral}><Icon name="gift" size={20} />Referans Fırsatları</button>
-            <button className="menu-row" onClick={onSecurity}><Icon name="shield" size={20} />Güvenlik</button>
-            <button className="menu-row" onClick={onInstall}><Icon name="download" size={20} />Uygulamayı yükle</button>
-            <button className="menu-row" onClick={onSettings}><Icon name="gear" size={20} />Ayarlar</button>
+            <button className="menu-row" onClick={onReferral}><Icon name="gift" size={20} />{T("Referans Fırsatları")}</button>
+            <button className="menu-row" onClick={onSecurity}><Icon name="shield" size={20} />{T("Güvenlik")}</button>
+            <button className="menu-row" onClick={onInstall}><Icon name="download" size={20} />{T("Uygulamayı yükle")}</button>
+            <button className="menu-row" onClick={onSettings}><Icon name="gear" size={20} />{T("Ayarlar")}</button>
           </Divided>
         </div>
-        <button className="foot" onClick={onLogout}><Icon name="logout" size={20} />Çıkış Yap</button>
+        <button className="foot" onClick={onLogout}><Icon name="logout" size={20} />{T("Çıkış Yap")}</button>
       </div>
     </Overlay>
   );
@@ -540,7 +580,7 @@ function NotificationsCard({ items, onClose }) {
     <Overlay onClose={onClose}>
       <div className="popcard" style={{ top: 56, right: 16 }}>
         <i className="arrow" style={{ top: -6, right: 68 }} />
-        <div className="popcard-head"><h2>Bildirimler</h2></div>
+        <div className="popcard-head"><h2>{T("Bildirimler")}</h2></div>
         <div className="hline" />
         {items.length ? (
           <div className="notify-list">
@@ -557,7 +597,7 @@ function NotificationsCard({ items, onClose }) {
         ) : (
           <div className="notify-empty">
             <span className="disc"><Icon name="bell" size={22} /></span>
-            <p>Henüz yeni bir bildirimin yok.</p>
+            <p>{T("Henüz yeni bir bildirimin yok.")}</p>
           </div>
         )}
       </div>
@@ -572,13 +612,13 @@ function StockPicker({ instruments, marketTab, watchlist, onClose, onPick }) {
     ? search(query, list, 20)
     : watchlist.map((code) => list.find((item) => item.code === code)).filter(Boolean);
   return (
-    <Sheet title="Hisse seç" onClose={onClose}>
+    <Sheet title={T("Hisse seç")} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <SearchBox placeholder="Hisse adı veya sembol" value={query} onChange={setQuery} />
+        <SearchBox placeholder={T("Hisse adı veya sembol")} value={query} onChange={setQuery} />
         {shown.length ? (
           <Divided>{shown.map((item) => <InstrumentRow key={item.code} item={item} onClick={() => onPick(item)} />)}</Divided>
         ) : (
-          <span style={{ fontSize: "calc(13px * var(--s))", color: "var(--muted)" }}>Sonuç bulunamadı.</span>
+          <span style={{ fontSize: "calc(13px * var(--s))", color: "var(--muted)" }}>{T("Sonuç bulunamadı.")}</span>
         )}
       </div>
     </Sheet>
@@ -595,7 +635,7 @@ function TransferSheet({ deposit, available, bankAccounts, onClose, onDone }) {
 
   const submit = async () => {
     const value = parseAmount(amountText);
-    if (!Number.isFinite(value) || value <= 0) { setError("Geçerli bir tutar gir."); return; }
+    if (!Number.isFinite(value) || value <= 0) { setError(T("Geçerli bir tutar gir.")); return; }
     setBusy(true);
     setError("");
     try {
@@ -612,7 +652,7 @@ function TransferSheet({ deposit, available, bankAccounts, onClose, onDone }) {
   };
 
   return (
-    <Sheet title={deposit ? "Para yatır" : "Para çek"} onClose={onClose}>
+    <Sheet title={T(deposit ? "Para yatır" : "Para çek")} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <span style={{ fontSize: "calc(14px * var(--s))", color: "var(--muted)" }}>Bakiye · {money(available)}</span>
         <div className="card" style={{ background: "var(--soft)", display: "flex", alignItems: "center", gap: 10 }}>
@@ -636,13 +676,13 @@ function TransferSheet({ deposit, available, bankAccounts, onClose, onDone }) {
           )
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="field"><label>Hesap sahibi</label><div className="box"><input value={holder} onChange={(event) => setHolder(event.target.value)} placeholder="Ad Soyad" style={{ height: 42, width: "100%", fontSize: "calc(15px * var(--s))" }} /></div></div>
-            <div className="field"><label>Banka</label><div className="box"><input value={bank} onChange={(event) => setBank(event.target.value)} placeholder="Banka adı" style={{ height: 42, width: "100%", fontSize: "calc(15px * var(--s))" }} /></div></div>
+            <div className="field"><label>{T("Hesap sahibi")}</label><div className="box"><input value={holder} onChange={(event) => setHolder(event.target.value)} placeholder={T("Ad Soyad")} style={{ height: 42, width: "100%", fontSize: "calc(15px * var(--s))" }} /></div></div>
+            <div className="field"><label>{T("Banka")}</label><div className="box"><input value={bank} onChange={(event) => setBank(event.target.value)} placeholder={T("Banka adı")} style={{ height: 42, width: "100%", fontSize: "calc(15px * var(--s))" }} /></div></div>
             <div className="field"><label>IBAN</label><div className="box"><input value={iban} onChange={(event) => setIban(event.target.value)} placeholder="TR.." style={{ height: 42, width: "100%", fontSize: "calc(15px * var(--s))" }} /></div></div>
           </div>
         )}
         {error && <span className="trade-error">{error}</span>}
-        <button className="btn" disabled={busy} onClick={submit}>{deposit ? "Para yatır" : "Para çek"}</button>
+        <button className="btn" disabled={busy} onClick={submit}>{T(deposit ? "Para yatır" : "Para çek")}</button>
       </div>
     </Sheet>
   );

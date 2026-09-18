@@ -2,6 +2,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Icon from "./icons.jsx";
+import { T } from "./lang.js";
 
 /* ---------- sembol rozeti (UI/Logo.cs) ---------- */
 
@@ -34,7 +35,7 @@ export function SearchBox({ placeholder, value, onChange, inputRef }) {
         spellCheck="false"
       />
       {value ? (
-        <button type="button" className="clear" onClick={() => onChange("")} aria-label="Temizle">
+        <button type="button" className="clear" onClick={() => onChange("")} aria-label={T("Temizle")}>
           <Icon name="close" size={16} />
         </button>
       ) : <span />}
@@ -111,7 +112,7 @@ export function Sheet({ title, onClose, children, closable = true }) {
           {closable ? (
             <div className="rowline">
               {typeof title === "string" ? <div className="sheet-title">{title}</div> : title}
-              <button className="icon-btn soft sm" onClick={onClose} aria-label="Kapat"><Icon name="close" size={18} /></button>
+              <button className="icon-btn soft sm" onClick={onClose} aria-label={T("Kapat")}><Icon name="close" size={18} /></button>
             </div>
           ) : title}
           {children}
@@ -129,7 +130,7 @@ export function Dialog({ title, onClose, children, closable = true, center = fal
           {closable ? (
             <div className="rowline">
               {typeof title === "string" ? <div className={`sheet-title${center ? " center" : ""}`}>{title}</div> : title}
-              <button className="icon-btn soft sm" onClick={onClose} aria-label="Kapat"><Icon name="close" size={18} /></button>
+              <button className="icon-btn soft sm" onClick={onClose} aria-label={T("Kapat")}><Icon name="close" size={18} /></button>
             </div>
           ) : (typeof title === "string" ? <div className={`sheet-title${center ? " center" : ""}`}>{title}</div> : title)}
           {children}
@@ -293,7 +294,7 @@ export function Spark({ points, line, fill, upBubble, downBubble, bubbleInk = "#
 
 export const CenteredHeader = ({ title, onBack }) => (
   <div className={`page-head center${String(title).length > 28 ? " long" : ""}`}>
-    <button className="icon-btn" onClick={onBack} aria-label="Geri"><Icon name="back" size={21} /></button>
+    <button className="icon-btn" onClick={onBack} aria-label={T("Geri")}><Icon name="back" size={21} /></button>
     <h1>{title}</h1>
     <span />
   </div>
@@ -301,7 +302,7 @@ export const CenteredHeader = ({ title, onBack }) => (
 
 export const PageHeader = ({ title, onBack, tail }) => (
   <div className="page-head with-tail">
-    <button className="icon-btn" onClick={onBack} aria-label="Geri"><Icon name="back" size={21} /></button>
+    <button className="icon-btn" onClick={onBack} aria-label={T("Geri")}><Icon name="back" size={21} /></button>
     <h1 style={{ textAlign: "left", fontSize: String(title).length > 24 ? "calc(18px * var(--s))" : undefined }}>{title}</h1>
     {tail || <span />}
   </div>

@@ -2413,7 +2413,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     "t2_settlements": settlements,
                     "system_bank_accounts": system_accounts,
                     "documents": documents,
-                    "settlement_settings": {"t2_enabled": settings.get("t2_enabled", "1") == "1"},
+                    "settlement_settings": {"t2_enabled": settings.get("t2_enabled", "0") == "1"},
                 }
             )
 
@@ -2878,7 +2878,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 )
             if not ALLOW_PRICE_SIMULATION:
                 conn.execute("UPDATE system_settings SET setting_value='0', updated_at=? WHERE setting_key='price_simulation'", (now(),))
-            if settings_map(conn).get("t2_enabled", "1") != "1":
+            if settings_map(conn).get("t2_enabled", "0") != "1":
                 settle_due_t2(conn)
             audit(conn, admin["id"], "save_system_settings", "system_settings", None)
             conn.commit()
@@ -3788,7 +3788,7 @@ def create_t2_settlement(
 
 
 def t2_is_enabled(conn: sqlite3.Connection) -> bool:
-    return settings_map(conn).get("t2_enabled", "1") == "1"
+    return settings_map(conn).get("t2_enabled", "0") == "1"
 
 
 def buying_power(account: dict) -> float:

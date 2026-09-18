@@ -7,12 +7,13 @@ import {
   BIST, FUNDS, IPO, listFor,
 } from "./market.js";
 import { api } from "./store.js";
+import { T, locale } from "./lang.js";
 
 const KIND_NAMES = ["Hisse", "Fon", "Halka Arz"];
 const KIND_MARKETS = [BIST, FUNDS, IPO];
 
 const dateTime = (value) =>
-  value ? new Date(value).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : null;
+  value ? new Date(value).toLocaleString(locale(), { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" }) : null;
 
 export function TradeHeader({ stock, onClose, watched, onToggleWatch, updatedAt }) {
   const up = stock.change >= 0;
@@ -22,16 +23,16 @@ export function TradeHeader({ stock, onClose, watched, onToggleWatch, updatedAt 
       <div className="logo"><Symbol logo={stock.logo} letter={stock.symbol} size={46} /></div>
       <div className="sym">
         {stock.symbol}
-        <button className="star" onClick={onToggleWatch} aria-label="Takip listesi" style={{ color: watched ? "var(--purple)" : "var(--muted)", display: "flex", padding: 5 }}>
+        <button className="star" onClick={onToggleWatch} aria-label={T("Takip listesi")} style={{ color: watched ? "var(--purple)" : "var(--muted)", display: "flex", padding: 5 }}>
           <Icon name={watched ? "star-filled" : "star"} size={18} />
         </button>
       </div>
-      <button className="icon-btn soft sm trade-close" onClick={onClose} aria-label="Kapat"><Icon name="close" size={18} /></button>
+      <button className="icon-btn soft sm trade-close" onClick={onClose} aria-label={T("Kapat")}><Icon name="close" size={18} /></button>
       <div className="nm">{stock.name}</div>
       <div className="price">{money(stock.price)}</div>
       <div className="src">
         <i className="dot" style={{ background: stamp ? "var(--green)" : "var(--ink-orange)" }} />
-        {stamp || "Veri bekleniyor"}
+        {stamp || T("Veri bekleniyor")}
       </div>
       <div className="badge-wrap">
         <span className={`move-badge ${up ? "up" : "down"}`}>
@@ -125,7 +126,7 @@ export function TradePanel({
 
   const submit = async () => {
     setError("");
-    if (quantity <= 0) { setError(isFund ? "En az 1 pay gir." : "En az 1 lot gir."); return; }
+    if (quantity <= 0) { setError(T(isFund ? "En az 1 pay gir." : "En az 1 lot gir.")); return; }
     if (isFund || isIpo) {
       onNotice(
         isIpo ? "Halka arz talebi" : "Fon işlemleri",
@@ -133,17 +134,17 @@ export function TradePanel({
       );
       return;
     }
-    if (buy && total > cash) { setError("Yetersiz bakiye."); return; }
-    if (!buy && quantity > availableLots) { setError("Satılabilir lot adedini aşıyorsun."); return; }
+    if (buy && total > cash) { setError(T("Yetersiz bakiye.")); return; }
+    if (!buy && quantity > availableLots) { setError(T("Satılabilir lot adedini aşıyorsun.")); return; }
     onSubmitted({ stock, buy, quantity, price, market: market && !closed, duration: market ? "Günlük" : "İptale kadar" });
   };
 
   const priceField = isFund
-    ? <Info label="Son açıklanan fon fiyatı" value={money(stock.price)} />
+    ? <Info label={T("Son açıklanan fon fiyatı")} value={money(stock.price)} />
     : isIpo
-      ? <Info label="Arz fiyatı" value={money(stock.price)} />
+      ? <Info label={T("Arz fiyatı")} value={money(stock.price)} />
       : (
-        <Field label="Limit fiyat (₺)">
+        <Field label={T("Limit fiyat (₺)")}>
           <input inputMode="decimal" value={limitText} onChange={(event) => setLimitText(event.target.value)} placeholder="0,00" />
         </Field>
       );
@@ -155,16 +156,16 @@ export function TradePanel({
     <div className="trade-body">
       {searchable && (
         <>
-          <SearchBox placeholder="Hisse kodu / şirket adı ara" value={query} onChange={setQuery} />
+          <SearchBox placeholder={T("Hisse kodu / şirket adı ara")} value={query} onChange={setQuery} />
           <div style={{ position: "relative", display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="kind-caption">
-              Ürün Türü
+              {T("Ürün Türü")}
               <button onClick={() => onNotice("Ürün Türü", "Arama yalnızca seçili türün listesinde yapılır ve alım/satım biçimi türe göre değişir: Hisse, Fon ya da Halka Arz.")} style={{ display: "flex", color: "var(--muted)" }}>
                 <Icon name="info" size={15} />
               </button>
             </span>
             <button className="kind-picker" style={{ alignSelf: "flex-start" }} onClick={() => setKindOpen((open) => !open)}>
-              {KIND_NAMES[tradeKind]}
+              {T(KIND_NAMES[tradeKind])}
               <Icon name="down" size={16} />
             </button>
             {kindOpen && (
@@ -205,8 +206,8 @@ export function TradePanel({
 
       {stock.quantity > 0 && (
         <div className="tstats">
-          <div><span>Portföy</span><strong>{stock.quantity} {unit}</strong></div>
-          <div><span>Maliyet</span><strong>{money(stock.avgCost)}</strong></div>
+          <div><span>{T("Portföy")}</span><strong>{stock.quantity} {T(unit)}</strong></div>
+          <div><span>{T("Maliyet")}</span><strong>{money(stock.avgCost)}</strong></div>
         </div>
       )}
 
@@ -218,16 +219,16 @@ export function TradePanel({
               disabled={!isFund && closed}
               onClick={() => (isFund ? setByAmount(true) : setMarket(true))}
             >
-              {kindNames[2]}
+              {T(kindNames[2])}
             </button>
             <button className={typeOn(3) ? "on-type" : ""} onClick={() => (isFund ? setByAmount(false) : setMarket(false))}>
-              {kindNames[3]}
+              {T(kindNames[3])}
             </button>
           </div>
-          {closed && <div className="closed-note">Piyasa kapalı (10:00-18:00). Sadece limit emir verebilirsin.</div>}
+          {closed && <div className="closed-note">{T("Piyasa kapalı (10:00-18:00). Sadece limit emir verebilirsin.")}</div>}
           <div className="seg2">
-            <button className={buy ? "on-buy" : ""} onClick={() => setBuy(true)}>Alış</button>
-            <button className={!buy ? "on-sell" : ""} onClick={() => setBuy(false)}>Satış</button>
+            <button className={buy ? "on-buy" : ""} onClick={() => setBuy(true)}>{T("Alış")}</button>
+            <button className={!buy ? "on-sell" : ""} onClick={() => setBuy(false)}>{T("Satış")}</button>
           </div>
         </div>
       )}
@@ -235,7 +236,7 @@ export function TradePanel({
       {(isFund || isIpo || !market) && priceField}
 
       <div className="grid2">
-        <Field label={isIpo ? "Talep lotu" : isFund ? (byAmount ? "Tahmini pay" : "Pay") : "Adet"}>
+        <Field label={T(isIpo ? "Talep lotu" : isFund ? (byAmount ? "Tahmini pay" : "Pay") : "Adet")}>
           <input
             inputMode="numeric"
             value={quantityText}
@@ -244,7 +245,7 @@ export function TradePanel({
             placeholder="0"
           />
         </Field>
-        <Field label={isIpo ? "Toplam talep (₺)" : isFund ? (byAmount ? "Tutar (₺)" : "Tahmini tutar (₺)") : "Tutar (₺)"}>
+        <Field label={T(isIpo ? "Toplam talep (₺)" : isFund ? (byAmount ? "Tutar (₺)" : "Tahmini tutar (₺)") : "Tutar (₺)")}>
           <input
             inputMode="decimal"
             value={amountText}
@@ -255,14 +256,14 @@ export function TradePanel({
         </Field>
       </div>
 
-      {isFund && <Info label="Valör" value={`T+2 · ${businessDays(2).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" })}`} />}
+      {isFund && <Info label={T("Valör")} value={`T+2 · ${businessDays(2).toLocaleDateString(locale(), { day: "numeric", month: "short", year: "numeric" })}`} />}
 
       {isIpo && (
         <div className="grid2">
-          <Info label="Dağıtım yöntemi" value="Eşit dağıtım" />
+          <Info label={T("Dağıtım yöntemi")} value={T("Eşit dağıtım")} />
           <Info
-            label="Talep süresi"
-            value={`${businessDays(1).getDate()}–${businessDays(3).toLocaleDateString("tr-TR", { day: "numeric", month: "short", year: "numeric" })}`}
+            label={T("Talep süresi")}
+            value={`${businessDays(1).getDate()}–${businessDays(3).toLocaleDateString(locale(), { day: "numeric", month: "short", year: "numeric" })}`}
           />
         </div>
       )}
@@ -271,11 +272,11 @@ export function TradePanel({
         {[25, 50, 75, 100].map((part) => (
           <button key={part} className="chip" onClick={() => setQuantity(Math.floor((max * part) / 100))}>%{part}</button>
         ))}
-        <button className="all" onClick={() => setQuantity(max)}>Tümü</button>
+        <button className="all" onClick={() => setQuantity(max)}>{T("Tümü")}</button>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        <div className="ratio-row"><span className="lbl">Oran</span><span className="val">%{ratio}</span></div>
+        <div className="ratio-row"><span className="lbl">{T("Oran")}</span><span className="val">%{ratio}</span></div>
         <input
           type="range"
           className="slider"
@@ -287,14 +288,14 @@ export function TradePanel({
       </div>
 
       <div className="capacity">
-        <span className="l">{buy ? "Kullanılabilir bakiye" : "Satılabilir adet"} <b>{buy ? money(cash) : `${max} ${unit}`}</b></span>
-        {buy && <span className="r"><i className="vline" />Maks. {max} {unit}</span>}
+        <span className="l">{T(buy ? "Kullanılabilir bakiye" : "Satılabilir adet")} <b>{buy ? money(cash) : `${max} ${T(unit)}`}</b></span>
+        {buy && <span className="r"><i className="vline" />{T("Maks.")} {max} {T(unit)}</span>}
       </div>
 
       {error && <div className="trade-error">{error}</div>}
 
       <div className={`trade-total ${buy ? "buy" : "sell"}`}>
-        <span>{isIpo ? "Toplam talep" : "Tutar"}</span>
+        <span>{T(isIpo ? "Toplam talep" : "Tutar")}</span>
         <b style={{ color: buy ? "var(--green)" : "var(--red)" }}>{money(total)}</b>
       </div>
 
@@ -304,7 +305,7 @@ export function TradePanel({
         style={{ background: buy ? "var(--green)" : "var(--red)", height: 46, borderRadius: 5, fontSize: "calc(15px * var(--s))" }}
         onClick={submit}
       >
-        {isIpo ? "Talep oluştur" : buy ? "Alış emri ver" : "Satış emri ver"}
+        {T(isIpo ? "Talep oluştur" : buy ? "Alış emri ver" : "Satış emri ver")}
       </button>
     </div>
   );
@@ -337,7 +338,7 @@ export function ReviewOrder({ order, onCancel, onConfirmed }) {
       });
       onConfirmed();
     } catch (problem) {
-      setError(problem.message || "Emir iletilemedi.");
+      setError(problem.message || T("Emir iletilemedi."));
     } finally {
       setBusy(false);
     }
@@ -352,22 +353,22 @@ export function ReviewOrder({ order, onCancel, onConfirmed }) {
 
   return (
     <Dialog
-      title={isIpo ? "Halka arz talebini onayla" : buy ? "Alış emrini onayla" : "Satış emrini onayla"}
+      title={T(isIpo ? "Halka arz talebini onayla" : buy ? "Alış emrini onayla" : "Satış emrini onayla")}
       onClose={onCancel}
       closable={false}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <Row label="Emir" value={isIpo ? "Halka arz talebi" : isFund ? "Fon emri" : market ? "Piyasa" : "Limit"} />
-        <Row label="İşlem" value={isIpo ? "Talep" : buy ? "Alış" : "Satış"} tone={buy ? "var(--green)" : "var(--red)"} />
-        <Row label={isFund ? "Fon" : "Hisse"} value={stock.symbol} />
-        <Row label={isFund ? "Fon fiyatı" : isIpo ? "Arz fiyatı" : "Fiyat"} value={money(price)} />
-        <Row label={isFund ? "Pay" : isIpo ? "Talep lotu" : "Adet"} value={`${quantity} ${isFund ? "pay" : "lot"}`} />
+        <Row label={T("Emir")} value={T(isIpo ? "Halka arz talebi" : isFund ? "Fon emri" : market ? "Piyasa" : "Limit")} />
+        <Row label={T("İşlem")} value={T(isIpo ? "Talep" : buy ? "Alış" : "Satış")} tone={buy ? "var(--green)" : "var(--red)"} />
+        <Row label={T(isFund ? "Fon" : "Hisse")} value={stock.symbol} />
+        <Row label={T(isFund ? "Fon fiyatı" : isIpo ? "Arz fiyatı" : "Fiyat")} value={money(price)} />
+        <Row label={T(isFund ? "Pay" : isIpo ? "Talep lotu" : "Adet")} value={`${quantity} ${T(isFund ? "pay" : "lot")}`} />
         <div className="hline" />
-        <Row label={isIpo ? "Toplam talep" : "Toplam"} value={money(quantity * price)} strong />
+        <Row label={T(isIpo ? "Toplam talep" : "Toplam")} value={money(quantity * price)} strong />
         {error && <div className="trade-error">{error}</div>}
         <div className="grid2">
-          <button className="btn ghost" onClick={onCancel}>Vazgeç</button>
-          <button className="btn" disabled={busy} onClick={confirm}>{busy ? "Gönderiliyor…" : "Onayla"}</button>
+          <button className="btn ghost" onClick={onCancel}>{T("Vazgeç")}</button>
+          <button className="btn" disabled={busy} onClick={confirm}>{T(busy ? "Gönderiliyor…" : "Onayla")}</button>
         </div>
       </div>
     </Dialog>
@@ -382,7 +383,7 @@ export function OrderResult({ order, onClose, onHistory, onOrders }) {
   const isIpo = stock.kind === "ipo";
   return (
     <Dialog
-      title={market ? (buy ? "Alış gerçekleşti" : "Satış gerçekleşti") : isIpo ? "Talebin alındı" : "Emrin alındı"}
+      title={T(market ? (buy ? "Alış gerçekleşti" : "Satış gerçekleşti") : isIpo ? "Talebin alındı" : "Emrin alındı")}
       onClose={onClose}
       closable={false}
       center
@@ -390,19 +391,19 @@ export function OrderResult({ order, onClose, onHistory, onOrders }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 14, textAlign: "center" }}>
         <div className="result-mark"><Icon name="check" size={30} /></div>
         <strong style={{ fontSize: "calc(16px * var(--s))" }}>
-          {stock.symbol} · {quantity}{isFund ? " pay · " : " lot · "}{money(price)}
+          {stock.symbol} · {quantity} {T(isFund ? "pay" : "lot")} · {money(price)}
         </strong>
         <span style={{ fontSize: "calc(13px * var(--s))", color: "var(--muted)" }}>
           {market
-            ? "Portföyün ve bakiyen güncellendi; işlem geçmişine düştü."
-            : isIpo
+            ? T("Portföyün ve bakiyen güncellendi; işlem geçmişine düştü.")
+            : T(isIpo
               ? "Halka arz talebini Portföy > Emirler altında izleyebilirsin."
-              : "Limit emrini Portföy > Emirler altında izleyebilirsin."}
+              : "Limit emrini Portföy > Emirler altında izleyebilirsin.")}
         </span>
         <button className="btn ghost" onClick={market ? onHistory : onOrders}>
-          {market ? "İşlem geçmişine git" : "Emirlerimi gör"}
+          {T(market ? "İşlem geçmişine git" : "Emirlerimi gör")}
         </button>
-        <button className="btn" onClick={onClose}>Bitti</button>
+        <button className="btn" onClick={onClose}>{T("Bitti")}</button>
       </div>
     </Dialog>
   );

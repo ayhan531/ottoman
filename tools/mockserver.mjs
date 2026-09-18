@@ -33,6 +33,35 @@ const history = () => {
 };
 
 const ANON = process.env.ANON === "1";
+const ADMIN = process.env.ADMIN === "1";
+
+const asAdmin = (payload) => {
+  if (!ADMIN) return payload;
+  const copy = JSON.parse(JSON.stringify(payload));
+  if (copy.user) copy.user.role = "admin";
+  return copy;
+};
+
+const adminRoutes = {
+  "/api/admin/summary": () => ({ summary: { users_total: 3, orders_pending: 1, cash_total: 500000, blocked_total: 0 } }),
+  "/api/admin/users": () => ({ users: [
+    { id: 2, full_name: "Ottoman Test Kullanıcı", status: "approved", status_label: "Onaylandı", email: "test@ottoman.local", account_no: "OT000002", phone: "05550000000", cash_balance: 123456.78, order_count: 4, buy_count: 3, sell_count: 1, transaction_count: 6, kyc_status_label: "Onaylandı" },
+    { id: 3, full_name: "Bekleyen Başvuru", status: "pending", status_label: "Beklemede", email: "yeni@ottoman.local", account_no: "OT000003", phone: "05551112233", cash_balance: 0 },
+  ] }),
+  "/api/admin/orders": () => ({ orders: [
+    { id: 11, symbol: "THYAO", side: "buy", side_label: "Alış", full_name: "Ottoman Test Kullanıcı", quantity: 100, total: 28925, status: "pending", status_label: "Beklemede" },
+  ] }),
+  "/api/admin/money": () => ({ money_requests: [
+    { id: 5, request_type: "deposit", type_label: "Para Yatırma", full_name: "Ottoman Test Kullanıcı", amount: 5000, status: "pending", status_label: "Beklemede" },
+  ] }),
+  "/api/admin/reports": () => ({ users: [1, 2], audit: [1, 2, 3], reconciliation: { cash: 500000, blocked: 0 } }),
+  "/api/admin/system-settings": () => ({ settings: { t2_enabled: "0" } }),
+  "/api/admin/transactions": () => ({ transactions: [
+    { id: 90, user_id: 2, code: "THYAO", transaction_type: "trade_buy", type_label: "Hisse Alım", quantity: 100, price: 289.25, total: 28925, balance_after: 94531.78, created_at_label: "17 Eylül 2026 14:02" },
+    { id: 91, user_id: 2, code: "TUPRS", transaction_type: "trade_sell", type_label: "Hisse Satım", quantity: 50, price: 412, total: 20600, balance_after: 115131.78, created_at_label: "16 Eylül 2026 11:20" },
+    { id: 92, user_id: 2, code: "", transaction_type: "admin_add", type_label: "TL Yükleme", quantity: 0, price: 0, total: 25000, balance_after: 123456.78, created_at_label: "15 Eylül 2026 09:05" },
+  ] }),
+};
 
 const routes = {
   "/api/me": () => read("me.json"),
@@ -57,9 +86,9 @@ http.createServer((req, res) => {
     res.end(JSON.stringify({ error: "Oturum yok" }));
     return;
   }
-  const route = routes[url.pathname];
+  const route = routes[url.pathname] || adminRoutes[url.pathname];
   if (route) {
-    const body = JSON.stringify(route());
+    const body = JSON.stringify(asAdmin(route()));
     res.writeHead(200, { "Content-Type": "application/json; charset=utf-8" });
     res.end(body);
     return;
