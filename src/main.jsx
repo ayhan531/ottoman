@@ -9,13 +9,15 @@ import { AuthScreen, AdminPanel } from "./legacy.jsx";
 import { api } from "./esube/store.js";
 import { hasPendingTc } from "./esube/accounts.js";
 import { trackSafeArea } from "./esube/safearea.js";
+import { trackInstall, registerWorker, isStandalone, refreshPush } from "./esube/pwa.js";
 
 const normalize = (data) => data?.user || (data?.id ? data : null);
 
 function Root() {
   const [me, setMe] = useState(null);
   const [ready, setReady] = useState(false);
-  const [authOpen, setAuthOpen] = useState(false);
+  // Ana ekrandaki kısayoldan açıldıysa tanıtım sayfası atlanır, doğrudan e-şube açılır.
+  const [authOpen, setAuthOpen] = useState(() => isStandalone());
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminData, setAdminData] = useState(null);
 
@@ -24,6 +26,9 @@ function Root() {
   }, []);
 
   useEffect(() => { loadMe(); }, [loadMe]);
+
+  // Giriş yapıldıysa ve bildirim izni zaten verilmişse aboneliği tazele.
+  useEffect(() => { if (me) refreshPush(); }, [me]);
 
   // E-şube açıkken gövde kaydırmasını kapat; kurumsal sayfada serbest bırak.
   useEffect(() => {
@@ -76,5 +81,7 @@ function Root() {
 }
 
 trackSafeArea();
+trackInstall();
+registerWorker();
 
 createRoot(document.getElementById("app")).render(<Root />);

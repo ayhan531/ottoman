@@ -26,6 +26,8 @@ import xml.etree.ElementTree as ET
 import zipfile
 from email.message import EmailMessage
 from news_feed import latest_news
+import threading
+import webpush
 
 
 
@@ -460,6 +462,26 @@ def init_db() -> None:
               read_at INTEGER
             );
             CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, created_at DESC);
+
+            CREATE TABLE IF NOT EXISTS push_keys (
+              id INTEGER PRIMARY KEY CHECK (id = 1),
+              private_key TEXT NOT NULL,
+              public_key TEXT NOT NULL,
+              created_at INTEGER NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS push_subscriptions (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+              endpoint TEXT NOT NULL UNIQUE,
+              p256dh TEXT NOT NULL DEFAULT '',
+              auth TEXT NOT NULL DEFAULT '',
+              agent TEXT NOT NULL DEFAULT '',
+              prefs TEXT NOT NULL DEFAULT '',
+              created_at INTEGER NOT NULL,
+              last_seen_at INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions(user_id);
 
             CREATE TABLE IF NOT EXISTS system_settings (
               setting_key TEXT PRIMARY KEY,
@@ -1807,6 +1829,14 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_notification_event()
         if method == "POST" and path == "/api/notifications/read":
             return self.api_notifications_read()
+        if method == "GET" and path == "/api/push/key":
+            return self.api_push_key()
+        if method == "POST" and path == "/api/push/subscribe":
+            return self.api_push_subscribe()
+        if method == "POST" and path == "/api/push/unsubscribe":
+            return self.api_push_unsubscribe()
+        if method == "POST" and path == "/api/push/test":
+            return self.api_push_test()
         if method == "GET" and path == "/api/portfolio":
             return self.api_portfolio()
         if method == "GET" and path == "/api/portfolio/history":
@@ -2304,6 +2334,64 @@ class AppHandler(BaseHTTPRequestHandler):
                 create_notification(conn, user["id"], title, body, category=category)
                 conn.commit()
             self.json_response({"ok": True})
+
+    def api_push_key(self) -> None:
+        """Tarayıcının abonelik için kullandığı açık VAPID anahtarı."""
+        with connect_db() as conn:
+            _private, public = push_keys(conn)
+            self.json_response({"key": public})
+
+    def api_push_subscribe(self) -> None:
+        payload = self.read_json()
+        endpoint = str((payload or {}).get("endpoint") or "").strip()
+        if not endpoint.startswith("https://"):
+            raise HttpError(400, "Geçersiz abonelik adresi")
+        with connect_db() as conn:
+            user = self.require_user(conn)
+            conn.execute(
+                """
+                INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, agent, prefs, created_at, last_seen_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(endpoint) DO UPDATE SET
+                  user_id=excluded.user_id, p256dh=excluded.p256dh, auth=excluded.auth,
+                  agent=excluded.agent, prefs=excluded.prefs, last_seen_at=excluded.last_seen_at
+                """,
+                (
+                    user["id"], endpoint,
+                    str((payload or {}).get("p256dh") or "")[:200],
+                    str((payload or {}).get("auth") or "")[:100],
+                    str((payload or {}).get("agent") or "")[:200],
+                    json.dumps((payload or {}).get("prefs") or {}, ensure_ascii=False)[:400],
+                    now(), now(),
+                ),
+            )
+            conn.commit()
+            self.json_response({"ok": True})
+
+    def api_push_unsubscribe(self) -> None:
+        payload = self.read_json()
+        endpoint = str((payload or {}).get("endpoint") or "").strip()
+        with connect_db() as conn:
+            user = self.require_user(conn)
+            conn.execute("DELETE FROM push_subscriptions WHERE user_id=? AND endpoint=?", (user["id"], endpoint))
+            conn.commit()
+            self.json_response({"ok": True})
+
+    def api_push_test(self) -> None:
+        """Kullanıcının kendi cihazına deneme bildirimi."""
+        with connect_db() as conn:
+            user = self.require_user(conn)
+            cihaz = conn.execute("SELECT COUNT(*) AS n FROM push_subscriptions WHERE user_id=?", (user["id"],)).fetchone()["n"]
+            if not cihaz:
+                raise HttpError(400, "Bu hesapta kayıtlı cihaz yok")
+            create_notification(
+                conn, user["id"],
+                "Bildirimler açık",
+                "Ottoman E-Şube bildirimleri bu cihazda çalışıyor.",
+                category="genel",
+            )
+            conn.commit()
+            self.json_response({"ok": True, "cihaz": cihaz})
 
     def api_notifications_read(self) -> None:
         with connect_db() as conn:
@@ -3675,8 +3763,15 @@ class AppHandler(BaseHTTPRequestHandler):
             requested = DIST / "index.html"
         self.serve_file(requested)
 
+    EXTRA_TYPES = {
+        ".webmanifest": "application/manifest+json; charset=utf-8",
+        ".js": "text/javascript; charset=utf-8",
+        ".mjs": "text/javascript; charset=utf-8",
+        ".svg": "image/svg+xml",
+    }
+
     def serve_file(self, path: Path) -> None:
-        ctype = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        ctype = self.EXTRA_TYPES.get(path.suffix.lower()) or mimetypes.guess_type(path.name)[0] or "application/octet-stream"
         body = path.read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", ctype)
@@ -4230,11 +4325,83 @@ def settle_one_t2(conn: sqlite3.Connection, settlement_id: int) -> None:
     )
 
 
+PUSH_SUBJECT = os.environ.get("PUSH_SUBJECT", "https://ottoman-eggb.onrender.com")
+
+
+def push_keys(conn: sqlite3.Connection) -> tuple[str, str]:
+    """VAPID anahtar çifti; ilk çağrıda üretilir ve veritabanında saklanır."""
+    row = conn.execute("SELECT private_key, public_key FROM push_keys WHERE id=1").fetchone()
+    if row:
+        return row["private_key"], row["public_key"]
+    private, public = webpush.generate_keys()
+    conn.execute(
+        "INSERT OR REPLACE INTO push_keys (id, private_key, public_key, created_at) VALUES (1, ?, ?, ?)",
+        (private, public, now()),
+    )
+    conn.commit()
+    return private, public
+
+
+def _push_worker(endpoints: list[str], private: str, public: str) -> None:
+    """Arka planda gönderir; ölen abonelikleri temizler. İstek akışını bekletmez."""
+    olu: list[str] = []
+    for endpoint in endpoints:
+        status = webpush.send(endpoint, PUSH_SUBJECT, private, public)
+        if status in (404, 410):
+            olu.append(endpoint)
+    if not olu:
+        return
+    try:
+        with connect_db() as conn:
+            for endpoint in olu:
+                conn.execute("DELETE FROM push_subscriptions WHERE endpoint=?", (endpoint,))
+            conn.commit()
+    except Exception:
+        pass
+
+
+PUSH_CATEGORY_KEYS = {
+    "fiyat": "price", "price": "price",
+    "haber": "news", "news": "news",
+    "islem": "trade", "işlem": "trade", "emir": "trade", "trade": "trade",
+    "referral": "referral", "referans": "referral",
+}
+
+
+def push_allows(prefs_json: str, category: str) -> bool:
+    """Kullanıcı o türü kapattıysa cihaza push gitmez; genel bildirimler hep gider."""
+    key = PUSH_CATEGORY_KEYS.get(str(category or "").strip().lower())
+    if not key or not prefs_json:
+        return True
+    try:
+        prefs = json.loads(prefs_json)
+    except Exception:
+        return True
+    return bool(prefs.get(key, True))
+
+
+def send_push(conn: sqlite3.Connection, user_id: int, category: str = "genel") -> None:
+    """Kullanıcının kayıtlı cihazlarını uyandırır (içeriksiz push)."""
+    try:
+        rows = conn.execute("SELECT endpoint, prefs FROM push_subscriptions WHERE user_id=?", (user_id,)).fetchall()
+        if not rows:
+            return
+        endpoints = [row["endpoint"] for row in rows if push_allows(row["prefs"], category)]
+        if not endpoints:
+            return
+        private, public = push_keys(conn)
+        threading.Thread(target=_push_worker, args=(endpoints, private, public), daemon=True).start()
+    except Exception:
+        # Bildirim kaydı yazıldı; push başarısızlığı isteği düşürmemeli.
+        pass
+
+
 def create_notification(conn: sqlite3.Connection, user_id: int, title: str, body: str = "", category: str = "genel") -> None:
     conn.execute(
         "INSERT INTO notifications (user_id, category, title, body, created_at) VALUES (?, ?, ?, ?, ?)",
         (user_id, category, title, body, now()),
     )
+    send_push(conn, user_id, category)
 
 
 def notify_referrals_of_sale(conn: sqlite3.Connection, seller_id: int, symbol: str, quantity: int) -> None:

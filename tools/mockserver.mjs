@@ -18,6 +18,7 @@ const types = {
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".woff2": "font/woff2",
+  ".webmanifest": "application/manifest+json; charset=utf-8",
 };
 
 const history = () => {
@@ -94,6 +95,10 @@ const routes = {
   "/api/portfolio": () => read("portfolio.json"),
   "/api/orders": () => read("orders.json"),
   "/api/notifications": () => read("notifications.json"),
+  // Gerçek sunucudaki VAPID açık anahtarının yerine geçen geçerli bir P-256 noktası.
+  "/api/push/key": () => ({ key: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U" }),
+  "/api/push/subscribe": () => ({ ok: true }),
+  "/api/push/unsubscribe": () => ({ ok: true }),
   "/api/system-bank-accounts": () => read("bank.json"),
   "/api/public/config": () => read("config.json"),
   "/api/portfolio/history": () => ({ history: history(), series: mockSeries() }),

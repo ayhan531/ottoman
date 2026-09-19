@@ -13,6 +13,7 @@ import {
 } from "./Subpages.jsx";
 import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHoldings, readPref, writePref } from "./store.js";
 import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
+import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
 import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, parseAmount } from "./market.js";
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
@@ -381,7 +382,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       case 12:
         return <Contact onBack={() => go(11)} me={me} onNotice={showNotice} channel={noticeChannel} setChannel={setNoticeChannel} />;
       case 13:
-        return <NotifyHost onBack={() => go(returnTo)} onSaved={() => { go(returnTo); showNotice("Kaydedildi", "Bildirim tercihlerin güncellendi."); }} />;
+        return <NotifyHost onBack={() => go(returnTo)} onNotice={showNotice} onSaved={() => { go(returnTo); showNotice("Kaydedildi", "Bildirim tercihlerin güncellendi."); }} />;
       case 14:
         return <Article item={article || {}} onBack={() => go(1)} />;
       default:
@@ -475,28 +476,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       )}
 
       {overlay?.kind === "install" && (
-        <Sheet title={T("Uygulamayı yükle")} onClose={() => setOverlay(null)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <span style={{ fontSize: "calc(13.5px * var(--s))", color: "var(--muted)" }}>
-              {T("Ottoman E-Şube'yi telefonunun ana ekranına ekleyerek uygulama gibi kullanabilirsin.")}
-            </span>
-            <div className="sec-card">
-              <Divided>
-                <div className="sec-row">
-                  <span className="disc"><Icon name="android" size={20} /></span>
-                  <span className="copy"><strong>Android</strong><span>{T("Chrome menüsü → “Ana ekrana ekle”")}</span></span>
-                  <span /><span />
-                </div>
-                <div className="sec-row">
-                  <span className="disc"><Icon name="apple" size={20} /></span>
-                  <span className="copy"><strong>{T("iPhone / iPad")}</strong><span>{T("Safari paylaş → “Ana Ekrana Ekle”")}</span></span>
-                  <span /><span />
-                </div>
-              </Divided>
-            </div>
-            <button className="btn" onClick={() => setOverlay(null)}>{T("Tamam")}</button>
-          </div>
-        </Sheet>
+        <InstallSheet onClose={() => setOverlay(null)} onNotice={showNotice} />
       )}
 
       {overlay?.kind === "identity" && (
@@ -772,15 +752,130 @@ function TransferSheet({ deposit, available, bankAccounts, onClose, onDone }) {
   );
 }
 
-function NotifyHost({ onBack, onSaved }) {
+/* ---------- Uygulamayı yükle ---------- */
+
+function InstallSheet({ onClose, onNotice }) {
+  const [kurulabilir, setKurulabilir] = useState(canInstall());
+  const [kurulu, setKurulu] = useState(isStandalone());
+  const [bekliyor, setBekliyor] = useState(false);
+
+  useEffect(() => onInstallChange(() => {
+    setKurulabilir(canInstall());
+    setKurulu(isStandalone());
+  }), []);
+
+  const yukle = async () => {
+    setBekliyor(true);
+    const sonuc = await promptInstall();
+    setBekliyor(false);
+    setKurulabilir(canInstall());
+    if (sonuc === "accepted") {
+      onClose();
+      onNotice("Uygulama eklendi", "Ottoman artık ana ekranınızda. Kısayoldan açtığınızda doğrudan e-şubeye girersiniz.");
+    }
+  };
+
+  const elmaAdimlari = [
+    ["up", "1. Paylaş düğmesine dokunun", "Safari'nin alt çubuğundaki yukarı ok"],
+    ["plus", "2. “Ana Ekrana Ekle”yi seçin", "Listede aşağıda yer alır"],
+    ["check", "3. “Ekle”ye dokunun", "Ottoman simgesi ana ekrana gelir"],
+  ];
+
+  return (
+    <Sheet title={T("Uygulamayı yükle")} onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="install-hero">
+          <img src="/icons/icon-192.png" alt="Ottoman" width={64} height={64} />
+          <div className="install-copy">
+            <strong>Ottoman Yatırım</strong>
+            <span>{T("Ana ekrandan tek dokunuşla kendi e-şubeniz açılır.")}</span>
+          </div>
+        </div>
+
+        {kurulu ? (
+          <>
+            <div className="referral-note">
+              <Icon name="check" size={22} color="var(--pos)" />
+              <span>{T("Uygulama bu cihaza kurulu. Bildirimleri açmak için Hesap → Ayarlar → Bildirim Ayarları → Cihaz Bildirimleri.")}</span>
+            </div>
+            <button className="btn" onClick={onClose}>{T("Tamam")}</button>
+          </>
+        ) : kurulabilir ? (
+          <>
+            <span style={{ fontSize: "calc(13.5px * var(--s))", color: "var(--muted)" }}>
+              {T("Kurulum birkaç saniye sürer ve cihazda yer kaplamaz.")}
+            </span>
+            <button className="btn" disabled={bekliyor} onClick={yukle}>{T(bekliyor ? "Kuruluyor…" : "Ana ekrana ekle")}</button>
+          </>
+        ) : isApple() ? (
+          <>
+            <div className="sec-card">
+              <Divided>
+                {elmaAdimlari.map(([icon, baslik, not]) => (
+                  <div className="sec-row" key={baslik}>
+                    <span className="disc"><Icon name={icon} size={20} /></span>
+                    <span className="copy"><strong>{T(baslik)}</strong><span>{T(not)}</span></span>
+                    <span /><span />
+                  </div>
+                ))}
+              </Divided>
+            </div>
+            <button className="btn" onClick={onClose}>{T("Anladım")}</button>
+          </>
+        ) : (
+          <>
+            <div className="sec-card">
+              <Divided>
+                <div className="sec-row">
+                  <span className="disc"><Icon name="android" size={20} /></span>
+                  <span className="copy"><strong>Android</strong><span>{T("Chrome menüsü → “Uygulamayı yükle”")}</span></span>
+                  <span /><span />
+                </div>
+                <div className="sec-row">
+                  <span className="disc"><Icon name="laptop" size={20} /></span>
+                  <span className="copy"><strong>{T("Bilgisayar")}</strong><span>{T("Adres çubuğundaki yükle simgesi ya da menü → “Yükle”")}</span></span>
+                  <span /><span />
+                </div>
+              </Divided>
+            </div>
+            <button className="btn" onClick={onClose}>{T("Tamam")}</button>
+          </>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
+function NotifyHost({ onBack, onSaved, onNotice }) {
   const [draft, setDraft] = useState(() =>
     Object.fromEntries(NOTIFY_KEYS.map((key) => [key, readPref(key, key !== "notify-referral")]))
   );
   const [quiet, setQuiet] = useState(() => readPref("notify-quiet", 1));
   const [weekly, setWeekly] = useState(() => readPref("notify-weekly", 1));
+
+  // Cihaz bildirimi: tarayıcı izni + push aboneliği.
+  const [push, setPush] = useState("kapali");
+  useEffect(() => { let canli = true; pushState().then((durum) => canli && setPush(durum)); return () => { canli = false; }; }, []);
+  const togglePush = async (on) => {
+    setPush("bekliyor");
+    const durum = on ? await enablePush() : await disablePush();
+    setPush(durum);
+    if (durum === "ana-ekran-gerekli") {
+      onNotice?.("Cihaz bildirimi", "iPhone ve iPad'de bildirim için uygulamanın ana ekrana eklenmiş olması gerekir. Hesap → Uygulamayı yükle adımlarını izleyin.");
+    } else if (durum === "engellendi") {
+      onNotice?.("Bildirim izni kapalı", "Tarayıcı ayarlarından bu site için bildirimlere izin verdikten sonra tekrar deneyin.");
+    } else if (durum === "desteklenmiyor") {
+      onNotice?.("Cihaz bildirimi", "Bu tarayıcı cihaz bildirimlerini desteklemiyor.");
+    } else if (durum === "hata") {
+      onNotice?.("Cihaz bildirimi", "Abonelik kurulamadı, birazdan tekrar deneyin.");
+    }
+  };
+
   return (
     <NotifySettings
       onBack={onBack}
+      push={push}
+      onPush={togglePush}
       draft={draft}
       setDraft={setDraft}
       quiet={quiet}
@@ -791,6 +886,7 @@ function NotifyHost({ onBack, onSaved }) {
         Object.entries(draft).forEach(([key, value]) => writePref(key, value));
         writePref("notify-quiet", quiet);
         writePref("notify-weekly", weekly);
+        syncPushPrefs();
         onSaved();
       }}
     />

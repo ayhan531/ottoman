@@ -458,7 +458,17 @@ const NOTIFY_KEYS = ["notify-price", "notify-news", "notify-trade", "notify-refe
 const QUIET_HOURS = ["Kapalı", "22:00 - 08:00", "23:00 - 07:00", "00:00 - 08:00"];
 const WEEKLY = ["Kapalı", "Her pazartesi 09:00", "Her cuma 18:00", "Her pazar 20:00"];
 
-export function NotifySettings({ onBack, draft, setDraft, quiet, setQuiet, weekly, setWeekly, onSave }) {
+const PUSH_NOTES = {
+  acik: "Bu cihaza bildirim gönderiliyor",
+  kapali: "Bildirimleri bu cihaza almak için açın",
+  bekliyor: "Ayarlanıyor…",
+  engellendi: "Tarayıcı bu site için bildirimleri engelliyor",
+  "ana-ekran-gerekli": "iPhone'da önce uygulamayı ana ekrana ekleyin",
+  desteklenmiyor: "Bu tarayıcı cihaz bildirimini desteklemiyor",
+  hata: "Abonelik kurulamadı, tekrar deneyin",
+};
+
+export function NotifySettings({ onBack, draft, setDraft, quiet, setQuiet, weekly, setWeekly, onSave, push = "kapali", onPush }) {
   const [picker, setPicker] = useState(null);
   const anyOn = NOTIFY_KEYS.some((key) => draft[key]);
   const setAll = (on) => setDraft(Object.fromEntries(NOTIFY_KEYS.map((key) => [key, on])));
@@ -470,6 +480,13 @@ export function NotifySettings({ onBack, draft, setDraft, quiet, setQuiet, weekl
   return (
     <div className="page gap-12 notify-page">
       <CenteredHeader title={T("Bildirim Ayarları")} onBack={onBack} />
+      <div className="sec-card">
+        <InfoRow
+          title={T("Cihaz Bildirimleri")}
+          note={T(PUSH_NOTES[push] || PUSH_NOTES.kapali)}
+          tail={<Toggle on={push === "acik"} onChange={(on) => onPush?.(on)} />}
+        />
+      </div>
       <div className="sec-card">
         <InfoRow title={T("Tüm Bildirimler")} note={T("Tüm bildirimleri tek dokunuşla aç veya kapat")} tail={<Toggle on={anyOn} onChange={setAll} />} />
       </div>

@@ -1200,3 +1200,40 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   .esube .trade-body input[inputmode], .overlay .trade-body input[inputmode] { height: 38px; }
   .esube .trade-body .tstats, .overlay .trade-body .tstats { display: none; }
 }
+
+/* Uygulamayı yükle sayfası */
+.esube .install-hero,
+.overlay .install-hero {
+  display: grid;
+  grid-template-columns: 64px 1fr;
+  gap: 14px;
+  align-items: center;
+  background: var(--soft);
+  border-radius: 16px;
+  padding: 14px;
+}
+.esube .install-hero img,
+.overlay .install-hero img {
+  width: 64px;
+  height: 64px;
+  border-radius: 15px;
+  display: block;
+}
+.esube .install-copy,
+.overlay .install-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.esube .install-copy strong,
+.overlay .install-copy strong {
+  font-size: calc(15.5px * var(--s));
+  color: var(--ink);
+}
+.esube .install-copy span,
+.overlay .install-copy span {
+  font-size: calc(12.5px * var(--s));
+  color: var(--muted);
+  line-height: 1.35;
+}

@@ -1,0 +1,26 @@
+{
+  "id": "/?uygulama=1",
+  "name": "Ottoman Yatırım",
+  "short_name": "Ottoman",
+  "description": "Ottoman E-Şube: canlı BIST fiyatları, portföy takibi, hisse al-sat ve yatırım işlemleri.",
+  "lang": "tr",
+  "dir": "ltr",
+  "start_url": "/?uygulama=1",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#171922",
+  "theme_color": "#7657ff",
+  "categories": ["finance", "business"],
+  "icons": [
+    { "src": "/icons/favicon-32.png", "sizes": "32x32", "type": "image/png" },
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Portföyüm", "short_name": "Portföy", "url": "/?uygulama=1&ekran=portfoy", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Al / Sat", "short_name": "Al/Sat", "url": "/?uygulama=1&ekran=alsat", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
