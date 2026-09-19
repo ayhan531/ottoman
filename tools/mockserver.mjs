@@ -56,7 +56,26 @@ const adminRoutes = {
     { id: 5, request_type: "deposit", type_label: "Para Yatırma", full_name: "Ottoman Test Kullanıcı", amount: 5000, status: "pending", status_label: "Beklemede" },
   ] }),
   "/api/admin/reports": () => ({ users: [1, 2], audit: [1, 2, 3], reconciliation: { cash: 500000, blocked: 0 } }),
-  "/api/admin/system-settings": () => ({ settings: { t2_enabled: "0" } }),
+  "/api/admin/system-settings": () => ({ settings: { t2_enabled: "0", commission_rate: "0.002", minimum_deposit: "100", minimum_withdraw: "50", trading_open: "600", trading_close: "1080", brand_name: "Ottoman Yatırım" } }),
+  "/api/admin/bank-accounts": () => ({
+    system_bank_accounts: [
+      { id: 1, bank_name: "Ziraat Bankası", account_holder: "Ottoman Yatırım A.Ş.", iban: "TR120001000000000000000001", branch_name: "Merkez", description: "Ana tahsilat", is_active: 1, sort_order: 0 },
+      { id: 2, bank_name: "Garanti BBVA", account_holder: "Ottoman Yatırım A.Ş.", iban: "TR120006200000000000000002", branch_name: "Levent", description: "", is_active: 0, sort_order: 1 },
+    ],
+    user_bank_accounts: [
+      { id: 7, full_name: "Ottoman Test Kullanıcı", bank_name: "Yapı Kredi", iban: "TR120006700000000000000007" },
+    ],
+  }),
+  "/api/admin/positions": () => ({ positions: [
+    { id: 1, user_id: 2, symbol: "THYAO", quantity: 292, avg_price: 248.4 },
+    { id: 2, user_id: 2, symbol: "ASELS", quantity: 150, avg_price: 58.4 },
+  ] }),
+  "/api/admin/user-balances": () => ({ balances: [
+    { user_id: 2, cash_balance: 123456.78, blocked_balance: 0, credit_limit: 25000 },
+  ] }),
+  "/api/admin/documents": () => ({ documents: [
+    { id: 4, user_id: 3, full_name: "Bekleyen Başvuru", doc_type: "id_front", doc_type_label: "Kimlik ön yüz", status: "pending", status_label: "Beklemede" },
+  ] }),
   "/api/admin/transactions": () => ({ transactions: [
     { id: 90, user_id: 2, code: "THYAO", transaction_type: "trade_buy", type_label: "Hisse Alım", quantity: 100, price: 289.25, total: 28925, balance_after: 94531.78, created_at_label: "17 Eylül 2026 14:02" },
     { id: 91, user_id: 2, code: "TUPRS", transaction_type: "trade_sell", type_label: "Hisse Satım", quantity: 50, price: 412, total: 20600, balance_after: 115131.78, created_at_label: "16 Eylül 2026 11:20" },

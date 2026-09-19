@@ -847,8 +847,16 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
 .esube .result-mark, .overlay .result-mark { width: 56px; height: 56px; border-radius: 11px; background: var(--tint-green); color: var(--green); display: flex; align-items: center; justify-content: center; margin: 0 auto; }
 
 /* ---------- portföy ---------- */
-.esube .pf-viewport, .overlay .pf-viewport { overflow: hidden; margin: 0 -12px -14px 0; padding: 0 0 14px; }
-.esube .pf-lane, .overlay .pf-lane { display: flex; gap: 12px; align-items: stretch; will-change: transform; }
+/* touch-action: pan-y olmadan Android dikey kaydırmayı sahiplenip yatay
+   sürüklemeyi iptal ediyor; kartlar arası geçiş hiç çalışmıyordu. */
+.esube .pf-viewport, .overlay .pf-viewport {
+  overflow: hidden;
+  margin: 0 -12px -14px 0;
+  padding: 0 0 14px;
+  box-sizing: border-box;
+  touch-action: pan-y;
+}
+.esube .pf-lane, .overlay .pf-lane { display: flex; gap: 12px; align-items: flex-start; will-change: transform; }
 /* İki kart aynı boyda dursun: şerit gerilir, kart yuvayı doldurur. */
 .esube .pf-slot, .overlay .pf-slot { flex: none; display: flex; }
 .esube .pf-deck, .overlay .pf-deck { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 0 12px 16px 0; }
@@ -903,9 +911,15 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   vertical-align: baseline;
 }
 
-.esube .pf-dots, .overlay .pf-dots { display: flex; gap: 6px; justify-content: center; }
-.esube .pf-dots i, .overlay .pf-dots i { width: 8px; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--purple) 25%, transparent); display: block; }
-.esube .pf-dots i.on, .overlay .pf-dots i.on { background: var(--purple); }
+.esube .pf-dots, .overlay .pf-dots { display: flex; gap: 2px; justify-content: center; }
+/* Nokta 8px ama dokunma alanı 28px: parmakla da kart değiştirilebilsin. */
+.esube .pf-dots i, .overlay .pf-dots i {
+  width: 8px; height: 8px; border-radius: 4px;
+  background: color-mix(in srgb, var(--purple) 25%, transparent);
+  display: block; box-sizing: content-box; padding: 10px; cursor: pointer;
+  background-clip: content-box;
+}
+.esube .pf-dots i.on, .overlay .pf-dots i.on { background: var(--purple); background-clip: content-box; }
 
 .esube .pf-tabs, .overlay .pf-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .esube .pf-tabs button, .overlay .pf-tabs button {

@@ -5,7 +5,8 @@ import "./extra.css";
 import "./esube/theme.css";
 import CorporateLanding from "./CorporateLanding";
 import Esube from "./esube/App.jsx";
-import { AuthScreen, AdminPanel } from "./legacy.jsx";
+import { AuthScreen } from "./legacy.jsx";
+import AdminConsole from "./AdminConsole.jsx";
 import { api } from "./esube/store.js";
 import { hasPendingTc } from "./esube/accounts.js";
 import { trackSafeArea } from "./esube/safearea.js";
@@ -75,7 +76,7 @@ function Root() {
   if (!me && !authOpen) return <CorporateLanding openAuth={() => setAuthOpen(true)} />;
   if (!me) return <AuthScreen onAuthed={(data) => setMe(normalize(data))} back={() => setAuthOpen(false)} />;
   if (me.role === "admin" && showAdmin) {
-    return <AdminPanel data={adminData || {}} refresh={loadAdmin} logout={logout} onClose={() => setShowAdmin(false)} />;
+    return <AdminConsole data={adminData || {}} refresh={loadAdmin} logout={logout} onClose={() => setShowAdmin(false)} />;
   }
   return <Esube me={me} onLogout={logout} onAdmin={() => setShowAdmin(true)} refreshMe={loadMe} />;
 }

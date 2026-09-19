@@ -323,8 +323,12 @@ export default function Portfolio({
 }) {
   const lane = useRef(null);
   const viewport = useRef(null);
+  const slots = useRef([]);
   const [drag, setDrag] = useState(null);
   const [width, setWidth] = useState(0);
+  // Kartların kendi boyu; görüntü alanı açık karta göre yükselip alçalır ki
+  // kısa kartın altında boşluk kalmasın.
+  const [heights, setHeights] = useState([0, 0]);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState(0);
   const [detail, setDetail] = useState(null);
@@ -341,8 +345,19 @@ export default function Portfolio({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const olc = () => setHeights(slots.current.map((node) => (node ? Math.round(node.offsetHeight) : 0)));
+    const observer = new ResizeObserver(olc);
+    slots.current.forEach((node) => node && observer.observe(node));
+    olc();
+    return () => observer.disconnect();
+  }, []);
+
   const stride = width + 12;
   const offset = drag === null ? -card * stride : drag;
+  // Sürüklerken iki kart da görünür olmalı; bırakınca açık kartın boyuna oturur.
+  const deckHeight = drag === null ? heights[card] : Math.max(heights[0] || 0, heights[1] || 0);
 
   const onPointerDown = (event) => {
     if (event.target.closest(".spark") || event.target.closest("button")) return;
@@ -407,6 +422,10 @@ export default function Portfolio({
       <div
         className="pf-viewport"
         ref={viewport}
+        style={{
+          height: deckHeight ? `${deckHeight + 14}px` : undefined,
+          transition: drag === null ? "height .26s cubic-bezier(.33,1,.68,1)" : "none",
+        }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -417,7 +436,7 @@ export default function Portfolio({
           ref={lane}
           style={{ transform: `translateX(${offset}px)`, transition: drag === null ? "transform .26s cubic-bezier(.33,1,.68,1)" : "none" }}
         >
-          <div className="pf-slot" style={{ width: width || "100%" }}>
+          <div className="pf-slot" ref={(node) => { slots.current[0] = node; }} style={{ width: width || "100%" }}>
             <Deck>
               <SummaryCard
                 total={total} profit={profit} ratio={ratio} available={available} t2={t2}
@@ -426,7 +445,7 @@ export default function Portfolio({
               />
             </Deck>
           </div>
-          <div className="pf-slot" style={{ width: width || "100%" }}>
+          <div className="pf-slot" ref={(node) => { slots.current[1] = node; }} style={{ width: width || "100%" }}>
             <Deck>
               <ReturnsCard
                 holdings={holdings} profit={profit} ratio={ratio}
