@@ -1237,3 +1237,126 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   color: var(--muted);
   line-height: 1.35;
 }
+
+/* iOS ana ekrana ekleme rehberi */
+.esube .ios-steps,
+.overlay .ios-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.esube .ios-steps li,
+.overlay .ios-steps li {
+  display: grid;
+  grid-template-columns: 22px 38px 1fr;
+  align-items: center;
+  gap: 10px;
+  background: var(--soft);
+  border-radius: 14px;
+  padding: 11px 13px;
+}
+.esube .ios-no,
+.overlay .ios-no {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--purple);
+  color: #fff;
+  font-size: calc(12px * var(--s));
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.esube .ios-glyph,
+.overlay .ios-glyph {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--canvas);
+  color: var(--purple);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.esube .ios-copy,
+.overlay .ios-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.esube .ios-copy strong,
+.overlay .ios-copy strong {
+  font-size: calc(14px * var(--s));
+  color: var(--ink);
+}
+.esube .ios-copy span,
+.overlay .ios-copy span {
+  font-size: calc(12px * var(--s));
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+/* Safari'nin Paylaş düğmesini gösteren yanıp sönen ok */
+.esube .ios-pointer,
+.overlay .ios-pointer {
+  position: fixed;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 11px;
+  border-radius: 12px;
+  background: var(--purple);
+  color: #fff;
+  font-size: calc(11.5px * var(--s));
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.32);
+  pointer-events: none;
+  z-index: 80;
+}
+.esube .ios-pointer.alt,
+.overlay .ios-pointer.alt {
+  bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  animation: iosPointerAlt 1.3s ease-in-out infinite;
+}
+.esube .ios-pointer.ust,
+.overlay .ios-pointer.ust {
+  top: calc(6px + env(safe-area-inset-top, 0px));
+  left: auto;
+  right: 10px;
+  animation: iosPointerUst 1.3s ease-in-out infinite;
+}
+@keyframes iosPointerAlt {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, 7px); }
+}
+@keyframes iosPointerUst {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Bildirim izni ekranındaki zil */
+.esube .push-bell,
+.overlay .push-bell {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: var(--purple);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.esube .ios-steps ~ .btn:last-of-type,
+.overlay .ios-steps ~ .btn:last-of-type { margin-bottom: 4px; }
+.esube .sheet-panel:has(.ios-pointer.alt) .sheet-body,
+.overlay .sheet-panel:has(.ios-pointer.alt) .sheet-body,
+.esube .sheet-panel:has(.ios-pointer.alt) > div:last-child,
+.overlay .sheet-panel:has(.ios-pointer.alt) > div:last-child { padding-bottom: 52px; }

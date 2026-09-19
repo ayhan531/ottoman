@@ -27,6 +27,25 @@ export const isStandalone = () => {
   }
 };
 
+/**
+ * iOS'ta hangi tarayıcı? Ana ekrana ekleme ve bildirim yalnızca Safari'den
+ * eklenen uygulamada çalışır; Chrome/Firefox kısayolu kendi tarayıcısında açılır.
+ */
+export const iosBrowser = () => {
+  const ua = navigator.userAgent || "";
+  if (/CriOS/.test(ua)) return "chrome";
+  if (/FxiOS/.test(ua)) return "firefox";
+  if (/EdgiOS/.test(ua)) return "edge";
+  if (/OPiOS|OPT\//.test(ua)) return "opera";
+  return "safari";
+};
+
+/** Safari'nin adres çubuğu altta mı? iOS 15+ varsayılanı alt çubuktur. */
+export const iosToolbarAtBottom = () => {
+  const surum = (navigator.userAgent.match(/OS (\d+)[_.]/) || [])[1];
+  return !surum || Number(surum) >= 15;
+};
+
 export const isApple = () => {
   const ua = navigator.userAgent || "";
   const platform = navigator.platform || "";

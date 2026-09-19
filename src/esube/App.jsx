@@ -13,7 +13,7 @@ import {
 } from "./Subpages.jsx";
 import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHoldings, readPref, writePref } from "./store.js";
 import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
-import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
+import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, iosBrowser, iosToolbarAtBottom, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
 import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, parseAmount } from "./market.js";
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
@@ -110,6 +110,25 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       return true;
     });
   }, [notifications.items]);
+
+  // Otomatik öneri: uygulama kurulu değilse kurulum rehberi, kuruluysa bildirim izni.
+  // iOS'ta izin isteği kullanıcı dokunuşu gerektirdiği için düğmeli bir ekranla sorulur.
+  useEffect(() => {
+    const zaman = setTimeout(async () => {
+      if (isStandalone()) {
+        if (readPref("push-asked", false) === true) return;
+        const durum = await pushState();
+        if (durum !== "kapali") return;
+        setOverlay((mevcut) => mevcut || { kind: "push-prompt" });
+        return;
+      }
+      if (readPref("install-hint", false) === true) return;
+      if (!canInstall() && !isApple()) return;
+      writePref("install-hint", true);
+      setOverlay((mevcut) => mevcut || { kind: "install" });
+    }, 2500);
+    return () => clearTimeout(zaman);
+  }, []);
 
   // Ana ekrana eklendiğinde tek seferlik bildirim.
   useEffect(() => {
@@ -479,6 +498,13 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         <InstallSheet onClose={() => setOverlay(null)} onNotice={showNotice} />
       )}
 
+      {overlay?.kind === "push-prompt" && (
+        <PushPrompt
+          onClose={() => { writePref("push-asked", true); setOverlay(null); }}
+          onNotice={showNotice}
+        />
+      )}
+
       {overlay?.kind === "identity" && (
         <Sheet title={T("Kimlik Bilgileri")} onClose={() => setOverlay(null)}>
           <Divided>
@@ -752,6 +778,37 @@ function TransferSheet({ deposit, available, bankAccounts, onClose, onDone }) {
   );
 }
 
+/* ---------- İlk açılışta bildirim izni ---------- */
+
+function PushPrompt({ onClose, onNotice }) {
+  const [bekliyor, setBekliyor] = useState(false);
+  const izinVer = async () => {
+    setBekliyor(true);
+    const durum = await enablePush();
+    setBekliyor(false);
+    writePref("push-asked", true);
+    onClose();
+    if (durum === "acik") onNotice("Bildirimler açık", "İşlem, referans ve piyasa bildirimleri artık bu cihaza düşecek.");
+    else if (durum === "engellendi") onNotice("İzin verilmedi", "Ayarlar → Bildirimler bölümünden Ottoman için bildirimlere izin verebilirsiniz.");
+    else if (durum === "hata") onNotice("Kurulamadı", "Bildirim aboneliği kurulamadı, birazdan tekrar deneyin.");
+  };
+  return (
+    <Sheet title={T("Bildirimleri aç")} onClose={onClose}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="install-hero">
+          <span className="push-bell"><Icon name="bell" size={30} /></span>
+          <div className="install-copy">
+            <strong>{T("Anlık bildirim")}</strong>
+            <span>{T("Emirleriniz gerçekleştiğinde, referansınız işlem yaptığında ve takip ettiğiniz piyasada hareket olduğunda haberiniz olsun.")}</span>
+          </div>
+        </div>
+        <button className="btn" disabled={bekliyor} onClick={izinVer}>{T(bekliyor ? "Açılıyor…" : "Bildirimlere izin ver")}</button>
+        <button className="btn ghost" onClick={onClose}>{T("Daha sonra")}</button>
+      </div>
+    </Sheet>
+  );
+}
+
 /* ---------- Uygulamayı yükle ---------- */
 
 function InstallSheet({ onClose, onNotice }) {
@@ -775,10 +832,12 @@ function InstallSheet({ onClose, onNotice }) {
     }
   };
 
+  const altCubuk = iosToolbarAtBottom();
+  const tarayici = iosBrowser();
   const elmaAdimlari = [
-    ["up", "1. Paylaş düğmesine dokunun", "Safari'nin alt çubuğundaki yukarı ok"],
-    ["plus", "2. “Ana Ekrana Ekle”yi seçin", "Listede aşağıda yer alır"],
-    ["check", "3. “Ekle”ye dokunun", "Ottoman simgesi ana ekrana gelir"],
+    ["share", "Paylaş düğmesine dokunun", altCubuk ? "Ekranın altındaki ortadaki simge" : "Adres çubuğunun sağındaki simge"],
+    ["addhome", "“Ana Ekrana Ekle”yi seçin", "Listeyi biraz yukarı kaydırın"],
+    ["check", "Sağ üstten “Ekle”ye dokunun", "Ottoman simgesi ana ekrana gelir"],
   ];
 
   return (
@@ -809,18 +868,31 @@ function InstallSheet({ onClose, onNotice }) {
           </>
         ) : isApple() ? (
           <>
-            <div className="sec-card">
-              <Divided>
-                {elmaAdimlari.map(([icon, baslik, not]) => (
-                  <div className="sec-row" key={baslik}>
-                    <span className="disc"><Icon name={icon} size={20} /></span>
-                    <span className="copy"><strong>{T(baslik)}</strong><span>{T(not)}</span></span>
-                    <span /><span />
-                  </div>
-                ))}
-              </Divided>
-            </div>
+            {tarayici !== "safari" && (
+              <div className="referral-note">
+                <Icon name="info" size={22} color="var(--muted)" />
+                <span>{T("Bu sayfayı önce Safari'de açın. Diğer tarayıcılardan eklenen kısayol uygulama gibi çalışmaz ve bildirim alamaz.")}</span>
+              </div>
+            )}
+            <ol className="ios-steps">
+              {elmaAdimlari.map(([icon, baslik, not], index) => (
+                <li key={baslik}>
+                  <span className="ios-no">{index + 1}</span>
+                  <span className="ios-glyph"><Icon name={icon} size={22} /></span>
+                  <span className="ios-copy"><strong>{T(baslik)}</strong><span>{T(not)}</span></span>
+                </li>
+              ))}
+            </ol>
+            <span style={{ fontSize: "calc(12.5px * var(--s))", color: "var(--muted)", lineHeight: 1.4 }}>
+              {T("iPhone ve iPad'de bu üç adımı Apple zorunlu tutuyor; hiçbir site kendini otomatik kuramaz. Ekledikten sonra simgeden açtığınızda doğrudan e-şubeniz gelir ve bildirimler çalışır.")}
+            </span>
             <button className="btn" onClick={onClose}>{T("Anladım")}</button>
+            {tarayici === "safari" && (
+              <div className={altCubuk ? "ios-pointer alt" : "ios-pointer ust"} aria-hidden="true">
+                <Icon name="share" size={20} />
+                <span>{T("Paylaş")}</span>
+              </div>
+            )}
           </>
         ) : (
           <>
