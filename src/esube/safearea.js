@@ -1,11 +1,10 @@
 /**
- * Üst güvenli alan. iOS Safari araç çubuğunu toplayınca sayfa durum çubuğunun
- * altına girer ama env(safe-area-inset-top) 0 döner; o durumda başlık saatin
- * üstüne biner. Önce env() ölçülür, gelmezse iOS'ta durum çubuğu payı verilir.
- * Android tarayıcılar sayfayı zaten kendi çubuğunun altında açtığı için 0 kalır.
+ * Üst güvenli alan. Kabuk `position: fixed; inset: 0` olduğu ve sayfa
+ * `viewport-fit=cover` ile açıldığı için düzen alanı durum çubuğunun altına
+ * kadar uzar; gereken pay tam olarak env(safe-area-inset-top) kadardır.
+ * Sabit bir iOS payı EKLENMEZ: çentiksiz cihazlarda ve Android'de env() 0
+ * döner, oraya pay eklenirse başlığın üstünde boşluk kalır.
  */
-
-const IOS_STATUS_BAR = 48;
 
 const measureEnv = () => {
   try {
@@ -14,34 +13,21 @@ const measureEnv = () => {
     document.body.appendChild(probe);
     const value = probe.getBoundingClientRect().height;
     probe.remove();
-    return Number.isFinite(value) ? value : 0;
+    return Number.isFinite(value) && value > 0 ? value : 0;
   } catch {
     return 0;
   }
 };
 
-const isApplePhone = () => {
-  const ua = navigator.userAgent || "";
-  const platform = navigator.platform || "";
-  const iPhone = /iPhone|iPod/.test(ua) || /iPhone|iPod/.test(platform);
-  // iPad, masaüstü kimliğiyle gelir; dokunmatik nokta sayısı ayırt eder.
-  const iPad = /iPad/.test(ua) || (/Mac/.test(platform) && navigator.maxTouchPoints > 1);
-  return iPhone || iPad;
-};
-
 /**
  * Ölçüp <html> üzerine --safe-top ve --app-height yazar.
  * 100dvh, iOS Safari araç çubuğu toplanınca gerçek görünür alandan kısa
- * kalıyor ve altta beyaz bir şerit bırakıyor; bu yüzden kabuğun yüksekliği
- * innerHeight ile ölçülür. Klavye açılınca innerHeight değişmediği için
- * form alanları bundan etkilenmez.
+ * kalıyor; bu yüzden giriş ekranının yüksekliği innerHeight ile ölçülür.
  */
 export function trackSafeArea() {
   const apply = () => {
-    const fromEnv = measureEnv();
-    const top = fromEnv > 0 ? fromEnv : (isApplePhone() ? IOS_STATUS_BAR : 0);
     const root = document.documentElement;
-    root.style.setProperty("--safe-top", `${Math.round(top)}px`);
+    root.style.setProperty("--safe-top", `${Math.round(measureEnv())}px`);
     const height = Math.round(window.innerHeight || 0);
     if (height > 0) root.style.setProperty("--app-height", `${height}px`);
   };

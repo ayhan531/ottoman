@@ -185,6 +185,17 @@ export function TradePanel({
                     onClick={() => {
                       setKindOpen(false);
                       if (index === tradeKind) return;
+                      // Fon ve halka arz için emir ekranı hiç açılmaz; tür de
+                      // değişmez, yalnızca yönlendirme notu çıkar.
+                      if (index !== 0) {
+                        onNotice(
+                          index === 2 ? "Halka arz talebi" : "Fon işlemleri",
+                          index === 2
+                            ? "Halka arz alış satışları için referansınız ile iletişime geçiniz."
+                            : "Fon alış satışları için referansınız ile iletişime geçiniz.",
+                        );
+                        return;
+                      }
                       setTradeKind(index);
                       const list = listFor(KIND_MARKETS[index], instruments);
                       const next = list.find((item) => item.code === stock.code) || list[0];
