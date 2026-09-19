@@ -669,6 +669,9 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes riseIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
 @keyframes popIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+/* Panellerin giriş animasyonu transform'a dokunmaz: ortalama (translateY/
+   translate) taban kuralda duruyor, animasyon yarıda kalsa bile kaymaz. */
+@keyframes fadeInPanel { from { opacity: 0; } to { opacity: 1; } }
 
 .esube .popcard, .overlay .popcard {
   position: absolute;
@@ -716,7 +719,7 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   padding: 12px 20px calc(24px + env(safe-area-inset-bottom, 0px));
   max-height: 87vh;
   overflow-y: auto;
-  animation: riseIn 0.22s cubic-bezier(0.22, 0.9, 0.3, 1);
+  animation: fadeInPanel 0.2s ease;
 }
 .esube .shandle, .overlay .shandle { width: 36px; height: 4px; border-radius: 2px; background: var(--edge); margin: 0 auto 7px; }
 
@@ -730,7 +733,7 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   padding: 20px 20px 18px;
   max-height: 80vh;
   overflow-y: auto;
-  animation: popIn 0.18s ease;
+  animation: fadeInPanel 0.18s ease;
 }
 
 .esube .sheet-title, .overlay .sheet-title { font-size: calc(19px * var(--s)); font-weight: 700; }
