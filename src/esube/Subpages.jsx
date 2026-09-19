@@ -468,7 +468,7 @@ const PUSH_NOTES = {
   hata: "Abonelik kurulamadı, tekrar deneyin",
 };
 
-export function NotifySettings({ onBack, draft, setDraft, quiet, setQuiet, weekly, setWeekly, onSave, push = "kapali", onPush }) {
+export function NotifySettings({ onBack, draft, setDraft, quiet, setQuiet, weekly, setWeekly, onSave, push = "kapali", onPush, onPushTest }) {
   const [picker, setPicker] = useState(null);
   const anyOn = NOTIFY_KEYS.some((key) => draft[key]);
   const setAll = (on) => setDraft(Object.fromEntries(NOTIFY_KEYS.map((key) => [key, on])));
@@ -487,6 +487,11 @@ export function NotifySettings({ onBack, draft, setDraft, quiet, setQuiet, weekl
           tail={<Toggle on={push === "acik"} onChange={(on) => onPush?.(on)} />}
         />
       </div>
+      {push === "acik" && (
+        <div className="sec-card">
+          <InfoRow title={T("Deneme bildirimi gönder")} note={T("Bu cihaza örnek bir bildirim yollar")} chevron onClick={() => onPushTest?.()} />
+        </div>
+      )}
       <div className="sec-card">
         <InfoRow title={T("Tüm Bildirimler")} note={T("Tüm bildirimleri tek dokunuşla aç veya kapat")} tail={<Toggle on={anyOn} onChange={setAll} />} />
       </div>

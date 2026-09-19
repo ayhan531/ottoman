@@ -876,6 +876,14 @@ function NotifyHost({ onBack, onSaved, onNotice }) {
       onBack={onBack}
       push={push}
       onPush={togglePush}
+      onPushTest={async () => {
+        try {
+          await api("/api/push/test", { method: "POST", body: "{}" });
+          onNotice?.("Deneme gönderildi", "Bildirim birkaç saniye içinde cihazınıza düşer.");
+        } catch (error) {
+          onNotice?.("Gönderilemedi", error?.message || "Deneme bildirimi gönderilemedi.");
+        }
+      }}
       draft={draft}
       setDraft={setDraft}
       quiet={quiet}
