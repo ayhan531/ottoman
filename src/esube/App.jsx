@@ -1,7 +1,7 @@
 // E-Şube kabuğu — MainPage.xaml.cs (Navigate / BuildNavigation / BrandBar / Overlay) karşılığı.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./icons.jsx";
-import { Symbol, SearchBox, Sheet, Dialog, Divided, Overlay } from "./ui.jsx";
+import { Symbol, SearchBox, Sheet, Dialog, Divided, Overlay, LazyList } from "./ui.jsx";
 import Home, { InstrumentRow } from "./Home.jsx";
 import News, { Article } from "./News.jsx";
 import Portfolio from "./Portfolio.jsx";
@@ -18,6 +18,22 @@ import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS,
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
 export const APP_VERSION = "1.6.3";
+
+/** Bağlantı durumu; çevrimdışıyken kullanıcıya şerit gösterilir. */
+function useOnline() {
+  const [online, setOnline] = useState(() => navigator.onLine !== false);
+  useEffect(() => {
+    const ac = () => setOnline(true);
+    const kapat = () => setOnline(false);
+    window.addEventListener("online", ac);
+    window.addEventListener("offline", kapat);
+    return () => {
+      window.removeEventListener("online", ac);
+      window.removeEventListener("offline", kapat);
+    };
+  }, []);
+  return online;
+}
 
 // APK'da kimlik bilgileri maskeli görünür: "1•• ••• ••• 46".
 const maskTc = (value) => {
@@ -147,6 +163,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   }, []);
 
   /* ---- gezinme ---- */
+  const online = useOnline();
   const [tab, setTab] = useState(0);
   const [portfolioTab, setPortfolioTab] = useState(0);
   const [portfolioCard, setPortfolioCard] = useState(0);
@@ -441,6 +458,12 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
 
   return (
     <div className="esube">
+      {!online && (
+        <div className="offline-bar" role="status">
+          <Icon name="info" size={15} />
+          {T("Çevrimdışısın · son bilinen veriler gösteriliyor")}
+        </div>
+      )}
       <nav className="sidebar">
         <div className="brandmark">Ottoman</div>
         {NAV.map((item, index) => (
@@ -699,18 +722,25 @@ function NotificationsCard({ items, onClose }) {
 function StockPicker({ instruments, marketTab, watchlist, onClose, onPick }) {
   const [query, setQuery] = useState("");
   const list = useMemo(() => listFor(marketTab, instruments), [marketTab, instruments]);
-  const shown = query.trim()
-    ? search(query, list, 20)
-    : watchlist.map((code) => list.find((item) => item.code === code)).filter(Boolean);
+  // Arama yazılmadan da tüm hisseler görünür; takiptekiler en üste alınır.
+  const shown = useMemo(() => {
+    if (query.trim()) return search(query, list, 40);
+    const takipte = watchlist.map((code) => list.find((item) => item.code === code)).filter(Boolean);
+    const kodlar = new Set(takipte.map((item) => item.code));
+    return [...takipte, ...list.filter((item) => !kodlar.has(item.code))];
+  }, [query, list, watchlist]);
   return (
-    <Sheet title={T("Hisse seç")} onClose={onClose}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <SearchBox placeholder={T("Hisse adı veya sembol")} value={query} onChange={setQuery} />
-        {shown.length ? (
-          <Divided>{shown.map((item) => <InstrumentRow key={item.code} item={item} onClick={() => onPick(item)} />)}</Divided>
-        ) : (
-          <span style={{ fontSize: "calc(13px * var(--s))", color: "var(--muted)" }}>{T("Sonuç bulunamadı.")}</span>
-        )}
+    <Sheet title={T("Hisse Ara")} onClose={onClose}>
+      <div className="picker-body">
+        <SearchBox placeholder={T("Hisse kodu veya adı yazın…")} value={query} onChange={setQuery} />
+        <span className="picker-count">{shown.length} {T("hisse")}</span>
+        <div className="picker-list">
+          {shown.length ? (
+            <LazyList items={shown} render={(item) => <InstrumentRow key={item.code} item={item} onClick={() => onPick(item)} />} />
+          ) : (
+            <span style={{ fontSize: "calc(13px * var(--s))", color: "var(--muted)" }}>{T("Sonuç bulunamadı.")}</span>
+          )}
+        </div>
       </div>
     </Sheet>
   );

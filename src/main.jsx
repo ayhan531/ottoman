@@ -10,7 +10,7 @@ import AdminConsole from "./AdminConsole.jsx";
 import { api } from "./esube/store.js";
 import { hasPendingTc } from "./esube/accounts.js";
 import { trackSafeArea } from "./esube/safearea.js";
-import { trackInstall, registerWorker, isStandalone, refreshPush } from "./esube/pwa.js";
+import { trackInstall, registerWorker, isStandalone, refreshPush, clearOfflineData } from "./esube/pwa.js";
 
 const normalize = (data) => data?.user || (data?.id ? data : null);
 
@@ -65,6 +65,7 @@ function Root() {
 
   const logout = async () => {
     await api("/api/logout", { method: "POST", body: "{}" }).catch(() => {});
+    clearOfflineData();
     setMe(null);
     setAdminData(null);
     setShowAdmin(false);

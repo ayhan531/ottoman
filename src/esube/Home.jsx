@@ -1,7 +1,7 @@
 // Ana Sayfa — MainPage.Home.cs birebir karşılığı.
 import React, { useMemo, useState } from "react";
 import Icon from "./icons.jsx";
-import { Symbol, SearchBox, Segments, Divided, Sheet } from "./ui.jsx";
+import { Symbol, SearchBox, Segments, Divided, Sheet, LazyList } from "./ui.jsx";
 import {
   MARKET_NAMES, BIST, BIST100, BIST30, PARTICIPATION, CURRENCY,
   listFor, indexFor, breadth, turnover, movers, search, money, amount, move, percent,
@@ -162,7 +162,7 @@ export default function Home({
   if (trimmed) {
     heading = T("Arama sonuçları");
     body = results.length ? (
-      <Divided>{results.slice(0, 120).map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}</Divided>
+      <LazyList items={results} render={(item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />} />
     ) : (
       <div className="notice-box">{state === "live" ? `“${trimmed}”${T(" için sonuç bulunamadı.")}` : T("Liste henüz yüklenmedi.")}</div>
     );
@@ -183,6 +183,13 @@ export default function Home({
               <div className="h-title">{T("Öne çıkan düşenler")}</div>
               <Divided>{falling.map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}</Divided>
             </div>
+            <div style={{ paddingTop: 16 }}>
+              <div className="h-title">{T("Tüm hisseler")} <em className="h-count">{list.length}</em></div>
+              <LazyList
+                items={list}
+                render={(item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />}
+              />
+            </div>
           </>
         )}
       </>
@@ -190,7 +197,7 @@ export default function Home({
   } else {
     heading = T(MARKET_NAMES[marketTab]);
     body = list.length ? (
-      <Divided>{list.slice(0, 200).map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}</Divided>
+      <LazyList items={list} render={(item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />} />
     ) : (
       <div className="notice-box">{T(state === "failed" ? "Fiyatlar alınamadı. Bağlantını kontrol et." : "Fiyatlar yükleniyor…")}</div>
     );

@@ -194,6 +194,38 @@ export function Choices({ names, selected, onChoose }) {
 
 /* ---------- ayraçlı liste ---------- */
 
+/**
+ * Uzun listeleri kademeli çizer: önce ilk parça, aşağı inildikçe devamı.
+ * 900 hisselik listede tek seferde çizim telefonda takılmaya yol açıyordu.
+ */
+export function LazyList({ items, render, adim = 80, className = "" }) {
+  const [sinir, setSinir] = useState(adim);
+  const bitis = useRef(null);
+
+  useEffect(() => { setSinir(adim); }, [items, adim]);
+
+  useEffect(() => {
+    const node = bitis.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      setSinir(items.length);
+      return undefined;
+    }
+    const gozlemci = new IntersectionObserver(
+      (girisler) => { if (girisler.some((g) => g.isIntersecting)) setSinir((s) => Math.min(items.length, s + adim)); },
+      { rootMargin: "400px" },
+    );
+    gozlemci.observe(node);
+    return () => gozlemci.disconnect();
+  }, [items.length, adim, sinir]);
+
+  return (
+    <>
+      <Divided className={className}>{items.slice(0, sinir).map(render)}</Divided>
+      {sinir < items.length && <div ref={bitis} style={{ height: 1 }} aria-hidden="true" />}
+    </>
+  );
+}
+
 export function Divided({ children, className = "" }) {
   const items = React.Children.toArray(children).filter(Boolean);
   return (

@@ -89,6 +89,11 @@ export async function promptInstall() {
 
 /* ---------------- servis çalışanı ve cihaz bildirimi ---------------- */
 
+/** Çıkışta kullanıcıya ait önbelleği temizler. */
+export function clearOfflineData() {
+  try { navigator.serviceWorker?.controller?.postMessage("veriyi-temizle"); } catch { /* yoksay */ }
+}
+
 export async function registerWorker() {
   if (!("serviceWorker" in navigator)) return null;
   try {

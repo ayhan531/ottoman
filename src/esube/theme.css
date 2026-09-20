@@ -1447,3 +1447,36 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   font-weight: 800; color: var(--purple);
   overflow-wrap: anywhere; text-align: center; line-height: 1.2;
 }
+
+/* Hisse Ara: arama yazılmadan tüm liste, kendi içinde kayan */
+.esube .picker-body, .overlay .picker-body { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.esube .picker-count, .overlay .picker-count { font-size: calc(12px * var(--s)); color: var(--muted); }
+.esube .picker-list, .overlay .picker-list {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: min(58vh, 520px);
+  overscroll-behavior: contain;
+}
+.esube .h-count, .overlay .h-count {
+  font-style: normal;
+  font-size: calc(12px * var(--s));
+  font-weight: 600;
+  color: var(--muted);
+  margin-left: 6px;
+}
+
+/* Çevrimdışı şeridi */
+.esube .offline-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 12px;
+  background: #8a5a00;
+  color: #fff;
+  font-size: calc(12px * var(--s));
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.3;
+}
