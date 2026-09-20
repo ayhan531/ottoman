@@ -1,0 +1,22 @@
+import { chromium } from "playwright";
+const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--no-sandbox"] });
+const p = await b.newPage({ viewport:{width:393,height:851}, isMobile:true, hasTouch:true, deviceScaleFactor:2 });
+await p.route("**/*", (r) => (/127\.0\.0\.1|localhost/.test(r.request().url()) ? r.continue() : r.abort()));
+await p.goto("http://127.0.0.1:4173?anon=1", { waitUntil: "domcontentloaded" });
+await p.evaluate(() => { try { localStorage.clear(); localStorage.setItem("ottoman.install-hint","true"); localStorage.setItem("ottoman.push-asked","true"); } catch {} });
+await p.reload({ waitUntil: "domcontentloaded" });
+await p.waitForTimeout(1600);
+await p.evaluate(() => [...document.querySelectorAll("button,a")].find(x => /E-Şube Giriş/.test(x.innerText))?.click());
+await p.waitForTimeout(1500);
+await p.screenshot({ path: "shots/auth-giris.png" });
+await p.evaluate(() => [...document.querySelectorAll(".auth-tabs button")].find(x => x.innerText.trim() === "Hesap Oluştur")?.click());
+await p.waitForTimeout(800);
+await p.screenshot({ path: "shots/auth-kayit.png", fullPage: true });
+// İl seç, ilçeler dolsun
+await p.selectOption(".auth-field select", "İstanbul").catch(() => {});
+await p.waitForTimeout(500);
+const ilce = await p.evaluate(() => [...document.querySelectorAll(".auth-field select")][1]?.options.length);
+console.log("İstanbul ilce secenek sayisi:", ilce);
+console.log("ticker:", await p.evaluate(() => document.querySelectorAll(".auth-ticker-lane span").length));
+await p.close();
+await b.close();

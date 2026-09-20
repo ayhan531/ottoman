@@ -1,9 +1,10 @@
 // Eski e-şube kabuğundan korunan parçalar: giriş ekranı ve admin paneli.
 // Bunlar APK'da bulunmayan, kuruma özgü ekranlardır; extra.css/style.css ile biçimlenir.
-import React, { useState } from "react";
-import { Bell, CheckCircle2, Moon, ShieldCheck, Sun, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Bell, CheckCircle2, Eye, EyeOff, Moon, ShieldCheck, Sun, X } from "lucide-react";
 import { api } from "./esube/store.js";
 import { rememberAccount, takePendingTc } from "./esube/accounts.js";
+import { ILLER, ilceleri } from "./esube/regions.js";
 
 const money = (value) => `₺${Number(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const compactDate = () => new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
@@ -31,50 +32,217 @@ function LiveDataStrip({ marketMeta, newsMeta }) {
   </section>;
 }
 
+function AuthTicker() {
+  const [rows, setRows] = useState([]);
+  useEffect(() => {
+    let canli = true;
+    const cek = () => api("/api/market")
+      .then((veri) => {
+        if (!canli) return;
+        const hisseler = (veri.quotes || []).filter((q) => q.asset_class === "stock" && Number(q.price) > 0);
+        hisseler.sort((a, b) => Number(b.change_pct || 0) - Number(a.change_pct || 0));
+        setRows(hisseler.slice(0, 14));
+      })
+      .catch(() => {});
+    cek();
+    const zaman = setInterval(cek, 60000);
+    return () => { canli = false; clearInterval(zaman); };
+  }, []);
+  if (!rows.length) return null;
+  const seri = [...rows, ...rows];
+  return (
+    <div className="auth-ticker" aria-hidden="true">
+      <div className="auth-ticker-lane">
+        {seri.map((row, index) => (
+          <span key={`${row.symbol}-${index}`}>
+            <b>{row.symbol}</b>
+            <i className={Number(row.change_pct) >= 0 ? "up" : "down"}>
+              {Number(row.change_pct) >= 0 ? "+" : "−"}%{Math.abs(Number(row.change_pct || 0)).toFixed(2).replace(".", ",")}
+            </i>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const Alan = ({ label, children, genis }) => (
+  <label className={genis ? "auth-field wide" : "auth-field"}><span>{label}</span>{children}</label>
+);
+
+const SifreAlani = ({ name, placeholder, value, onChange }) => {
+  const [acik, setAcik] = useState(false);
+  return (
+    <span className="auth-secret">
+      <input name={name} type={acik ? "text" : "password"} placeholder={placeholder} value={value} onChange={onChange} required />
+      <button type="button" onClick={() => setAcik(!acik)} aria-label="Şifreyi göster">
+        {acik ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+    </span>
+  );
+};
+
+const BOS_KAYIT = {
+  ad: "", soyad: "", tc: "", dogum: "", il: "", ilce: "",
+  telefon: "", eposta: "", referans: "", sifre: "", sifre2: "",
+};
+
 function AuthScreen({ onAuthed, back }) {
   const [mode, setMode] = useState("login");
   const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [kayit, setKayit] = useState(BOS_KAYIT);
+  const [sozlesme, setSozlesme] = useState(false);
   // Hesap değiştirilirken kimlik numarası hazır gelir; şifre her zaman istenir.
   const [prefillTc] = useState(() => takePendingTc());
-  const submit = async (event) => {
+  const [girisTc, setGirisTc] = useState(prefillTc);
+  const [girisSifre, setGirisSifre] = useState("");
+
+  const alan = (ad) => (event) => setKayit((eski) => ({ ...eski, [ad]: event.target.value }));
+
+  const girisYap = async (event) => {
     event.preventDefault();
     setMessage("");
-    const form = Object.fromEntries(new FormData(event.currentTarget));
+    setBusy(true);
     try {
-      if (mode === "login") {
-        await api("/api/login", { method: "POST", body: JSON.stringify(form) });
-      } else {
-        const fd = new FormData(event.currentTarget);
-        fd.append("agreements_version", "2026-09");
-        await api("/api/register", { method: "POST", body: fd });
-        setMode("login");
-        setMessage("Başvurun alındı. Admin onayından sonra giriş yapabilirsin.");
-        return;
-      }
+      await api("/api/login", { method: "POST", body: JSON.stringify({ tc: girisTc, password: girisSifre }) });
       const data = await api("/api/me");
-      rememberAccount({ ...(data?.user || data || {}), tc: String(form.tc || "") });
+      rememberAccount({ ...(data?.user || data || {}), tc: String(girisTc || "") });
       onAuthed(data);
     } catch (error) {
       setMessage(error.message);
+    } finally {
+      setBusy(false);
     }
   };
+
+  const hesapOlustur = async (event) => {
+    event.preventDefault();
+    setMessage("");
+    if (kayit.sifre !== kayit.sifre2) return setMessage("Şifreler aynı değil.");
+    if (!sozlesme) return setMessage("Sözleşmeleri kabul etmelisin.");
+    const parcalar = kayit.dogum.split(/[./-]/).map((x) => x.trim());
+    const dogum = parcalar.length === 3 && parcalar[0].length === 2
+      ? `${parcalar[2]}-${parcalar[1]}-${parcalar[0]}`
+      : kayit.dogum;
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("full_name", `${kayit.ad.trim()} ${kayit.soyad.trim()}`.trim());
+      fd.append("tc", kayit.tc);
+      fd.append("phone", kayit.telefon);
+      fd.append("email", kayit.eposta);
+      fd.append("city", kayit.il);
+      fd.append("district", kayit.ilce);
+      fd.append("birth_date", dogum);
+      fd.append("password", kayit.sifre);
+      fd.append("referral_code", kayit.referans);
+      fd.append("accept_kvkk", "1");
+      fd.append("accept_distance_contract", "1");
+      fd.append("accept_risk_disclosure", "1");
+      for (const [key, value] of Object.entries({
+        risk_experience: "2", risk_horizon: "2", risk_loss: "2", risk_income: "2",
+        trade_frequency: "2", knowledge_level: "2", education: "Lisans",
+        occupation: "Belirtilmedi", traded_products: "Pay", investment_goal: "Uzun vadeli",
+        agreements_version: "2026-09",
+      })) fd.append(key, value);
+      await api("/api/register", { method: "POST", body: fd });
+      setKayit(BOS_KAYIT);
+      setSozlesme(false);
+      setMode("login");
+      setMessage("Başvurun alındı. Onaydan sonra giriş yapabilirsin.");
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const ilceler = ilceleri(kayit.il);
+
   return (
-    <div className="stage auth-stage"><div className="phone auth-phone"><main className="screen scroll auth-screen">
+    <div className="stage auth-stage"><div className="phone auth-phone"><main className="screen scroll auth-screen auth-v2">
+      <AuthTicker />
       <button className="ghost-back" onClick={back}>Ana sayfa</button>
       <div className="auth-logo brand">Ottoman</div>
-      <section className="auth-card">
-        <h1>{mode === "login" ? "E-Şube Giriş" : "Müşteri Ol"}</h1>
-        <p>Portföy, emir, T+2 bakiye, para yatırma/çekme ve canlı piyasa işlemleri tek güvenli oturumda.</p>
-        <div className="segments"><button className={mode === "login" ? "active" : ""} onClick={() => setMode("login")}>Giriş</button><button className={mode === "register" ? "active" : ""} onClick={() => setMode("register")}>Kayıt</button></div>
-        <form className="auth-form" onSubmit={submit}>
-          {mode === "register" && <><input name="full_name" placeholder="Ad Soyad" required /><input name="phone" placeholder="Telefon" required /><input name="email" type="email" placeholder="E-posta (opsiyonel)" /><input name="city" placeholder="Şehir" defaultValue="İstanbul" /></>}
-          <input name="tc" inputMode="numeric" maxLength="11" placeholder="T.C. kimlik / müşteri no" defaultValue={mode === "login" ? prefillTc : ""} required />
-          <input name="password" type="password" placeholder="Şifre" required />
-          {mode === "register" && <><input name="password_confirm" type="password" placeholder="Şifre tekrar" required /><input type="hidden" name="accept_kvkk" value="1" /><input type="hidden" name="accept_distance_contract" value="1" /><input type="hidden" name="accept_risk_disclosure" value="1" /><input type="hidden" name="risk_experience" value="2" /><input type="hidden" name="risk_horizon" value="2" /><input type="hidden" name="risk_loss" value="2" /><input type="hidden" name="risk_income" value="2" /><input type="hidden" name="trade_frequency" value="2" /><input type="hidden" name="knowledge_level" value="2" /><label className="checkline"><input name="agreements" value="1" type="checkbox" required /> KVKK, risk bildirimi ve e-şube sözleşmelerini kabul ediyorum.</label></>}
+
+      <div className="auth-tabs">
+        <button className={mode === "login" ? "on" : ""} onClick={() => { setMode("login"); setMessage(""); }}>Giriş Yap</button>
+        <button className={mode === "register" ? "on" : ""} onClick={() => { setMode("register"); setMessage(""); }}>Hesap Oluştur</button>
+      </div>
+
+      {mode === "login" ? (
+        <form className="auth-form2" onSubmit={girisYap}>
+          <h4>HESAP BİLGİLERİ</h4>
+          <div className="auth-box">
+            <Alan label="T.C. Kimlik No" genis>
+              <input inputMode="numeric" maxLength={11} placeholder="11 haneli" value={girisTc}
+                onChange={(event) => setGirisTc(event.target.value.replace(/\D/g, ""))} required />
+            </Alan>
+            <Alan label="Şifre" genis>
+              <SifreAlani name="password" placeholder="Şifreniz" value={girisSifre} onChange={(event) => setGirisSifre(event.target.value)} />
+            </Alan>
+          </div>
           {message && <div className="warning">{message}</div>}
-          <button className="confirm">{mode === "login" ? "Giriş Yap" : "Başvuruyu Oluştur"}</button>
+          <button className="confirm" disabled={busy}>{busy ? "Giriş yapılıyor…" : "Giriş Yap"}</button>
         </form>
-      </section>
+      ) : (
+        <form className="auth-form2" onSubmit={hesapOlustur}>
+          <h4>KİŞİSEL BİLGİLER</h4>
+          <div className="auth-box">
+            <Alan label="Ad"><input placeholder="Adınız" value={kayit.ad} onChange={alan("ad")} required /></Alan>
+            <Alan label="Soyad"><input placeholder="Soyadınız" value={kayit.soyad} onChange={alan("soyad")} required /></Alan>
+            <Alan label="T.C. Kimlik No">
+              <input inputMode="numeric" maxLength={11} placeholder="11 haneli" value={kayit.tc}
+                onChange={(event) => setKayit((e) => ({ ...e, tc: event.target.value.replace(/\D/g, "") }))} required />
+            </Alan>
+            <Alan label="Doğum Tarihi"><input inputMode="numeric" placeholder="GG/AA/YYYY" value={kayit.dogum} onChange={alan("dogum")} required /></Alan>
+          </div>
+
+          <h4>İKAMET BİLGİLERİ</h4>
+          <div className="auth-box">
+            <Alan label="İl">
+              <select value={kayit.il} onChange={(event) => setKayit((e) => ({ ...e, il: event.target.value, ilce: "" }))} required>
+                <option value="">İl seçiniz</option>
+                {ILLER.map((il) => <option key={il} value={il}>{il}</option>)}
+              </select>
+            </Alan>
+            <Alan label="İlçe">
+              <select value={kayit.ilce} onChange={alan("ilce")} disabled={!ilceler.length} required>
+                <option value="">İlçe seçiniz</option>
+                {ilceler.map((ilce) => <option key={ilce} value={ilce}>{ilce}</option>)}
+              </select>
+            </Alan>
+          </div>
+
+          <h4>İLETİŞİM</h4>
+          <div className="auth-box">
+            <Alan label="Telefon">
+              <input inputMode="tel" placeholder="05XXXXXXXXX" value={kayit.telefon}
+                onChange={(event) => setKayit((e) => ({ ...e, telefon: event.target.value.replace(/[^\d+ ]/g, "") }))} required />
+            </Alan>
+            <Alan label="Referans (Opsiyonel)"><input placeholder="Referans no" value={kayit.referans} onChange={alan("referans")} /></Alan>
+            <Alan label="E-posta (Opsiyonel)" genis><input type="email" placeholder="ornek@eposta.com" value={kayit.eposta} onChange={alan("eposta")} /></Alan>
+          </div>
+
+          <h4>GÜVENLİK</h4>
+          <div className="auth-box">
+            <Alan label="Şifre" genis>
+              <SifreAlani name="password" placeholder="En az 10 karakter, büyük-küçük harf ve rakam" value={kayit.sifre} onChange={alan("sifre")} />
+            </Alan>
+            <Alan label="Şifre Tekrar" genis>
+              <SifreAlani name="password_confirm" placeholder="Şifrenizi tekrar girin" value={kayit.sifre2} onChange={alan("sifre2")} />
+            </Alan>
+          </div>
+
+          <label className="checkline">
+            <input type="checkbox" checked={sozlesme} onChange={(event) => setSozlesme(event.target.checked)} />
+            KVKK aydınlatma metni, risk bildirimi ve e-şube sözleşmelerini okudum, kabul ediyorum.
+          </label>
+          {message && <div className="warning">{message}</div>}
+          <button className="confirm" disabled={busy}>{busy ? "Gönderiliyor…" : "Hesap Oluştur"}</button>
+        </form>
+      )}
     </main><div className="home-indicator" /></div></div>
   );
 }
