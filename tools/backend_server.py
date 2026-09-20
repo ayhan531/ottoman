@@ -1509,6 +1509,50 @@ MARKET_NEWS_CACHE: dict[int, dict] = {}
 MARKET_NEWS_REFRESH_SECONDS = int(os.environ.get("MARKET_NEWS_REFRESH_SECONDS", "600"))
 NEWS_TOOL_WORDS = ("hesaplama", "cevirici", "çevirici", "converter", "hesapla")
 
+# Bing, "BIST 30" sorgusunda Almanca "bist" fiiliyle eşleşen magazin haberlerini
+# de döndürüyor; Çince/İngilizce başlıklar da karışıyor. Üç kapı ile eleniyor:
+# alfabe, finans konusu ve dil.
+NEWS_FINANCE_WORDS = (
+    "borsa", "bist", "hisse", "endeks", "temettü", "temettu", "halka arz", "fon",
+    "piyasa", "yatırım", "yatirim", "faiz", "döviz", "doviz", "dolar", "euro",
+    "kur", "altın", "altin", "tahvil", "viop", "spk", "kap", "portföy", "portfoy",
+    "sermaye", "banka", "enflasyon", "şirket", "sirket", "ihraç", "ihrac",
+    "menkul", "takasbank", "masak", "repo", "kâr", "kar payı", "zarar", "seans",
+    "lot", "emir", "tasfiye", "yatırımcı", "yatirimci", "gözaltı",
+)
+NEWS_FOREIGN_TOKENS = frozenset((
+    "und", "der", "die", "das", "dem", "den", "nicht", "wenn", "wer", "wirst",
+    "sie", "ihr", "dran", "mehr", "ein", "eine", "ist", "wird", "auch", "puder",
+    "the", "and", "for", "with", "from", "after", "says", "will", "that", "this",
+    "are", "was", "buys", "stocks", "market", "fund", "wealth", "you", "your",
+    "how", "why", "what", "new", "stem", "rout",
+))
+NON_LATIN_TEXT = re.compile(r"[\u0400-\u04FF\u0590-\u08FF\u3000-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]")
+
+
+def _fold_tr(value: str) -> str:
+    """Türkçe büyük harfleri doğru küçültür: İ→i, I→ı."""
+    return (value.replace("İ", "i").replace("I", "ı")
+            .replace("Ğ", "ğ").replace("Ş", "ş").replace("Ö", "ö")
+            .replace("Ü", "ü").replace("Ç", "ç").lower())
+
+
+def is_turkish_finance_news(title: str) -> bool:
+    """Başlık Türkçe bir finans haberi mi?"""
+    if not title:
+        return False
+    if NON_LATIN_TEXT.search(title):
+        return False
+    folded = _fold_tr(title)
+    if any(word in folded for word in NEWS_TOOL_WORDS) and "haber" not in folded:
+        return False
+    if not any(word in folded for word in NEWS_FINANCE_WORDS):
+        return False
+    tokens = set(re.split(r"[^0-9a-zçğıöşü]+", folded))
+    if len(tokens & NEWS_FOREIGN_TOKENS) >= 2:
+        return False
+    return True
+
 
 def _bing_image(image: str, template: str | None, width: int, height: int) -> str:
     """Bing küçük resim ucundan istenen boyutu ister (APK'daki Sized ile aynı)."""
@@ -1563,9 +1607,8 @@ def fetch_market_news(market: int) -> list[dict]:
         link = (node.findtext("link") or "").strip()
         if not title or not link:
             continue
-        folded = title.casefold()
-        if any(word in folded for word in NEWS_TOOL_WORDS) and "haber" not in folded:
-            continue   # "Döviz Hesaplama" gibi araç sayfaları haber değildir
+        if not is_turkish_finance_news(title):
+            continue   # yabancı dil, konu dışı ya da araç sayfası
         image = field(node, "Image")
         template = field(node, "ImageSize") or None
         published = (node.findtext("pubDate") or "").strip()
@@ -1586,7 +1629,15 @@ def fetch_market_news(market: int) -> list[dict]:
             "published_ts": stamp,
         })
     items.sort(key=lambda item: item["published_ts"], reverse=True)
-    return items
+    benzersiz: list[dict] = []
+    gorulen: set[str] = set()
+    for item in items:
+        anahtar = _fold_tr(item["title"])
+        if anahtar in gorulen:
+            continue
+        gorulen.add(anahtar)
+        benzersiz.append(item)
+    return benzersiz
 
 
 def market_news(market: int) -> tuple[list[dict], bool]:

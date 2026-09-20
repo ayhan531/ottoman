@@ -1,6 +1,5 @@
 // Haberler — MainPage.News.cs birebir karşılığı.
 import React, { useMemo, useState } from "react";
-import Icon from "./icons.jsx";
 import { SearchBox, Segments, Divided, CenteredHeader } from "./ui.jsx";
 import { MARKET_NAMES, fold } from "./market.js";
 import { T, locale } from "./lang.js";
@@ -11,11 +10,16 @@ const newsDate = (value) =>
     : "";
 
 function NewsRow({ item, onOpen }) {
+  // Görseli olmayan ya da yüklenemeyen haber boş kutu göstermez; satır
+  // tamamen yazıya döner.
+  const [gorselYok, setGorselYok] = useState(!item.image_url);
   return (
-    <button className="nrow" onClick={() => onOpen(item)}>
-      <span className="nthumb">
-        {item.image_url ? <img src={item.image_url} alt="" loading="lazy" onError={(event) => { event.currentTarget.style.display = "none"; }} /> : <Icon name="news" size={22} />}
-      </span>
+    <button className={gorselYok ? "nrow textonly" : "nrow"} onClick={() => onOpen(item)}>
+      {!gorselYok && (
+        <span className="nthumb">
+          <img src={item.image_url} alt="" loading="lazy" onError={() => setGorselYok(true)} />
+        </span>
+      )}
       <h3>{item.title}</h3>
     </button>
   );

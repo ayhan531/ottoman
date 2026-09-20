@@ -44,7 +44,8 @@ for (const [ad, ctx] of [
     yukseklik: Math.round(document.querySelector(".pf-viewport").getBoundingClientRect().height),
   }));
 
-  const iyi = sonra.aktif === 1 && geri.aktif === 0 && sonra.yukseklik > geri.yukseklik;
+  // İki kart eşit boyda olmalı; kaydırma her iki yöne de çalışmalı.
+  const iyi = sonra.aktif === 1 && geri.aktif === 0 && sonra.yukseklik === geri.yukseklik;
   if (!iyi) fail++;
   console.log(`${ad} -> saga kaydir:${JSON.stringify(sonra)} geri:${JSON.stringify(geri)} ${iyi ? "TAMAM" : "SORUN"}`);
   await p.close();

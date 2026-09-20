@@ -219,7 +219,7 @@ export function Security({ onBack, onPassword, onTwoFactor, sessions, onRevoke, 
         <SecRow
           icon="shield"
           label={T("İki Adımlı Doğrulama")}
-          note={twoFactor ? `${T("Açık •")} ${T(twoFactorMethod === 0 ? "SMS doğrulaması" : "Doğrulama uygulaması")}` : T("Kapalı")}
+          note={twoFactor ? `${T("Açık •")} ${T("Doğrulama uygulaması")}` : T("Kapalı")}
           chevron
           onClick={onTwoFactor}
         />
@@ -275,7 +275,7 @@ const Radio = ({ on }) => (
 
 export function TwoFactorPage({ onBack, twoFactor, twoFactorMethod, confirmOn, phone, onSave }) {
   const [enabled, setEnabled] = useState(twoFactor);
-  const [method, setMethod] = useState(twoFactorMethod);
+  const method = 1; // SMS kaldırıldı; tek yöntem doğrulama uygulaması.
   const [confirm, setConfirm] = useState(confirmOn);
 
   return (
@@ -296,18 +296,10 @@ export function TwoFactorPage({ onBack, twoFactor, twoFactorMethod, confirmOn, p
 
       <Section heading={T("DOĞRULAMA YÖNTEMİ")}>
         <SecRow
-          icon="message"
-          label={T("SMS Doğrulama")}
-          note={maskPhone(phone)}
-          tail={<Radio on={method === 0} />}
-          onClick={() => setMethod(0)}
-        />
-        <SecRow
           icon="phone"
           label={T("Doğrulama Uygulaması")}
           note={T("Google Authenticator, Microsoft Authenticator")}
-          tail={<Radio on={method === 1} />}
-          onClick={() => setMethod(1)}
+          tail={<Radio on />}
         />
       </Section>
 

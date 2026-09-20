@@ -12,10 +12,10 @@ const pctText = (value) => (value >= 0 ? "+" : "−") + percent(Math.abs(value |
 /** Yerel saate göre YYYY-AA-GG; tarih süzgeci bununla karşılaştırır. */
 const localDay = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-/* Göz kapalıyken tutarlar yıldızla gizlenir. Yıldız glifi rakamdan çok daha
-   geniş olduğu için sabit ve kısa tutulur; genişliği .masked kuralı sınırlar. */
-const STARS = "★★★★★";
-const SHORT_STARS = "★★";
+/* Göz kapalıyken tutarlar banka uygulamalarındaki gibi noktayla gizlenir.
+   Genişliği .masked kuralı sınırlar. */
+const DOTS = "••••••";
+const SHORT_DOTS = "•••";
 
 /* ---------- kart yığını (Deck) ---------- */
 const Deck = ({ children }) => (
@@ -35,7 +35,7 @@ function SummaryCard({ total, profit, ratio, available, t2, stockValue, cost, ca
   const gainShare = share(Math.abs(profit));
   const cashShare = share(cash);
   const gainTone = profit >= 0 ? MINT : ROSE;
-  const mask = (text) => (hidden ? STARS : text);
+  const mask = (text) => (hidden ? DOTS : text);
 
   return (
     <div className="pf-card">
@@ -50,7 +50,7 @@ function SummaryCard({ total, profit, ratio, available, t2, stockValue, cost, ca
         <div className={`pf-total${hidden ? " masked" : ""}`}>{mask(money(total))}</div>
 
         <div className={`pf-gain ${profit >= 0 ? "plus" : "minus"}${hidden ? " masked" : ""}`}>
-          {hidden ? STARS : `${delta(profit, ratio)} ${T(profit >= 0 ? "toplam kâr" : "toplam zarar")}`}
+          {hidden ? DOTS : `${delta(profit, ratio)} ${T(profit >= 0 ? "toplam kâr" : "toplam zarar")}`}
         </div>
 
         <div className="pf-mini">
@@ -58,17 +58,17 @@ function SummaryCard({ total, profit, ratio, available, t2, stockValue, cost, ca
           <div><span>{T("T+2 Bakiye")}</span><b className={hidden ? "masked" : ""}>{mask(money(t2))}</b></div>
         </div>
 
-        {/* Göz kapalıyken rakamlar bulanıklaşmaz, yıldızla gizlenir; halka da paysız çizilir. */}
+        {/* Göz kapalıyken rakamlar bulanıklaşmaz, noktayla gizlenir; halka da paysız çizilir. */}
         <div className="pf-alloc">
           <Donut
             parts={hidden ? [[1, "rgba(255,255,255,.45)"]] : [[stockShare, "#fff"], [gainShare, gainTone], [cashShare, CASH_TONE]]}
-            center={hidden ? SHORT_STARS : `%${Math.round(stockShare * 100)}`}
+            center={hidden ? SHORT_DOTS : `%${Math.round(stockShare * 100)}`}
             size={76}
           />
           <div className="pf-legend">
-            <div><i style={{ background: "#fff" }} />{T("Pozisyonlar")} · {hidden ? SHORT_STARS : `%${Math.round(stockShare * 100)}`}</div>
-            <div><i style={{ background: CASH_TONE }} />{T("Bakiye")} · {hidden ? SHORT_STARS : `%${Math.round(cashShare * 100)}`}</div>
-            <div><i style={{ background: gainTone }} />{T(profit >= 0 ? "Kâr" : "Zarar")} · {hidden ? SHORT_STARS : pctText(ratio)}</div>
+            <div><i style={{ background: "#fff" }} />{T("Pozisyonlar")} · {hidden ? SHORT_DOTS : `%${Math.round(stockShare * 100)}`}</div>
+            <div><i style={{ background: CASH_TONE }} />{T("Bakiye")} · {hidden ? SHORT_DOTS : `%${Math.round(cashShare * 100)}`}</div>
+            <div><i style={{ background: gainTone }} />{T(profit >= 0 ? "Kâr" : "Zarar")} · {hidden ? SHORT_DOTS : pctText(ratio)}</div>
           </div>
         </div>
       </div>
@@ -356,8 +356,8 @@ export default function Portfolio({
 
   const stride = width + 12;
   const offset = drag === null ? -card * stride : drag;
-  // Sürüklerken iki kart da görünür olmalı; bırakınca açık kartın boyuna oturur.
-  const deckHeight = drag === null ? heights[card] : Math.max(heights[0] || 0, heights[1] || 0);
+  // İki kart eşit boyda: görüntü alanı her zaman uzun kartın boyunda kalır.
+  const deckHeight = Math.max(heights[0] || 0, heights[1] || 0);
 
   const onPointerDown = (event) => {
     if (event.target.closest(".spark") || event.target.closest("button")) return;

@@ -43,7 +43,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const [watchlist, setWatchlist] = usePref("watchlist", ["TUPRS", "THYAO", "ASELS"]);
   const [confirmOn, setConfirmOn] = usePref("confirm", true);
   const [twoFactor, setTwoFactor] = usePref("twofactor", true);
-  const [twoFactorMethod, setTwoFactorMethod] = usePref("twofactor-method", 0);
+  const [twoFactorMethod, setTwoFactorMethod] = usePref("twofactor-method", 1);
   const [noticeChannel, setNoticeChannel] = usePref("notice-channel", 0);
 
   // Dil, çizimden önce kurulur ki T() bu turda doğru karşılığı versin.
@@ -834,6 +834,7 @@ function InstallSheet({ onClose, onNotice }) {
 
   const altCubuk = iosToolbarAtBottom();
   const tarayici = iosBrowser();
+  const androidMi = /Android/i.test(navigator.userAgent || "");
   const elmaAdimlari = [
     ["share", "Paylaş düğmesine dokunun", altCubuk ? "Ekranın altındaki ortadaki simge" : "Adres çubuğunun sağındaki simge"],
     ["addhome", "“Ana Ekrana Ekle”yi seçin", "Listeyi biraz yukarı kaydırın"],
@@ -847,7 +848,6 @@ function InstallSheet({ onClose, onNotice }) {
           <img src="/icons/icon-192.png" alt="Ottoman" width={64} height={64} />
           <div className="install-copy">
             <strong>Ottoman Yatırım</strong>
-            <span>{T("Ana ekrandan tek dokunuşla kendi e-şubeniz açılır.")}</span>
           </div>
         </div>
 
@@ -894,15 +894,26 @@ function InstallSheet({ onClose, onNotice }) {
               </div>
             )}
           </>
+        ) : androidMi ? (
+          <>
+            <ol className="ios-steps">
+              <li>
+                <span className="ios-no">1</span>
+                <span className="ios-glyph"><Icon name="android" size={22} /></span>
+                <span className="ios-copy"><strong>{T("Sağ üstteki ⋮ menüsünü aç")}</strong><span>{T("Chrome'un üç nokta menüsü")}</span></span>
+              </li>
+              <li>
+                <span className="ios-no">2</span>
+                <span className="ios-glyph"><Icon name="download" size={22} /></span>
+                <span className="ios-copy"><strong>{T("“Uygulamayı yükle”ye dokun")}</strong><span>{T("“Ana ekrana ekle” olarak da görünebilir")}</span></span>
+              </li>
+            </ol>
+            <button className="btn" disabled={bekliyor} onClick={yukle}>{T(bekliyor ? "Kuruluyor…" : "Ana ekrana ekle")}</button>
+          </>
         ) : (
           <>
             <div className="sec-card">
               <Divided>
-                <div className="sec-row">
-                  <span className="disc"><Icon name="android" size={20} /></span>
-                  <span className="copy"><strong>Android</strong><span>{T("Chrome menüsü → “Uygulamayı yükle”")}</span></span>
-                  <span /><span />
-                </div>
                 <div className="sec-row">
                   <span className="disc"><Icon name="laptop" size={20} /></span>
                   <span className="copy"><strong>{T("Bilgisayar")}</strong><span>{T("Adres çubuğundaki yükle simgesi ya da menü → “Yükle”")}</span></span>
