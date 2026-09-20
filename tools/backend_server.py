@@ -26,6 +26,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 from email.message import EmailMessage
 from news_feed import latest_news
+from market_news import sekme_haberleri as fotolu_sekme_haberleri, sirketleri_tanit
 import threading
 import webpush
 
@@ -1640,12 +1641,45 @@ def fetch_market_news(market: int) -> list[dict]:
     return benzersiz
 
 
+_SIRKET_TANITILDI = {"ts": 0}
+
+
+def tanit_sirketler() -> None:
+    """Haber modülüne borsadaki şirket adlarını verir; haberde geçen şirket
+    adından hangi endekse ait olduğu anlaşılıyor. Günde bir kez yeter."""
+    if now() - int(_SIRKET_TANITILDI["ts"]) < 86400:
+        return
+    try:
+        with connect_db() as conn:
+            satirlar = conn.execute("SELECT symbol, name FROM market_cache WHERE name <> ''").fetchall()
+        sirketleri_tanit({row["symbol"]: row["name"] for row in satirlar})
+        _SIRKET_TANITILDI["ts"] = now()
+    except Exception:              # tablo yoksa ya da okunamıyorsa haber akışı yine çalışsın
+        _SIRKET_TANITILDI["ts"] = now()
+
+
 def market_news(market: int) -> tuple[list[dict], bool]:
-    """Sekmenin haberleri ve canlı gelip gelmediği."""
+    """Sekmenin haberleri ve canlı gelip gelmediği.
+
+    Önce yayıncıların kendi RSS beslemeleri denenir: her haberin fotoğrafı
+    vardır ve sekmenin konusuna göre gruplanır. Beslemeler ulaşılamazsa Bing
+    akışına düşülür, o da olmazsa son bilinen liste verilir.
+    """
     cached = MARKET_NEWS_CACHE.get(market)
     if cached and cached["items"] and now() - int(cached["updated_at"]) < MARKET_NEWS_REFRESH_SECONDS:
         return cached["items"], True
-    items = fetch_market_news(market)
+
+    items: list[dict] = []
+    try:
+        tanit_sirketler()
+        items, _bilgi = fotolu_sekme_haberleri(market, en_az=14)
+    except Exception:            # ağ/ayrıştırma sorunu Bing yedeğini engellemesin
+        items = []
+    if not items:
+        items = [haber for haber in fetch_market_news(market) if haber.get("image_url")]
+    if not items:
+        items = fetch_market_news(market)
+
     if items:
         MARKET_NEWS_CACHE[market] = {"items": items, "updated_at": now()}
         return items, True
@@ -2606,7 +2640,11 @@ class AppHandler(BaseHTTPRequestHandler):
             "market": market,
             "query": MARKET_NEWS_QUERIES[market],
             "items": items,
-            "meta": {"ok": live, "count": len(items), "source": "Bing Haberler"},
+            "meta": {
+                "ok": live,
+                "count": len(items),
+                "source": ", ".join(sorted({str(haber.get("source") or "") for haber in items} - {""})) or "Haber akışı",
+            },
         })
 
     def api_company_logo(self, raw_symbol: str) -> None:

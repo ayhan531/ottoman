@@ -59,6 +59,84 @@ export const uygulamaIciTarayici = () => {
   return false;
 };
 
+/** Kurulum için açılacak adres; gerçek tarayıcıda kurulum sayfası kendiliğinden açılır. */
+export const kurulumAdresi = () => `${location.origin}/?kur=1`;
+
+/**
+ * Gerçek tarayıcıyı açan bağlantı. Uygulama içi tarayıcılar JavaScript ile
+ * yapılan şema geçişlerini engelleyebiliyor; bağlantıya dokunma her zaman
+ * geçiyor, bu yüzden düğme bir <a href> olarak veriliyor.
+ */
+export function kurulumSemasi() {
+  const hedef = kurulumAdresi();
+  const ua = navigator.userAgent || "";
+  if (/Android/i.test(ua)) {
+    const yol = hedef.replace(/^https?:\/\//, "");
+    // intent:// WebView'i aşar ve Chrome'u açar; Chrome yoksa fallback adresi
+    // varsayılan tarayıcıya devreder.
+    return `intent://${yol}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(hedef)};end`;
+  }
+  if (isApple()) return `x-safari-${hedef}`;   // Safari'nin özel şeması
+  return hedef;
+}
+
+/**
+ * Telegram/Instagram gibi uygulamaların içindeki tarayıcıdan tek dokunuşla
+ * gerçek tarayıcıya geçer. Chrome ve Safari kurulum iznini yalnızca kendi
+ * penceresinde verdiği için başka yolu yok; kullanıcı menü aramak zorunda
+ * kalmıyor, aynı sayfa Chrome/Safari'de açılıp kurulum ekranı kendisi geliyor.
+ * Bağlantıya dokunma yetmezse bu ikinci şemaları da dener.
+ */
+export function tarayicidaAc() {
+  const hedef = kurulumAdresi();
+  const ua = navigator.userAgent || "";
+  try {
+    if (/Android/i.test(ua)) {
+      location.href = kurulumSemasi();
+      setTimeout(() => { try { location.href = `googlechrome://navigate?url=${encodeURIComponent(hedef)}`; } catch { /* yoksay */ } }, 1200);
+      return "chrome";
+    }
+    if (isApple()) {
+      location.href = `x-safari-${hedef}`;
+      setTimeout(() => { try { location.href = hedef; } catch { /* yoksay */ } }, 1500);
+      return "safari";
+    }
+    window.open(hedef, "_blank", "noopener");
+    return "sekme";
+  } catch {
+    return "yok";
+  }
+}
+
+/** Kurulum bağlantısını panoya kopyalar (son çare). */
+export async function adresiKopyala() {
+  const hedef = kurulumAdresi();
+  try {
+    await navigator.clipboard.writeText(hedef);
+    return true;
+  } catch {
+    try {
+      const alan = document.createElement("textarea");
+      alan.value = hedef;
+      alan.setAttribute("readonly", "");
+      alan.style.position = "fixed";
+      alan.style.opacity = "0";
+      document.body.appendChild(alan);
+      alan.select();
+      const oldu = document.execCommand("copy");
+      document.body.removeChild(alan);
+      return oldu;
+    } catch {
+      return false;
+    }
+  }
+}
+
+/** Gerçek tarayıcıya "kur" işaretiyle mi gelindi? */
+export const kurulumIstendi = () => {
+  try { return new URLSearchParams(location.search).has("kur"); } catch { return false; }
+};
+
 export const isApple = () => {
   const ua = navigator.userAgent || "";
   const platform = navigator.platform || "";

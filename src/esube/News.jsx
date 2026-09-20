@@ -10,14 +10,40 @@ const newsDate = (value) =>
     ? new Date(value).toLocaleString(locale(), { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
     : "";
 
-/* Haber listesinde küçük resim kullanılmıyor: kaynakların bir kısmı görsel
-   vermiyor, bir kısmı boş/beyaz görsel döndürüyordu ve liste dağınık
-   görünüyordu. Her satırın başında aynı işaret var. */
+/* Haber satırı: fotoğraflı. Görsel gelmezse ya da yer tutucu kadar küçükse
+   satır işaretle gösterilir; liste böylece hiçbir zaman boş kare göstermez. */
 function NewsRow({ item, onOpen }) {
+  const [bozuk, setBozuk] = useState(false);
+  const gorsel = item.image_url || item.photo_url || "";
+  const fotoVar = Boolean(gorsel) && !bozuk;
   return (
-    <button className="nrow" onClick={() => onOpen(item)}>
-      <span className="nmark" aria-hidden="true"><Icon name="news" size={15} /></span>
-      <h3>{item.title}</h3>
+    <button className={fotoVar ? "nrow nrow-foto" : "nrow"} onClick={() => onOpen(item)}>
+      {fotoVar ? (
+        <span className="nthumb">
+          <img
+            src={gorsel}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={() => setBozuk(true)}
+            onLoad={(event) => {
+              const g = event.currentTarget;
+              if (g.naturalWidth < 80 || g.naturalHeight < 60) setBozuk(true);
+            }}
+          />
+        </span>
+      ) : (
+        <span className="nmark" aria-hidden="true"><Icon name="news" size={15} /></span>
+      )}
+      <span className="ncol">
+        <h3>{item.title}</h3>
+        <span className="nmeta">
+          {item.source || ""}
+          {item.source && item.published_at ? " · " : ""}
+          {newsDate(item.published_at)}
+        </span>
+      </span>
     </button>
   );
 }

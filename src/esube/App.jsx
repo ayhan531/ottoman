@@ -13,7 +13,7 @@ import {
 } from "./Subpages.jsx";
 import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHoldings, readPref, writePref } from "./store.js";
 import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
-import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, iosBrowser, iosToolbarAtBottom, uygulamaIciTarayici, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
+import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, iosBrowser, iosToolbarAtBottom, uygulamaIciTarayici, tarayicidaAc, kurulumSemasi, adresiKopyala, kurulumAdresi, kurulumIstendi, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
 import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, parseAmount } from "./market.js";
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
@@ -138,11 +138,17 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         setOverlay((mevcut) => mevcut || { kind: "push-prompt" });
         return;
       }
+      // Bağlantıya "?kur=1" ile gelindi: kullanıcı kurulmak üzere buraya
+      // yönlendirildi, ipucu sayacına bakmadan kurulum ekranı açılır.
+      if (kurulumIstendi()) {
+        setOverlay((mevcut) => mevcut || { kind: "install" });
+        return;
+      }
       if (readPref("install-hint", false) === true) return;
-      if (!canInstall() && !isApple()) return;
+      if (!canInstall() && !isApple() && !uygulamaIciTarayici()) return;
       writePref("install-hint", true);
       setOverlay((mevcut) => mevcut || { kind: "install" });
-    }, 2500);
+    }, kurulumIstendi() ? 400 : 2500);
     return () => clearTimeout(zaman);
   }, []);
 
@@ -922,10 +928,12 @@ function PushPrompt({ onClose, onNotice }) {
 
 /* ---------- Uygulamayı yükle ---------- */
 
-function InstallSheet({ onClose, onNotice }) {
+export function InstallSheet({ onClose, onNotice }) {
   const [kurulabilir, setKurulabilir] = useState(canInstall());
   const [kurulu, setKurulu] = useState(isStandalone());
   const [bekliyor, setBekliyor] = useState(false);
+  const [kopyalandi, setKopyalandi] = useState(false);
+  const icTarayici = uygulamaIciTarayici();
 
   useEffect(() => onInstallChange(() => {
     setKurulabilir(canInstall());
@@ -972,7 +980,42 @@ function InstallSheet({ onClose, onNotice }) {
           </div>
         </div>
 
-        {kurulu ? (
+        {!kurulu && icTarayici && !kurulabilir ? (
+          /* Telegram/Instagram gibi bir uygulamanın içindeyiz. Kurulum iznini
+             yalnızca Chrome/Safari veriyor; tek dokunuşla oraya geçiliyor ve
+             açılan sayfada bu ekran kendiliğinden geliyor. */
+          <>
+            <div className="referral-note">
+              <Icon name="info" size={22} color="var(--purple)" />
+              <span>{T(isApple()
+                ? "Bu sayfa bir uygulamanın içinde açıldı. Aşağıdaki düğme Safari'yi açar ve kurulum orada kendiliğinden başlar."
+                : "Bu sayfa bir uygulamanın içinde açıldı. Aşağıdaki düğme Chrome'u açar ve kurulum orada kendiliğinden başlar.")}</span>
+            </div>
+            {/* Bağlantı olarak veriliyor: uygulama içi tarayıcılar dokunmayla
+                açılan şemaları geçirir, JavaScript ile yapılanı engelleyebilir. */}
+            <a
+              className="btn"
+              href={kurulumSemasi()}
+              rel="noreferrer"
+              onClick={() => { setTimeout(() => { tarayicidaAc(); }, 900); }}
+            >
+              {T(isApple() ? "Safari'de aç ve kur" : "Chrome'da aç ve kur")}
+            </a>
+            <button
+              className="btn ghost"
+              onClick={async () => {
+                const oldu = await adresiKopyala();
+                setKopyalandi(oldu);
+                if (!oldu) onNotice("Kopyalanamadı", kurulumAdresi());
+              }}
+            >
+              {T(kopyalandi ? "Bağlantı kopyalandı" : "Bağlantıyı kopyala")}
+            </button>
+            <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--muted)", lineHeight: 1.4 }}>
+              {T("Düğme çalışmazsa sağ üstteki menüden “Tarayıcıda aç” diyebilirsiniz; adres aynı kalır.")}
+            </span>
+          </>
+        ) : kurulu ? (
           <>
             <div className="referral-note">
               <Icon name="check" size={22} color="var(--pos)" />

@@ -397,6 +397,8 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   justify-content: center;
   width: 100%;
 }
+/* Kurulum çıkışı bir bağlantı; düğme gibi görünmeli. */
+.esube a.btn, .overlay a.btn { text-decoration: none; box-sizing: border-box; }
 
 .esube .btn.ghost, .overlay .btn.ghost { background: var(--soft); color: var(--ink); }
 .esube .btn.primary-lg, .overlay .btn.primary-lg { height: 52px; border-radius: 16px; font-size: calc(16px * var(--s)); }
@@ -546,8 +548,11 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
 .esube .converter .note, .overlay .converter .note { font-size: calc(12px * var(--s)); color: var(--muted); }
 
 /* ---------- haber satırı ---------- */
-/* Haber satırı: küçük resim yerine sabit bir işaret. */
-.esube .nrow, .overlay .nrow { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 13px 0; align-items: center; width: 100%; }
+/* Haber satırı: fotoğraf varsa 78px küçük resim, yoksa 30px işaret. */
+.esube .nrow, .overlay .nrow { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 13px 0; align-items: center; width: 100%; text-align: left; }
+.esube .nrow-foto, .overlay .nrow-foto { grid-template-columns: 78px 1fr; align-items: start; }
+.esube .ncol, .overlay .ncol { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.esube .nmeta, .overlay .nmeta { font-size: calc(11.5px * var(--s)); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .esube .nmark, .overlay .nmark {
   width: 30px; height: 30px; border-radius: 9px;
   display: flex; align-items: center; justify-content: center;
@@ -555,7 +560,7 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
 }
 [data-theme="dark"] .nmark { background: color-mix(in srgb, var(--purple) 22%, transparent); }
 .esube .nthumb, .overlay .nthumb {
-  width: 64px; height: 64px; border-radius: 12px; background: var(--soft);
+  width: 78px; height: 78px; border-radius: 12px; background: var(--soft); flex: none;
   display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--muted);
 }
 .esube .nthumb img, .overlay .nthumb img { width: 100%; height: 100%; object-fit: cover; }
