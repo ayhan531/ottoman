@@ -13,7 +13,7 @@ import {
 } from "./Subpages.jsx";
 import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHoldings, readPref, writePref } from "./store.js";
 import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
-import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, iosBrowser, iosToolbarAtBottom, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
+import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, iosBrowser, iosToolbarAtBottom, uygulamaIciTarayici, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
 import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, parseAmount } from "./market.js";
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
@@ -940,6 +940,16 @@ function InstallSheet({ onClose, onNotice }) {
     if (sonuc === "accepted") {
       onClose();
       onNotice("Uygulama eklendi", "Ottoman artık ana ekranınızda. Kısayoldan açtığınızda doğrudan e-şubeye girersiniz.");
+      return;
+    }
+    // Tarayıcı kurulum teklifini vermediyse düğme sessiz kalmasın; nedenini söyle.
+    if (sonuc === "yok") {
+      onNotice(
+        "Tarayıcıdan ekleyin",
+        uygulamaIciTarayici()
+          ? "Bu sayfa başka bir uygulamanın içinde açıldı. Sağ üstteki ⋮ menüsünden “Tarayıcıda aç” deyip Chrome'da tekrar deneyin."
+          : "Chrome bu sayfada kurulum penceresini vermedi. Sağ üstteki ⋮ menüsünden “Uygulamayı yükle” ya da “Ana ekrana ekle” seçeneğine dokunun.",
+      );
     }
   };
 
@@ -1007,6 +1017,12 @@ function InstallSheet({ onClose, onNotice }) {
           </>
         ) : androidMi ? (
           <>
+            {uygulamaIciTarayici() && (
+              <div className="referral-note">
+                <Icon name="info" size={22} color="var(--muted)" />
+                <span>{T("Bu sayfa başka bir uygulamanın içinde açık. Önce sağ üstteki ⋮ → “Tarayıcıda aç” deyin; kurulum yalnızca Chrome'da çalışır.")}</span>
+              </div>
+            )}
             <ol className="ios-steps">
               <li>
                 <span className="ios-no">1</span>

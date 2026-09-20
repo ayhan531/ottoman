@@ -546,9 +546,14 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
 .esube .converter .note, .overlay .converter .note { font-size: calc(12px * var(--s)); color: var(--muted); }
 
 /* ---------- haber satırı ---------- */
-.esube .nrow, .overlay .nrow { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 12px 0; align-items: center; width: 100%; }
-/* Görseli olmayan haber: boş kutu yerine tam genişlikte yazı satırı. */
-.esube .nrow.textonly, .overlay .nrow.textonly { grid-template-columns: 1fr; gap: 0; }
+/* Haber satırı: küçük resim yerine sabit bir işaret. */
+.esube .nrow, .overlay .nrow { display: grid; grid-template-columns: 30px 1fr; gap: 12px; padding: 13px 0; align-items: center; width: 100%; }
+.esube .nmark, .overlay .nmark {
+  width: 30px; height: 30px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--lavender); color: var(--purple); flex: none;
+}
+[data-theme="dark"] .nmark { background: color-mix(in srgb, var(--purple) 22%, transparent); }
 .esube .nthumb, .overlay .nthumb {
   width: 64px; height: 64px; border-radius: 12px; background: var(--soft);
   display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--muted);

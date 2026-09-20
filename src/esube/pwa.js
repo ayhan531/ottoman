@@ -46,6 +46,19 @@ export const iosToolbarAtBottom = () => {
   return !surum || Number(surum) >= 15;
 };
 
+/**
+ * Sayfa başka bir uygulamanın içindeki tarayıcıda mı açıldı?
+ * Telegram, Instagram, Facebook gibi uygulamaların içinde Chrome kurulum
+ * teklifini hiç vermez; kullanıcının sayfayı Chrome'da açması gerekir.
+ */
+export const uygulamaIciTarayici = () => {
+  const ua = navigator.userAgent || "";
+  if (/\bwv\b|; wv\)/.test(ua)) return true;                       // Android WebView
+  if (/FBAN|FBAV|Instagram|Line\/|Twitter|TikTok|OKApp/i.test(ua)) return true;
+  if (/Telegram/i.test(ua)) return true;
+  return false;
+};
+
 export const isApple = () => {
   const ua = navigator.userAgent || "";
   const platform = navigator.platform || "";

@@ -1,5 +1,6 @@
 // Haberler — MainPage.News.cs birebir karşılığı.
 import React, { useMemo, useState } from "react";
+import Icon from "./icons.jsx";
 import { SearchBox, Segments, Divided, CenteredHeader } from "./ui.jsx";
 import { MARKET_NAMES, fold } from "./market.js";
 import { T, locale } from "./lang.js";
@@ -9,29 +10,35 @@ const newsDate = (value) =>
     ? new Date(value).toLocaleString(locale(), { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
     : "";
 
+/* Haber listesinde küçük resim kullanılmıyor: kaynakların bir kısmı görsel
+   vermiyor, bir kısmı boş/beyaz görsel döndürüyordu ve liste dağınık
+   görünüyordu. Her satırın başında aynı işaret var. */
 function NewsRow({ item, onOpen }) {
-  // Görseli olmayan ya da yüklenemeyen haber boş kutu göstermez; satır
-  // tamamen yazıya döner.
-  const [gorselYok, setGorselYok] = useState(!item.image_url);
   return (
-    <button className={gorselYok ? "nrow textonly" : "nrow"} onClick={() => onOpen(item)}>
-      {!gorselYok && (
-        <span className="nthumb">
-          <img src={item.image_url} alt="" loading="lazy" onError={() => setGorselYok(true)} />
-        </span>
-      )}
+    <button className="nrow" onClick={() => onOpen(item)}>
+      <span className="nmark" aria-hidden="true"><Icon name="news" size={15} /></span>
       <h3>{item.title}</h3>
     </button>
   );
 }
 
 export function Article({ item, onBack }) {
+  const [gorselBozuk, setGorselBozuk] = useState(false);
   return (
     <div className="page gap-14">
       <CenteredHeader title={item.title || T("Haber")} onBack={onBack} />
-      {item.image_url && (
+      {item.image_url && !gorselBozuk && (
         <div className="article-photo">
-          <img src={item.image_url} alt="" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+          <img
+            src={item.image_url}
+            alt=""
+            onError={() => setGorselBozuk(true)}
+            onLoad={(event) => {
+              const g = event.currentTarget;
+              // Boş/yer tutucu görseller (çok küçük ya da aşırı ince) gösterilmez.
+              if (g.naturalWidth < 120 || g.naturalHeight < 80) setGorselBozuk(true);
+            }}
+          />
         </div>
       )}
       {item.published_at && <span style={{ fontSize: "calc(12.5px * var(--s))", color: "var(--muted)" }}>{newsDate(item.published_at)}</span>}
