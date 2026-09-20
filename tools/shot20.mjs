@@ -1,0 +1,37 @@
+import { chromium } from "playwright";
+const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--no-sandbox"] });
+const ac = async (koyu = true) => {
+  const p = await b.newPage({ viewport:{width:393,height:851}, isMobile:true, hasTouch:true, deviceScaleFactor:2, colorScheme: koyu ? "dark" : "light" });
+  await p.route("**/*", (r) => (/127\.0\.0\.1|localhost/.test(r.request().url()) ? r.continue() : r.abort()));
+  await p.goto("http://127.0.0.1:4173", { waitUntil: "domcontentloaded" });
+  await p.evaluate(() => { try { localStorage.clear(); localStorage.setItem("ottoman.install-hint","true"); localStorage.setItem("ottoman.push-asked","true"); } catch {} });
+  await p.reload({ waitUntil: "domcontentloaded" });
+  await p.waitForTimeout(1500);
+  return p;
+};
+let p = await ac();
+await p.evaluate(() => [...document.querySelectorAll(".navbar button")][4]?.click());
+await p.waitForTimeout(800);
+await p.evaluate(() => [...document.querySelectorAll("button")].find(x => /Para yatır/.test(x.innerText))?.click());
+await p.waitForTimeout(900);
+await p.screenshot({ path: "shots/tl-yukle.png" });
+await p.keyboard.press("Escape"); await p.waitForTimeout(500);
+await p.evaluate(() => [...document.querySelectorAll("button")].find(x => /Para çek/.test(x.innerText))?.click());
+await p.waitForTimeout(900);
+await p.screenshot({ path: "shots/tl-cek.png" });
+await p.close();
+
+const q = await b.newPage({ viewport:{width:900,height:1000}, deviceScaleFactor:1.6 });
+await q.route("**/*", (r) => (/127\.0\.0\.1|localhost/.test(r.request().url()) ? r.continue() : r.abort()));
+await q.goto("http://127.0.0.1:4173", { waitUntil: "domcontentloaded" });
+await q.evaluate(() => { try { localStorage.setItem("ottoman.install-hint","true"); localStorage.setItem("ottoman.push-asked","true"); } catch {} });
+await q.reload({ waitUntil: "domcontentloaded" });
+await q.waitForTimeout(1500);
+await q.evaluate(() => document.querySelector('button[title="Admin"]')?.click());
+await q.waitForTimeout(1600);
+await q.evaluate(() => [...document.querySelectorAll(".admin-tabs button")].find(x => x.innerText.trim() === "Bankalar")?.click());
+await q.waitForTimeout(800);
+await q.screenshot({ path: "shots/admin-banka2.png" });
+await q.close();
+await b.close();
+console.log("cekildi");

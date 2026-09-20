@@ -295,9 +295,72 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
 
 const BOS_BANKA = { id: 0, bank_name: "", account_holder: "", iban: "", branch_name: "", description: "", is_active: "1", sort_order: 0 };
 
+const kopyala = async (metin) => {
+  try { await navigator.clipboard.writeText(metin); return true; } catch { return false; }
+};
+
+function BankaKarti({ hesap, ilk, son, onDuzenle, onIslem, onTasi }) {
+  return (
+    <article className="bk-card">
+      <header>
+        <h4>{hesap.bank_name}{Number(hesap.is_active) ? "" : <em className="bk-pasif">Pasif</em>}</h4>
+        <div className="bk-araclar">
+          <button className="bk-ok" disabled={ilk} onClick={() => onTasi(hesap, -1)} aria-label="Yukarı taşı">↑</button>
+          <button className="bk-ok" disabled={son} onClick={() => onTasi(hesap, 1)} aria-label="Aşağı taşı">↓</button>
+          <button className="bk-duzenle" onClick={() => onDuzenle(hesap)} aria-label="Düzenle">✎</button>
+          <button className="bk-sil" onClick={() => onIslem(hesap, "delete")} aria-label="Sil">🗑</button>
+        </div>
+      </header>
+      <dl>
+        <div><dt>IBAN:</dt><dd>{hesap.iban}</dd></div>
+        <div><dt>Hesap Sahibi:</dt><dd>{hesap.account_holder}</dd></div>
+        {hesap.branch_name && <div><dt>Şube:</dt><dd>{hesap.branch_name}</dd></div>}
+        {hesap.description && (
+          <div className="bk-aciklama">
+            <dt>Açıklama:</dt>
+            <dd>{hesap.description}</dd>
+            <button className="ac-ghost bk-kopya" onClick={() => kopyala(hesap.description)}>Kopyala</button>
+          </div>
+        )}
+      </dl>
+      <footer>
+        <button className="ac-ghost" onClick={() => onIslem(hesap, "toggle")}>
+          {Number(hesap.is_active) ? "Pasifleştir" : "Aktifleştir"}
+        </button>
+      </footer>
+    </article>
+  );
+}
+
+function BankaFormu({ form, setForm, onKaydet, onIptal, busy }) {
+  return (
+    <div className="modal-layer">
+      <section className="trade-modal readable-modal bk-modal">
+        <button className="close" onClick={onIptal} aria-label="Kapat">×</button>
+        <h2>{form.id ? "Hesap Düzenle" : "Yeni Hesap"}</h2>
+        <div className="ac-form">
+          <Field label="Banka Adı *" wide><Input value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} /></Field>
+          <Field label="IBAN *" wide><Input value={form.iban} placeholder="TR00 0000 0000 0000 0000 0000 00" onChange={(e) => setForm({ ...form, iban: e.target.value.toUpperCase() })} /></Field>
+          <Field label="Hesap Sahibi *" wide><Input value={form.account_holder} onChange={(e) => setForm({ ...form, account_holder: e.target.value })} /></Field>
+          <Field label="Şube Adı" wide><Input value={form.branch_name} onChange={(e) => setForm({ ...form, branch_name: e.target.value })} /></Field>
+          <Field label="Açıklama" wide><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
+          <Field label="Sıra"><Input inputMode="numeric" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} /></Field>
+          <Field label="Aktif">
+            <Select value={String(form.is_active)} onChange={(v) => setForm({ ...form, is_active: v })} options={[["1", "Aktif"], ["0", "Pasif"]]} />
+          </Field>
+        </div>
+        <div className="ac-actions">
+          <button className="ac-ghost" onClick={onIptal}>İptal</button>
+          <button className="confirm" disabled={busy} onClick={onKaydet}>{busy ? "Kaydediliyor…" : form.id ? "Güncelle" : "Ekle"}</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function BankPanel({ onNotice, ensure }) {
   const [veri, setVeri] = useState({ system_bank_accounts: [], user_bank_accounts: [] });
-  const [form, setForm] = useState(BOS_BANKA);
+  const [form, setForm] = useState(null);
   const [busy, setBusy] = useState(false);
 
   const yukle = useCallback(async () => {
@@ -305,15 +368,17 @@ function BankPanel({ onNotice, ensure }) {
   }, []);
   useEffect(() => { yukle(); }, [yukle]);
 
+  const hesaplar = veri.system_bank_accounts || [];
+
   const kaydet = async () => {
     if (!form.bank_name.trim() || !form.account_holder.trim() || !form.iban.trim()) {
-      return onNotice("Eksik bilgi", "Banka adı, hesap sahibi ve IBAN zorunlu.");
+      return onNotice("Eksik bilgi", "Banka adı, IBAN ve hesap sahibi zorunlu.");
     }
     if (!(await ensure())) return;
     setBusy(true);
     try {
       await api("/api/admin/bank-accounts", { method: "POST", body: JSON.stringify(form) });
-      setForm(BOS_BANKA);
+      setForm(null);
       await yukle();
       onNotice("Kaydedildi", "Banka hesabı güncellendi.");
     } catch (hata) {
@@ -335,38 +400,41 @@ function BankPanel({ onNotice, ensure }) {
     }
   };
 
+  // Sıralama: komşu hesapla sort_order değerleri takas edilir.
+  const tasi = async (hesap, yon) => {
+    const sira = hesaplar.findIndex((x) => x.id === hesap.id);
+    const komsu = hesaplar[sira + yon];
+    if (!komsu) return;
+    if (!(await ensure())) return;
+    try {
+      await api("/api/admin/bank-accounts", { method: "POST", body: JSON.stringify({ ...hesap, sort_order: sira + yon }) });
+      await api("/api/admin/bank-accounts", { method: "POST", body: JSON.stringify({ ...komsu, sort_order: sira }) });
+      await yukle();
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Sıra değiştirilemedi");
+    }
+  };
+
   return (
     <>
-      <Section title={form.id ? "Kurum hesabını düzenle" : "Yeni kurum hesabı"} note="Para yatırma ekranında müşterilere bu hesaplar gösterilir"
-        action={form.id ? <button className="ac-ghost" onClick={() => setForm(BOS_BANKA)}>Yeni hesap</button> : null}>
-        <div className="ac-form">
-          <Field label="Banka adı"><Input value={form.bank_name} onChange={(e) => setForm({ ...form, bank_name: e.target.value })} /></Field>
-          <Field label="Hesap sahibi"><Input value={form.account_holder} onChange={(e) => setForm({ ...form, account_holder: e.target.value })} /></Field>
-          <Field label="IBAN" wide><Input value={form.iban} placeholder="TR00 0000 0000 0000 0000 0000 00" onChange={(e) => setForm({ ...form, iban: e.target.value })} /></Field>
-          <Field label="Şube"><Input value={form.branch_name} onChange={(e) => setForm({ ...form, branch_name: e.target.value })} /></Field>
-          <Field label="Sıra"><Input inputMode="numeric" value={form.sort_order} onChange={(e) => setForm({ ...form, sort_order: e.target.value })} /></Field>
-          <Field label="Açıklama" wide><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
-          <Field label="Durum"><Select value={String(form.is_active)} onChange={(v) => setForm({ ...form, is_active: v })} options={[["1", "Aktif"], ["0", "Pasif"]]} /></Field>
-        </div>
-        <button className="confirm" disabled={busy} onClick={kaydet}>{busy ? "Kaydediliyor…" : form.id ? "Hesabı güncelle" : "Hesabı ekle"}</button>
-      </Section>
-
-      <Section title="Kurum hesapları" note={`${veri.system_bank_accounts?.length || 0} hesap`}>
-        <div className="ac-list">
-          {(veri.system_bank_accounts || []).map((hesap) => (
-            <div className="ac-line" key={hesap.id}>
-              <span>
-                <strong>{hesap.bank_name} {Number(hesap.is_active) ? "" : "· pasif"}</strong>
-                <small>{hesap.account_holder} · {hesap.iban}{hesap.branch_name ? ` · ${hesap.branch_name}` : ""}</small>
-              </span>
-              <b className="ac-line-actions">
-                <button className="ac-ghost" onClick={() => setForm({ ...BOS_BANKA, ...hesap, is_active: String(hesap.is_active ?? 1) })}>Düzenle</button>
-                <button className="ac-ghost" onClick={() => islem(hesap, "toggle")}>{Number(hesap.is_active) ? "Pasifleştir" : "Aktifleştir"}</button>
-                <button className="ac-danger small" onClick={() => islem(hesap, "delete")}>Sil</button>
-              </b>
-            </div>
+      <Section
+        title="Banka Hesapları"
+        note="Para yatırma için kullanılan sistem banka hesapları"
+        action={<button className="confirm bk-yeni" onClick={() => setForm({ ...BOS_BANKA, sort_order: hesaplar.length })}>+ Yeni Hesap</button>}
+      >
+        <div className="bk-list">
+          {hesaplar.map((hesap, index) => (
+            <BankaKarti
+              key={hesap.id}
+              hesap={hesap}
+              ilk={index === 0}
+              son={index === hesaplar.length - 1}
+              onDuzenle={(h) => setForm({ ...BOS_BANKA, ...h, is_active: String(h.is_active ?? 1) })}
+              onIslem={islem}
+              onTasi={tasi}
+            />
           ))}
-          {!(veri.system_bank_accounts || []).length && <div className="ac-line"><span><strong>Hesap yok</strong><small>Henüz kurum hesabı tanımlanmamış</small></span></div>}
+          {!hesaplar.length && <div className="ac-line"><span><strong>Hesap yok</strong><small>Henüz kurum hesabı tanımlanmamış</small></span></div>}
         </div>
       </Section>
 
@@ -380,6 +448,8 @@ function BankPanel({ onNotice, ensure }) {
           {!(veri.user_bank_accounts || []).length && <div className="ac-line"><span><strong>Kayıt yok</strong><small>Müşteriler henüz IBAN eklememiş</small></span></div>}
         </div>
       </Section>
+
+      {form && <BankaFormu form={form} setForm={setForm} onKaydet={kaydet} onIptal={() => setForm(null)} busy={busy} />}
     </>
   );
 }

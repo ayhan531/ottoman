@@ -109,6 +109,8 @@ const SHAPES = {
     FC(17.2, 12.5, 1.2, "d"),
   ],
   plus: () => [<path key="a" d={L(12, 4, 12, 20)} />, <path key="b" d={L(4, 12, 20, 12)} />],
+  // Panoya kopyala: üst üste iki sayfa.
+  copy: () => [R(8, 8, 12, 12, 2.4, "a"), <path key="b" d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4H5.5A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8" />],
   // iOS Paylaş: kutudan yukarı çıkan ok.
   share: () => [
     <path key="a" d={L(12, 3, 12, 14)} />,

@@ -548,6 +548,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
           deposit={overlay.deposit}
           available={available}
           bankAccounts={bankAccounts}
+          me={me}
           onClose={() => setOverlay(null)}
           onDone={(message) => { setOverlay(null); portfolio.reload(); showNotice("İşlem tamamlandı", message); }}
         />
@@ -715,25 +716,76 @@ function StockPicker({ instruments, marketTab, watchlist, onClose, onPick }) {
   );
 }
 
-function TransferSheet({ deposit, available, bankAccounts, onClose, onDone }) {
+/** Panoya kopyalar; clipboard yoksa eski yöntemle dener. */
+const panoyaKopyala = async (metin) => {
+  try {
+    await navigator.clipboard.writeText(metin);
+    return true;
+  } catch {
+    try {
+      const alan = document.createElement("textarea");
+      alan.value = metin;
+      alan.style.cssText = "position:fixed;opacity:0";
+      document.body.appendChild(alan);
+      alan.select();
+      const oldu = document.execCommand("copy");
+      alan.remove();
+      return oldu;
+    } catch {
+      return false;
+    }
+  }
+};
+
+function KopyaSatiri({ label, value, vurgu }) {
+  const [kopyalandi, setKopyalandi] = useState(false);
+  if (!value) return null;
+  const kopyala = async () => {
+    if (await panoyaKopyala(value)) {
+      setKopyalandi(true);
+      setTimeout(() => setKopyalandi(false), 1600);
+    }
+  };
+  return (
+    <div className={vurgu ? "bank-line accent" : "bank-line"}>
+      <span className="bank-copy">
+        <label>{label}</label>
+        <strong>{value}</strong>
+      </span>
+      <button className="bank-copy-btn" onClick={kopyala} aria-label={T("Kopyala")}>
+        <Icon name={kopyalandi ? "check" : "copy"} size={17} />
+      </button>
+    </div>
+  );
+}
+
+function TransferSheet({ deposit, available, bankAccounts, me, onClose, onDone }) {
   const [amountText, setAmountText] = useState("");
-  const [holder, setHolder] = useState("");
+  const [holder, setHolder] = useState(me?.full_name || "");
   const [bank, setBank] = useState("");
   const [iban, setIban] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const aktifHesaplar = (bankAccounts || []).filter((hesap) => Number(hesap.is_active ?? 1) === 1);
+
   const submit = async () => {
     const value = parseAmount(amountText);
     if (!Number.isFinite(value) || value <= 0) { setError(T("Geçerli bir tutar gir.")); return; }
+    if (!deposit) {
+      if (!holder.trim()) { setError(T("Hesap adını gir.")); return; }
+      if (!bank.trim()) { setError(T("Banka adını gir.")); return; }
+      if (iban.replace(/\s/g, "").length < 26) { setError(T("Geçerli bir IBAN gir.")); return; }
+      if (value > available) { setError(T("Çekilebilir bakiyeden fazla tutar girdin.")); return; }
+    }
     setBusy(true);
     setError("");
     try {
       const payload = deposit
-        ? { request_type: "deposit", amount: value, account_ref: bankAccounts[0]?.iban || "" }
-        : { request_type: "withdraw", amount: value, account_holder: holder, bank_name: bank, iban };
+        ? { request_type: "deposit", amount: value, account_ref: aktifHesaplar[0]?.iban || "" }
+        : { request_type: "withdraw", amount: value, account_holder: holder.trim(), bank_name: bank.trim(), iban: iban.replace(/\s/g, "") };
       await api("/api/money-requests", { method: "POST", body: JSON.stringify(payload) });
-      onDone(deposit ? "Para yatırma talebin alındı." : "Para çekme talebin alındı.");
+      onDone(deposit ? "Para yatırma bildirimin alındı." : "Para çekme talebin alındı.");
     } catch (problem) {
       setError(problem.message);
     } finally {
@@ -742,37 +794,66 @@ function TransferSheet({ deposit, available, bankAccounts, onClose, onDone }) {
   };
 
   return (
-    <Sheet title={T(deposit ? "Para yatır" : "Para çek")} onClose={onClose}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <span style={{ fontSize: "calc(14px * var(--s))", color: "var(--muted)" }}>Bakiye · {money(available)}</span>
-        <div className="card" style={{ background: "var(--soft)", display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: "calc(23px * var(--s))", fontWeight: 700, color: "var(--purple)" }}>₺</span>
-          <input
-            inputMode="decimal"
-            value={amountText}
-            onChange={(event) => setAmountText(event.target.value)}
-            placeholder="0,00"
-            style={{ fontSize: "calc(25px * var(--s))", width: "100%" }}
-          />
-        </div>
+    <Sheet title={T(deposit ? "TL Yükle" : "TL Çek")} onClose={onClose}>
+      <div className="tl-sheet">
         {deposit ? (
-          bankAccounts[0] && (
-            <div className="sec-card" style={{ padding: "2px 14px" }}>
-              <div className="info-row">
-                <span className="copy"><strong>{bankAccounts[0].bank_name}</strong><span>{bankAccounts[0].iban}</span></span>
-                <span /><span />
-              </div>
+          <>
+            <span className="tl-note">{T("Aşağıdaki hesaplardan birine havale/EFT yapın")}</span>
+            <div className="tl-banks">
+              {aktifHesaplar.map((hesap) => (
+                <div className="bank-card" key={hesap.id || hesap.iban}>
+                  <div className="bank-head">{hesap.bank_name}</div>
+                  <KopyaSatiri label={T("Hesap Sahibi")} value={hesap.account_holder} />
+                  <KopyaSatiri label="IBAN" value={hesap.iban} />
+                  <KopyaSatiri label={T("Açıklama")} value={hesap.description} vurgu />
+                </div>
+              ))}
+              {!aktifHesaplar.length && (
+                <div className="referral-note">
+                  <Icon name="info" size={22} color="var(--muted)" />
+                  <span>{T("Şu anda tanımlı bir yatırım hesabı yok. Referansınız ile iletişime geçiniz.")}</span>
+                </div>
+              )}
             </div>
-          )
+
+            <label className="tl-field">
+              <span>{T("Gönderilen Tutar")} (₺)</span>
+              <input inputMode="decimal" value={amountText} placeholder="0,00"
+                onChange={(event) => setAmountText(event.target.value)} />
+            </label>
+            <span className="tl-hint">{T("5-15 dakika içerisinde hesabınıza yansır.")}</span>
+          </>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div className="field"><label>{T("Hesap sahibi")}</label><div className="box"><input value={holder} onChange={(event) => setHolder(event.target.value)} placeholder={T("Ad Soyad")} style={{ height: 42, width: "100%", fontSize: "calc(15px * var(--s))" }} /></div></div>
-            <div className="field"><label>{T("Banka")}</label><div className="box"><input value={bank} onChange={(event) => setBank(event.target.value)} placeholder={T("Banka adı")} style={{ height: 42, width: "100%", fontSize: "calc(15px * var(--s))" }} /></div></div>
-            <div className="field"><label>IBAN</label><div className="box"><input value={iban} onChange={(event) => setIban(event.target.value)} placeholder="TR.." style={{ height: 42, width: "100%", fontSize: "calc(15px * var(--s))" }} /></div></div>
-          </div>
+          <>
+            <div className="tl-balance">
+              <span>{T("ÇEKİLEBİLİR BAKİYE")}</span>
+              <strong>{money(available)}</strong>
+            </div>
+            <label className="tl-field">
+              <span>{T("Hesap Adı")}</span>
+              <input value={holder} placeholder={T("Ad Soyad")} onChange={(event) => setHolder(event.target.value)} />
+            </label>
+            <label className="tl-field">
+              <span>{T("Banka Adı")}</span>
+              <input value={bank} placeholder={T("Banka adını giriniz")} onChange={(event) => setBank(event.target.value)} />
+            </label>
+            <label className="tl-field">
+              <span>IBAN</span>
+              <input value={iban} placeholder="TR00 0000 0000 0000 0000 0000 00" inputMode="text"
+                onChange={(event) => setIban(event.target.value.toUpperCase())} />
+            </label>
+            <label className="tl-field">
+              <span>{T("Çekim Tutarı")} (₺)</span>
+              <input inputMode="decimal" value={amountText} placeholder="0,00"
+                onChange={(event) => setAmountText(event.target.value)} />
+            </label>
+          </>
         )}
         {error && <span className="trade-error">{error}</span>}
-        <button className="btn" disabled={busy} onClick={submit}>{T(deposit ? "Para yatır" : "Para çek")}</button>
+        <button className="btn" disabled={busy} onClick={submit}>
+          {T(busy ? "Gönderiliyor…" : deposit ? "Bildirimi Gönder" : "Çek")}
+        </button>
+        <button className="btn ghost" onClick={onClose}>{T("İptal")}</button>
       </div>
     </Sheet>
   );

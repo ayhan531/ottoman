@@ -1378,3 +1378,72 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
 .overlay .sheet-panel:has(.ios-pointer.alt) .sheet-body,
 .esube .sheet-panel:has(.ios-pointer.alt) > div:last-child,
 .overlay .sheet-panel:has(.ios-pointer.alt) > div:last-child { padding-bottom: 52px; }
+
+/* TL Yükle / TL Çek */
+.esube .tl-sheet, .overlay .tl-sheet { display: flex; flex-direction: column; gap: 12px; }
+.esube .tl-note, .overlay .tl-note { font-size: calc(13px * var(--s)); color: var(--muted); text-align: center; line-height: 1.4; }
+.esube .tl-banks, .overlay .tl-banks { display: flex; flex-direction: column; gap: 12px; max-height: 42vh; overflow-y: auto; }
+.esube .bank-card, .overlay .bank-card {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--canvas);
+}
+.esube .bank-head, .overlay .bank-head {
+  padding: 11px 14px;
+  font-size: calc(14px * var(--s));
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--soft);
+  border-bottom: 1px solid var(--line);
+}
+.esube .bank-line, .overlay .bank-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.esube .bank-line:last-child, .overlay .bank-line:last-child { border-bottom: 0; }
+.esube .bank-copy, .overlay .bank-copy { display: grid; gap: 3px; min-width: 0; }
+.esube .bank-copy label, .overlay .bank-copy label { font-size: calc(11px * var(--s)); color: var(--muted); }
+.esube .bank-copy strong, .overlay .bank-copy strong {
+  font-size: calc(13.5px * var(--s));
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+.esube .bank-line.accent label, .overlay .bank-line.accent label,
+.esube .bank-line.accent strong, .overlay .bank-line.accent strong { color: #e0483f; }
+[data-theme="dark"] .bank-line.accent label, [data-theme="dark"] .bank-line.accent strong { color: #ff8a80; }
+.esube .bank-copy-btn, .overlay .bank-copy-btn {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--muted); background: var(--soft); flex: none;
+}
+.esube .tl-field, .overlay .tl-field { display: flex; flex-direction: column; gap: 5px; }
+.esube .tl-field > span, .overlay .tl-field > span { font-size: calc(12.5px * var(--s)); color: var(--muted); }
+.esube .tl-field input, .overlay .tl-field input {
+  height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--canvas);
+  padding: 0 13px;
+  font-size: calc(15px * var(--s));
+  color: var(--ink);
+  width: 100%;
+  box-sizing: border-box;
+}
+.esube .tl-hint, .overlay .tl-hint { font-size: calc(12px * var(--s)); color: var(--muted); text-align: center; }
+.esube .tl-balance, .overlay .tl-balance {
+  display: grid; gap: 4px; justify-items: center;
+  background: var(--soft); border-radius: 14px; padding: 14px;
+}
+.esube .tl-balance span, .overlay .tl-balance span { font-size: calc(11px * var(--s)); letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.esube .tl-balance strong, .overlay .tl-balance strong {
+  font-size: min(calc(24px * var(--s)), 7vw);
+  font-weight: 800; color: var(--purple);
+  overflow-wrap: anywhere; text-align: center; line-height: 1.2;
+}
