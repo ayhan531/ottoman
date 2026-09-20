@@ -4779,8 +4779,25 @@ def reduce_position(conn: sqlite3.Connection, user_id: int, symbol: str, quantit
         conn.execute("DELETE FROM positions WHERE id=?", (row["id"],))
 
 
+def haberleri_isit() -> None:
+    """Sekme haberlerini arka planda önceden hazırlar; kullanıcı sekmeye
+    dokunduğunda liste hazır gelir, ilk açılışta beklemez."""
+    def calis():
+        time.sleep(4)                       # sunucu ayağa kalksın
+        while True:
+            for sekme in range(len(MARKET_NEWS_QUERIES)):
+                try:
+                    market_news(sekme)
+                except Exception:
+                    pass
+                time.sleep(2)
+            time.sleep(max(60, MARKET_NEWS_REFRESH_SECONDS // 2))
+    threading.Thread(target=calis, name="haber-isitici", daemon=True).start()
+
+
 if __name__ == "__main__":
     init_db()
+    haberleri_isit()
     server = ThreadingHTTPServer(("", PORT), AppHandler)
     print(f"Ottoman backend running at http://localhost:{PORT}")
     print(f"Database: {DB_PATH}")
