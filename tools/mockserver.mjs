@@ -44,19 +44,22 @@ const asAdmin = (payload) => {
 };
 
 const adminRoutes = {
-  "/api/admin/summary": () => ({ summary: { users_total: 3, orders_pending: 1, cash_total: 500000, blocked_total: 0 } }),
+  "/api/admin/summary": () => ({ summary: { users: 3, users_total: 3, pending_orders: 1, pending_money: 1, orders_pending: 1, cash_total: 500000, blocked_total: 12500, pending_balance_total: 3400 } }),
   "/api/admin/users": () => ({ users: [
-    { id: 2, full_name: "Ottoman Test Kullanıcı", status: "approved", status_label: "Onaylandı", email: "test@ottoman.local", account_no: "OT000002", phone: "05550000000", cash_balance: 123456.78, order_count: 4, buy_count: 3, sell_count: 1, transaction_count: 6, kyc_status_label: "Onaylandı" },
-    { id: 3, full_name: "Bekleyen Başvuru", status: "pending", status_label: "Beklemede", email: "yeni@ottoman.local", account_no: "OT000003", phone: "05551112233", cash_balance: 0 },
+    { id: 2, full_name: "Ottoman Test Kullanıcı", status: "approved", status_label: "Onaylandı", email: "test@ottoman.local", account_no: "OT000002", phone: "05550000000", tc: "10000000146", tc_masked: "100*****146", tc_valid: true, cash_balance: 123456.78, order_count: 4, buy_count: 3, sell_count: 1, transaction_count: 6, kyc_status_label: "Onaylandı" },
+    { id: 3, full_name: "Bekleyen Başvuru", status: "pending", status_label: "Beklemede", email: "yeni@ottoman.local", account_no: "OT000003", phone: "05551112233", cash_balance: 0, tc: "10000000146", tc_masked: "100*****146", tc_valid: true },
+    { id: 4, full_name: "Sahte Kimlik", status: "under_review", status_label: "İncelemede", email: "sahte@ottoman.local", account_no: "OT000004", phone: "05559998877", cash_balance: 0, tc: "12345678901", tc_masked: "123*****901", tc_valid: false },
   ] }),
   "/api/admin/orders": () => ({ orders: [
     { id: 11, symbol: "THYAO", side: "buy", side_label: "Alış", full_name: "Ottoman Test Kullanıcı", quantity: 100, total: 28925, status: "pending", status_label: "Beklemede" },
   ] }),
   "/api/admin/money": () => ({ money_requests: [
     { id: 5, request_type: "deposit", type_label: "Para Yatırma", full_name: "Ottoman Test Kullanıcı", amount: 5000, status: "pending", status_label: "Beklemede" },
+    { id: 6, request_type: "withdraw", type_label: "Para Çekme", full_name: "Ottoman Test Kullanıcı", amount: 2500, iban: "TR12 0006 7000 0000 0000 0000 07", status: "pending", status_label: "Beklemede" },
+    { id: 7, request_type: "credit", type_label: "Kredi Başvurusu", full_name: "Ottoman Test Kullanıcı", amount: 50000, status: "pending", status_label: "Beklemede" },
   ] }),
   "/api/admin/reports": () => ({ users: [1, 2], audit: [1, 2, 3], reconciliation: { cash: 500000, blocked: 0 } }),
-  "/api/admin/system-settings": () => ({ settings: { t2_enabled: "0", commission_rate: "0.002", minimum_deposit: "100", minimum_withdraw: "50", trading_open: "600", trading_close: "1080", brand_name: "Ottoman Yatırım" } }),
+  "/api/admin/system-settings": () => ({ settings: { t2_enabled: "0", commission_rate: "0.002", minimum_deposit: "100", minimum_withdraw: "50", trading_open: "600", trading_close: "1080", brand_name: "Ottoman Yatırım", credit_monthly_interest_rate: "2.5", credit_loan_term_months: "12", credit_late_interest_rate: "4.5", credit_multiplier: "7", credit_margin_call_ratio: "50" } }),
   "/api/admin/bank-accounts": () => ({
     system_bank_accounts: [
       { id: 1, bank_name: "Ziraat Bankası", account_holder: "Ottoman Yatırım A.Ş.", iban: "TR120001000000000000000001", branch_name: "Merkez", description: "Ana tahsilat", is_active: 1, sort_order: 0 },
@@ -67,11 +70,29 @@ const adminRoutes = {
     ],
   }),
   "/api/admin/positions": () => ({ positions: [
-    { id: 1, user_id: 2, symbol: "THYAO", quantity: 292, avg_price: 248.4 },
-    { id: 2, user_id: 2, symbol: "ASELS", quantity: 150, avg_price: 58.4 },
+    { id: 1, user_id: 2, full_name: "Ottoman Test Kullanıcı", symbol: "THYAO", quantity: 292, avg_price: 248.4, current_price: 289.25, market_value: 84461, pnl: 11928.2 },
+    { id: 2, user_id: 2, full_name: "Ottoman Test Kullanıcı", symbol: "ASELS", quantity: 150, avg_price: 358.4, current_price: 379.75, market_value: 56962.5, pnl: 3202.5 },
   ] }),
   "/api/admin/user-balances": () => ({ balances: [
-    { user_id: 2, cash_balance: 123456.78, blocked_balance: 0, credit_limit: 25000 },
+    { id: 2, user_id: 2, full_name: "Ottoman Test Kullanıcı", account_no: "OT000002", email: "test@ottoman.local", cash_balance: 123456.78, blocked_balance: 12500, pending_balance: 3400, credit_limit: 25000 },
+    { id: 3, user_id: 3, full_name: "Bekleyen Başvuru", account_no: "OT000003", email: "yeni@ottoman.local", cash_balance: 0, blocked_balance: 0, pending_balance: 0, credit_limit: 0 },
+  ] }),
+  "/api/admin/t2-settlements": () => ({ t2_settlements: [
+    { id: 3, user_id: 2, full_name: "Ottoman Test Kullanıcı", symbol: "TUPRS", amount: 20600, remaining_amount: 20600, display_amount: 20600, status: "pending", status_label: "Beklemede", created_at_label: "19 Eylül 2026 11:20" },
+    { id: 2, user_id: 2, full_name: "Ottoman Test Kullanıcı", symbol: "THYAO", amount: 8400, remaining_amount: 0, display_amount: 8400, status: "settled", status_label: "Çözüldü", created_at_label: "16 Eylül 2026 10:02" },
+  ] }),
+  "/api/admin/stock-names": () => ({ total: 903, edited: 1, names: [
+    { symbol: "A1CAP", name: "A1 Capital Yatirim Menkul Degerler A.S.", asset_class: "stock", custom: false, updated_at: "" },
+    { symbol: "ASELS", name: "Aselsan Elektronik Sanayi ve Ticaret A.S.", asset_class: "stock", custom: false, updated_at: "" },
+    { symbol: "THYAO", name: "Türk Hava Yolları", asset_class: "stock", custom: true, updated_at: "20 Eylül 2026 23:10" },
+    { symbol: "TUPRS", name: "Tupras Turkiye Petrol Rafinerileri A.S.", asset_class: "stock", custom: false, updated_at: "" },
+  ] }),
+  "/api/admin/stock-descriptions": () => ({ descriptions: [
+    { symbol: "THYAO", description: "Türkiye'nin bayrak taşıyıcı havayolu şirketi.", risk_note: "Yakıt ve kur riski yüksek", updated_at: 0 },
+  ] }),
+  "/api/admin/audit": () => ({ audit: [
+    { id: 41, action: "approve_order", entity_type: "order", entity_id: 11, actor_name: "Admin", ip_address: "88.23.4.9", created_at_label: "20 Eylül 2026 23:40", reference: "GM-DNT-00000041" },
+    { id: 40, action: "save_stock_name", entity_type: "instrument", entity_id: null, actor_name: "Admin", ip_address: "88.23.4.9", created_at_label: "20 Eylül 2026 23:12", reference: "GM-DNT-00000040" },
   ] }),
   "/api/admin/documents": () => ({ documents: [
     { id: 4, user_id: 3, full_name: "Bekleyen Başvuru", doc_type: "id_front", doc_type_label: "Kimlik ön yüz", status: "pending", status_label: "Beklemede" },

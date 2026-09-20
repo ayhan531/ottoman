@@ -246,6 +246,11 @@ def valid_turkish_identity_number(value: str) -> bool:
     return digits[9] == tenth and digits[10] == eleventh
 
 
+def identity_number_is_real(value: str) -> bool:
+    """Algoritmaya uyan ama gerçek olamayacak kalıpları da eler (11111111110)."""
+    return valid_turkish_identity_number(value) and len(set(value[:10])) > 1
+
+
 def totp_code(secret: str, timestamp: int | None = None) -> str:
     normalized = re.sub(r"\s+", "", secret).upper()
     key = base64.b32decode(normalized + "=" * ((8 - len(normalized) % 8) % 8), casefold=True)
@@ -487,6 +492,12 @@ def init_db() -> None:
             CREATE TABLE IF NOT EXISTS system_settings (
               setting_key TEXT PRIMARY KEY,
               setting_value TEXT NOT NULL,
+              updated_at INTEGER NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS instrument_names (
+              symbol TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
               updated_at INTEGER NOT NULL
             );
 
@@ -1245,6 +1256,11 @@ def refresh_company_metadata(conn: sqlite3.Connection) -> None:
         """,
         metadata,
     )
+    # Yöneticinin panelden verdiği adlar, borsadan gelen adı ezer.
+    conn.execute(
+        "UPDATE market_cache SET name=(SELECT n.name FROM instrument_names n WHERE n.symbol=market_cache.symbol)"
+        " WHERE symbol IN (SELECT symbol FROM instrument_names)"
+    )
     conn.execute(
         "INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES ('company_meta_version', ?, ?)"
         " ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value, updated_at=excluded.updated_at",
@@ -1974,6 +1990,14 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_admin_system_settings()
         if method == "POST" and path == "/api/admin/system-settings":
             return self.api_admin_save_system_settings()
+        if method == "GET" and path == "/api/admin/stock-names":
+            return self.api_admin_stock_names()
+        if method == "POST" and path == "/api/admin/stock-names":
+            return self.api_admin_save_stock_name()
+        if method == "GET" and path == "/api/admin/audit":
+            return self.api_admin_audit()
+        if method == "POST" and path == "/api/admin/create-user":
+            return self.api_admin_create_user()
         if method == "GET" and path == "/api/admin/stock-descriptions":
             return self.api_admin_stock_descriptions()
         if method == "POST" and path == "/api/admin/stock-descriptions":
@@ -2002,6 +2026,8 @@ class AppHandler(BaseHTTPRequestHandler):
                 return self.api_admin_document_action(int(parts[3]), parts[4])
             if len(parts) == 4 and parts[:3] == ["api", "admin", "t2-settlements"] and parts[3].isdigit():
                 return self.api_admin_settle_t2(int(parts[3]))
+            if len(parts) == 5 and parts[:3] == ["api", "admin", "users"] and parts[3].isdigit() and parts[4] == "password":
+                return self.api_admin_set_password(int(parts[3]))
             if len(parts) == 4 and parts[:3] == ["api", "admin", "users"] and parts[3].isdigit():
                 return self.api_admin_update_user(int(parts[3]))
             if len(parts) == 3 and parts == ["api", "admin", "balances"]:
@@ -2523,8 +2549,17 @@ class AppHandler(BaseHTTPRequestHandler):
             suitability_score = sum(max(0, min(3, int(suitability_answers[key]))) for key in numeric_answer_keys)
         except ValueError:
             suitability_score = -1
-        if not full_name or not valid_turkish_identity_number(tc) or not password_is_strong(password) or not phone:
-            raise HttpError(400, "Zorunlu kayıt bilgileri eksik")
+        # Hata mesajları ayrı ayrı: kullanıcı neyin yanlış olduğunu görsün.
+        if not full_name:
+            raise HttpError(400, "Ad soyad gerekli")
+        if len(tc) != 11:
+            raise HttpError(400, "T.C. kimlik numarası 11 haneli olmalı")
+        if not identity_number_is_real(tc):   # algoritma + 11111111110 gibi kalıplar
+            raise HttpError(400, "T.C. kimlik numarası geçersiz. Lütfen kimliğinizdeki numarayı girin.")
+        if not phone or len(re.sub(r"\D", "", phone)) < 10:
+            raise HttpError(400, "Telefon numarası eksik")
+        if not password_is_strong(password):
+            raise HttpError(400, "Şifre en az 10 karakter olmalı; büyük harf, küçük harf ve rakam içermeli")
         if email and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
             raise HttpError(400, "E-posta adresi geçersiz")
         if not all(accepted.values()):
@@ -3420,6 +3455,146 @@ class AppHandler(BaseHTTPRequestHandler):
             audit(conn, admin["id"], "save_stock_description", "stock_description", None, {"symbol": symbol})
             conn.commit()
             self.json_response({"ok": True})
+
+    # ---------------- hisse adları ----------------
+
+    def api_admin_stock_names(self) -> None:
+        """Borsadaki tüm hisseler ve yöneticinin verdiği adlar."""
+        with connect_db() as conn:
+            self.require_admin(conn)
+            query = parse_qs(urlparse(self.path).query)
+            arama = (query.get("q") or [""])[0].strip().upper()
+            kosul, parametreler = "", []
+            if arama:
+                kosul = " WHERE m.symbol LIKE ? OR UPPER(m.name) LIKE ? "
+                parametreler = [f"%{arama}%", f"%{arama}%"]
+            rows = conn.execute(
+                "SELECT m.symbol, m.name, m.asset_class, n.name AS custom_name, n.updated_at AS custom_at"
+                " FROM market_cache m LEFT JOIN instrument_names n ON n.symbol=m.symbol"
+                + kosul +
+                " ORDER BY m.symbol ASC",
+                parametreler,
+            ).fetchall()
+            toplam = conn.execute("SELECT COUNT(*) c FROM market_cache").fetchone()["c"]
+            duzenlenen = conn.execute("SELECT COUNT(*) c FROM instrument_names").fetchone()["c"]
+            self.json_response({
+                "total": toplam,
+                "edited": duzenlenen,
+                "names": [{
+                    "symbol": row["symbol"],
+                    "name": row["name"] or row["symbol"],
+                    "asset_class": row["asset_class"],
+                    "custom": bool(row["custom_name"]),
+                    "updated_at": iso_time(row["custom_at"]) if row["custom_at"] else "",
+                } for row in rows],
+            })
+
+    def api_admin_save_stock_name(self) -> None:
+        payload = self.read_json()
+        symbol = re.sub(r"[^A-Z0-9]", "", str(payload.get("symbol", "")).upper())
+        name = str(payload.get("name", "")).strip()[:120]
+        if not symbol:
+            raise HttpError(400, "Hisse kodu gerekli")
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+            if not conn.execute("SELECT 1 FROM market_cache WHERE symbol=?", (symbol,)).fetchone():
+                raise HttpError(404, "Bu kodla bir enstrüman yok")
+            if name:
+                conn.execute(
+                    "INSERT INTO instrument_names (symbol, name, updated_at) VALUES (?, ?, ?)"
+                    " ON CONFLICT(symbol) DO UPDATE SET name=excluded.name, updated_at=excluded.updated_at",
+                    (symbol, name, now()),
+                )
+                conn.execute("UPDATE market_cache SET name=? WHERE symbol=?", (name, symbol))
+            else:
+                # Ad boş bırakıldı: borsadan gelen ada geri dönülür.
+                conn.execute("DELETE FROM instrument_names WHERE symbol=?", (symbol,))
+            audit(conn, admin["id"], "save_stock_name", "instrument", None, {"symbol": symbol, "name": name})
+            conn.commit()
+            self.json_response({"ok": True, "symbol": symbol, "name": name})
+
+    # ---------------- müşteri oluşturma ve şifre ----------------
+
+    def api_admin_create_user(self) -> None:
+        payload = self.read_json()
+        tc = re.sub(r"\D", "", str(payload.get("tc", "")))
+        full_name = str(payload.get("full_name", "")).strip()[:120]
+        phone = str(payload.get("phone", "")).strip()[:40]
+        email = str(payload.get("email", "")).strip()[:120]
+        city = str(payload.get("city", "")).strip()[:80]
+        district = str(payload.get("district", "")).strip()[:80]
+        password = str(payload.get("password", ""))
+        status = str(payload.get("status", "pending")).strip() or "pending"
+        opening = float(payload.get("opening_balance", 0) or 0)
+        if not identity_number_is_real(tc):
+            raise HttpError(400, "T.C. kimlik numarası algoritmaya uymuyor")
+        if not full_name or not phone:
+            raise HttpError(400, "Ad soyad ve telefon gerekli")
+        if not password_is_strong(password):
+            raise HttpError(400, "Şifre en az 10 karakter olmalı; büyük harf, küçük harf ve rakam içermeli")
+        if status not in {"pending", "under_review", "awaiting_back", "approved", "rejected"}:
+            raise HttpError(400, "Durum hatalı")
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+            self.require_admin_step_up(conn)
+            if conn.execute("SELECT id FROM users WHERE tc=?", (tc,)).fetchone():
+                raise HttpError(409, "Bu T.C. ile kayıt var")
+            salt, digest = hash_password(password)
+            cur = conn.execute(
+                "INSERT INTO users (tc, password_salt, password_hash, full_name, phone, email, city, district,"
+                " role, status, kyc_status, kyc_note, created_at, approved_at)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'user', ?, ?, '', ?, ?)",
+                (tc, salt, digest, full_name, phone, email, city, district, status,
+                 "approved" if status == "approved" else "pending", now(),
+                 now() if status == "approved" else None),
+            )
+            uid = int(cur.lastrowid)
+            conn.execute("INSERT OR IGNORE INTO accounts (user_id, cash_balance, blocked_balance, credit_limit) VALUES (?, ?, 0, 0)", (uid, opening))
+            if opening:
+                conn.execute("UPDATE accounts SET cash_balance=? WHERE user_id=?", (opening, uid))
+            audit(conn, admin["id"], "create_user", "user", uid, {"tc": tc[:3] + "*****"})
+            conn.commit()
+            self.json_response({"ok": True, "id": uid}, 201)
+
+    def api_admin_set_password(self, user_id: int) -> None:
+        payload = self.read_json()
+        password = str(payload.get("password", ""))
+        if not password_is_strong(password):
+            raise HttpError(400, "Şifre en az 10 karakter olmalı; büyük harf, küçük harf ve rakam içermeli")
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+            self.require_admin_step_up(conn)
+            if not conn.execute("SELECT 1 FROM users WHERE id=? AND role='user'", (user_id,)).fetchone():
+                raise HttpError(404, "Kullanıcı bulunamadı")
+            salt, digest = hash_password(password)
+            conn.execute("UPDATE users SET password_salt=?, password_hash=? WHERE id=?", (salt, digest, user_id))
+            conn.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))   # açık oturumlar kapansın
+            audit(conn, admin["id"], "reset_password", "user", user_id)
+            conn.commit()
+            self.json_response({"ok": True})
+
+    # ---------------- denetim kaydı ----------------
+
+    def api_admin_audit(self) -> None:
+        query = parse_qs(urlparse(self.path).query)
+        arama = (query.get("q") or [""])[0].strip()
+        limit = max(20, min(500, int((query.get("limit") or ["200"])[0] or 200)))
+        with connect_db() as conn:
+            self.require_admin(conn)
+            kosul, parametreler = "", []
+            if arama:
+                kosul = " WHERE a.action LIKE ? OR a.entity_type LIKE ? OR u.full_name LIKE ? "
+                parametreler = [f"%{arama}%"] * 3
+            rows = conn.execute(
+                "SELECT a.*, u.full_name actor_name FROM audit_logs a LEFT JOIN users u ON u.id=a.actor_user_id"
+                + kosul + " ORDER BY a.created_at DESC LIMIT ?",
+                parametreler + [limit],
+            ).fetchall()
+            self.json_response({"audit": [{
+                **dict(row),
+                "created_at_label": iso_time(row["created_at"]),
+                "reference": f"GM-DNT-{int(row['id']):08d}",
+            } for row in rows]})
 
     def api_admin_render_status(self) -> None:
         with connect_db() as conn:
@@ -4551,6 +4726,9 @@ def public_user(user: dict, include_sensitive: bool = False) -> dict:
     }
     if include_sensitive:
         data["tc_masked"] = user["tc"][:3] + "*****" + user["tc"][-3:]
+        data["tc"] = user["tc"]
+        # Kimlik numarası algoritmaya uyuyor mu? Uymuyorsa panelde "sahte" rozeti çıkar.
+        data["tc_valid"] = identity_number_is_real(str(user["tc"]))
         data["cash_balance"] = user.get("cash_balance", 0)
         data["blocked_balance"] = user.get("blocked_balance", 0)
         data["pending_balance"] = user.get("pending_balance", 0)

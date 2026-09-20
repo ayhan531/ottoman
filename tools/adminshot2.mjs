@@ -1,0 +1,24 @@
+import { chromium } from "playwright";
+const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--no-sandbox"] });
+const p = await b.newPage({ viewport: { width: 393, height: 851 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+await p.route("**/*", (r) => (/127\.0\.0\.1|localhost/.test(r.request().url()) ? r.continue() : r.abort()));
+await p.goto("http://127.0.0.1:4173", { waitUntil: "domcontentloaded" });
+await p.evaluate(() => { try { localStorage.setItem("ottoman.install-hint","true"); localStorage.setItem("ottoman.push-asked","true"); } catch {} });
+await p.reload({ waitUntil: "domcontentloaded" });
+await p.waitForTimeout(1600);
+await p.evaluate(() => [...document.querySelectorAll("button")].find(x=>x.getAttribute("title")==="Admin")?.click());
+await p.waitForTimeout(1800);
+await p.screenshot({ path: "/tmp/a-dash.png" });
+await p.evaluate(() => document.querySelector(".ac-menu-btn")?.click());
+await p.waitForTimeout(400);
+await p.screenshot({ path: "/tmp/a-menu.png" });
+const git = async (ad, dosya) => {
+  await p.evaluate(() => document.querySelector(".ac-menu-btn")?.click());
+  await p.waitForTimeout(250);
+  await p.evaluate((h) => [...document.querySelectorAll(".ac-drawer-group button")].find(x=>(x.querySelector("span")?.textContent||"").trim()===h)?.click(), ad);
+  await p.waitForTimeout(700);
+  await p.screenshot({ path: dosya });
+};
+await git("Hisse İsimleri", "/tmp/a-isim.png");
+await git("Kullanıcılar", "/tmp/a-kul.png");
+await b.close();

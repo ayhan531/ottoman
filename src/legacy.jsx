@@ -5,6 +5,7 @@ import { Bell, CheckCircle2, Eye, EyeOff, Moon, ShieldCheck, Sun, X } from "luci
 import { api } from "./esube/store.js";
 import { rememberAccount, takePendingTc } from "./esube/accounts.js";
 import { ILLER, ilceleri } from "./esube/regions.js";
+import { gecerliTc, tcHatasi } from "./esube/kimlik.js";
 
 const money = (value) => `₺${Number(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const compactDate = () => new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
@@ -119,6 +120,7 @@ function AuthScreen({ onAuthed, back }) {
   const hesapOlustur = async (event) => {
     event.preventDefault();
     setMessage("");
+    if (!gecerliTc(kayit.tc)) return setMessage("T.C. kimlik numarası geçersiz. Lütfen kimliğinizdeki numarayı girin.");
     if (kayit.sifre !== kayit.sifre2) return setMessage("Şifreler aynı değil.");
     if (!sozlesme) return setMessage("Sözleşmeleri kabul etmelisin.");
     const parcalar = kayit.dogum.split(/[./-]/).map((x) => x.trim());
@@ -193,8 +195,18 @@ function AuthScreen({ onAuthed, back }) {
             <Alan label="Ad"><input placeholder="Adınız" value={kayit.ad} onChange={alan("ad")} required /></Alan>
             <Alan label="Soyad"><input placeholder="Soyadınız" value={kayit.soyad} onChange={alan("soyad")} required /></Alan>
             <Alan label="T.C. Kimlik No">
-              <input inputMode="numeric" maxLength={11} placeholder="11 haneli" value={kayit.tc}
-                onChange={(event) => setKayit((e) => ({ ...e, tc: event.target.value.replace(/\D/g, "") }))} required />
+              <input
+                inputMode="numeric"
+                maxLength={11}
+                placeholder="11 haneli"
+                value={kayit.tc}
+                className={kayit.tc.length === 11 ? (gecerliTc(kayit.tc) ? "tc-ok" : "tc-hatali") : ""}
+                onChange={(event) => setKayit((e) => ({ ...e, tc: event.target.value.replace(/\D/g, "") }))}
+                required
+              />
+              {/* Sahte numarayla kayıt olunmasın: numara girilirken kontrol edilir. */}
+              {kayit.tc.length >= 11 && !gecerliTc(kayit.tc) && <small className="alan-hata">{tcHatasi(kayit.tc)}</small>}
+              {kayit.tc.length === 11 && gecerliTc(kayit.tc) && <small className="alan-tamam">Kimlik numarası doğrulandı</small>}
             </Alan>
             <Alan label="Doğum Tarihi"><input inputMode="numeric" placeholder="GG/AA/YYYY" value={kayit.dogum} onChange={alan("dogum")} required /></Alan>
           </div>

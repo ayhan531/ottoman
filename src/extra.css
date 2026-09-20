@@ -772,3 +772,87 @@
 .bk-card>footer{padding:0 14px 12px}
 .bk-modal{width:min(520px,94vw);max-height:88vh;overflow-y:auto}
 .corporate-affiliation{display:block;margin:6px auto 10px;max-width:38ch;font-size:clamp(12.5px,2.6vw,15px);line-height:1.35;color:rgba(255,255,255,.86);font-weight:500;overflow-wrap:break-word}
+
+/* ---------- T.C. kimlik alanı geri bildirimi ---------- */
+.auth-form2 input.tc-ok { border-color: #2e9e5b !important; }
+.auth-form2 input.tc-hatali { border-color: #d64545 !important; }
+.auth-form2 .alan-hata,
+.auth-form2 .alan-tamam { display: block; font-size: 11.5px; line-height: 1.3; padding: 4px 2px 0; }
+.auth-form2 .alan-hata { color: #d64545; }
+.auth-form2 .alan-tamam { color: #2e9e5b; }
+
+/* ---------- Admin: üst şerit, yan menü, kartlar ---------- */
+.ac-top{display:flex;align-items:center;gap:12px;padding:6px 0 2px}
+.ac-menu-btn{width:42px;height:42px;border-radius:12px;background:#f2f2f6;font-size:19px;flex:none;color:inherit}
+.dark-mode .ac-menu-btn{background:#1b1e28;color:#f7f8ff}
+.ac-top-copy{flex:1;min-width:0}
+.ac-top-copy h2{margin:0;font-size:21px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-top-copy small{color:var(--muted);font-size:12.5px}
+.ac-top-actions{display:flex;gap:6px;flex:none}
+@media (max-width:620px){.ac-top-actions .ac-ghost{display:none}}
+
+.ac-drawer-layer{position:fixed;inset:0;background:rgba(10,12,18,.45);z-index:70;display:flex}
+.ac-drawer{width:min(320px,86vw);background:#fff;height:100%;overflow-y:auto;padding:0 0 24px;box-shadow:2px 0 24px rgba(0,0,0,.18);animation:acDrawerIn .18s ease-out}
+.dark-mode .ac-drawer{background:#141823}
+@keyframes acDrawerIn{from{transform:translateX(-14px);opacity:.6}to{transform:none;opacity:1}}
+.ac-drawer>header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:18px 16px;border-bottom:1px solid var(--line)}
+.dark-mode .ac-drawer>header{border-color:#2a3040}
+.ac-drawer-brand{display:flex;align-items:center;gap:10px;min-width:0}
+.ac-drawer-brand .brand{font-size:23px;color:var(--purple);line-height:1}
+.ac-drawer-brand strong{display:block;font-size:15px;font-weight:800}
+.ac-drawer-brand small{color:var(--muted);font-size:12px}
+.ac-drawer-close{width:36px;height:36px;border-radius:10px;background:#f2f2f6;font-size:15px;flex:none;color:inherit}
+.dark-mode .ac-drawer-close{background:#1b1e28;color:#f7f8ff}
+.ac-drawer-group{padding:12px 10px 2px}
+.ac-drawer-group h4{margin:0 0 6px;padding:0 8px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:800}
+.ac-drawer-group button{display:flex;align-items:center;gap:12px;width:100%;padding:12px 10px;border-radius:12px;background:transparent;font-size:15px;font-weight:600;text-align:left;color:inherit}
+.ac-drawer-group button i{font-style:normal;width:22px;display:inline-flex;align-items:center;justify-content:center;flex:none;color:var(--muted)}
+.ac-drawer-group button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-drawer-group button em{font-style:normal;min-width:22px;height:22px;border-radius:11px;background:#ffefd2;color:#8a5a00;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;flex:none}
+.ac-drawer-group button.on{background:#eef3ff;color:#1b63d8}
+.ac-drawer-group button.on i{color:#1b63d8}
+.dark-mode .ac-drawer-group button.on{background:#1d2740;color:#8fb6ff}
+.dark-mode .ac-drawer-group button.on i{color:#8fb6ff}
+.dark-mode .ac-drawer-group button em{background:#3a2c12;color:#f0c98a}
+
+.ac-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.ac-cards article{background:#fff;border:1px solid var(--line);border-left:4px solid #c9cddb;border-radius:14px;padding:14px;display:grid;gap:6px;min-width:0}
+.ac-cards span{font-size:12.5px;color:var(--muted)}
+.ac-cards strong{font-size:clamp(16px,4.6vw,21px);font-weight:800;overflow-wrap:anywhere}
+.ac-cards article.mavi{border-left-color:#2f6fed}
+.ac-cards article.sari{border-left-color:#f0a52a}
+.ac-cards article.yesil{border-left-color:#22a05a}
+.ac-cards article.mor{border-left-color:#7054f6}
+.ac-cards article.kirmizi{border-left-color:#ef4655}
+.dark-mode .ac-cards article{background:#171c27;border-color:#303747;border-left-color:#4a5468}
+.dark-mode .ac-cards article.mavi{border-left-color:#5c8dff}
+.dark-mode .ac-cards article.sari{border-left-color:#f0b95a}
+.dark-mode .ac-cards article.yesil{border-left-color:#3fc87c}
+.dark-mode .ac-cards article.mor{border-left-color:#9c86ff}
+.dark-mode .ac-cards article.kirmizi{border-left-color:#ff7b88}
+.dark-mode .ac-cards strong{color:#f7f8ff}
+
+.ac-toolbar{display:flex;gap:8px;align-items:center}
+.ac-search{flex:1;height:46px;border:1px solid var(--line);border-radius:12px;background:#f7f7fb;padding:0 14px;font-size:14.5px;color:inherit;width:100%;box-sizing:border-box}
+.dark-mode .ac-search{background:#171c27;border-color:#303747;color:#f7f8ff}
+.ac-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.ac-chips button{flex:none;height:34px;padding:0 13px;border-radius:17px;background:#f2f2f6;color:var(--muted);font-size:13px;font-weight:700}
+.ac-chips button.on{background:var(--purple);color:#fff}
+.dark-mode .ac-chips button{background:#1b1e28;color:#aeb6c7}
+.dark-mode .ac-chips button.on{background:#7054f6;color:#fff}
+.ac-list.tall{max-height:min(560px,62vh)}
+.ac-more{justify-content:center;color:var(--purple);font-weight:800}
+.ac-rozet{font-style:normal;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:8px;margin-left:6px;white-space:nowrap}
+.ac-rozet.kirmizi{background:#ffe8ea;color:#c93343}
+.ac-rozet.mor{background:#efeaff;color:#6544e0}
+.dark-mode .ac-rozet.kirmizi{background:#3a1f24;color:#ff8f9a}
+.dark-mode .ac-rozet.mor{background:#272040;color:#b9a8ff}
+.ac-kod{font-style:normal;font-weight:800;letter-spacing:.02em;margin-right:8px}
+.ac-line em.ac-al,.ac-line em.ac-sat{font-style:normal;font-weight:800;font-size:13px;white-space:nowrap}
+.ac-line em.ac-al{color:#13b26b}
+.ac-line em.ac-sat{color:#ef4655}
+.ac-field input.tc-ok{border-color:#2e9e5b}
+.ac-field input.tc-hatali{border-color:#d64545}
+.ac-field .alan-hata{color:#d64545;font-size:11.5px}
+.ac-field .alan-tamam{color:#2e9e5b;font-size:11.5px}
+a.ac-ghost{display:inline-flex;align-items:center;text-decoration:none}
