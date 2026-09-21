@@ -732,7 +732,13 @@
 .auth-field:nth-child(2n){border-right:0}
 .dark-mode .auth-field{border-color:#303747}
 .auth-field>span{font-size:11.5px;color:var(--muted)}
-.auth-field input,.auth-field select{border:0;background:transparent;font-size:16px;color:inherit;width:100%;padding:2px 0;min-width:0}
+.auth-field input,.auth-field select{border:0;background:transparent;font-size:16px;color:inherit;width:100%;padding:2px 0;min-width:0;outline:0}
+/* Tarayıcının kendi siyah odak çerçevesi yerine yumuşak mor bir iz. */
+.auth-field input:focus,.auth-field input:focus-visible,.auth-field select:focus,.auth-field select:focus-visible{outline:0;box-shadow:none}
+.auth-field:focus-within{background:rgba(112,84,246,.05);box-shadow:inset 2px 0 0 var(--purple)}
+.dark-mode .auth-field:focus-within{background:rgba(112,84,246,.12)}
+.auth-v2 button:focus,.auth-v2 button:focus-visible,.auth-v2 input:focus,.auth-v2 input:focus-visible{outline:0}
+.auth-v2 .confirm:focus-visible{box-shadow:0 0 0 3px rgba(112,84,246,.35)}
 .auth-field select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);background-position:right 6px top 12px,right 1px top 12px;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:18px}
 .auth-field input::placeholder{color:#b6b9c6}
 .auth-field select:disabled{opacity:.55}

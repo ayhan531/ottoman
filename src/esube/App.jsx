@@ -13,6 +13,7 @@ import {
 } from "./Subpages.jsx";
 import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHoldings, readPref, writePref } from "./store.js";
 import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
+import { useGeriTusu } from "./geri.js";
 import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, iosBrowser, iosToolbarAtBottom, uygulamaIciTarayici, tarayicidaAc, kurulumSemasi, adresiKopyala, kurulumAdresi, kurulumIstendi, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
 import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, parseAmount } from "./market.js";
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
@@ -190,6 +191,14 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const [notice, setNotice] = useState(null);
   const [tradeKind, setTradeKind] = useState(0);
   const [pendingOrder, setPendingOrder] = useState(null);
+
+  /* Geri tuşu: önce açık katmanı, sonra alt sayfayı, sonra ana sayfayı
+     kapatır; siteden ancak ana sayfadayken çıkar. */
+  const geriDerinlik = (overlay ? 1 : 0) + (tab !== 0 ? 1 : 0);
+  useGeriTusu(geriDerinlik > 0, () => {
+    if (overlay) { setOverlay(null); return; }
+    if (tab !== 0) { go(returnTo && returnTo !== tab ? returnTo : 0); return; }
+  });
   const [orderResult, setOrderResult] = useState(null);
 
   const showNotice = (title, text) => setNotice({ title: T(title), text: T(text) });

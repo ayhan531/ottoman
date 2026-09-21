@@ -1490,3 +1490,11 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   text-align: center;
   line-height: 1.3;
 }
+
+/* Tarayıcının kendi odak çerçevesi (siyah/turuncu) yerine markanın moru. */
+.esube :focus, .overlay :focus { outline: none; }
+.esube :focus-visible, .overlay :focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--purple) 70%, transparent);
+  outline-offset: 2px;
+  border-radius: 10px;
+}

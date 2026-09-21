@@ -12,6 +12,7 @@ import { hasPendingTc } from "./esube/accounts.js";
 import { trackSafeArea } from "./esube/safearea.js";
 import { trackInstall, registerWorker, isStandalone, refreshPush, clearOfflineData, kurulumIstendi } from "./esube/pwa.js";
 import { Dialog } from "./esube/ui.jsx";
+import { useGeriTusu } from "./esube/geri.js";
 
 const normalize = (data) => data?.user || (data?.id ? data : null);
 
@@ -40,6 +41,13 @@ function Root() {
     document.body.classList.toggle("esube-open", Boolean(me) && !showAdmin);
     return () => document.body.classList.remove("esube-open");
   }, [me, showAdmin]);
+
+  /* Giriş ekranındayken ya da admin panelindeyken geri tuşu siteden
+     çıkarmasın; bir önceki ekrana dönsün. */
+  useGeriTusu((!me && authOpen) || (Boolean(me) && showAdmin), () => {
+    if (showAdmin) { setShowAdmin(false); return; }
+    setAuthOpen(false);
+  });
 
   const loadAdmin = useCallback(async () => {
     if (!me || me.role !== "admin") return;

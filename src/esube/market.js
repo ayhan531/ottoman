@@ -43,6 +43,10 @@ export const fold = (value = "") =>
     .replace(/â/g, "a").replace(/î/g, "i").replace(/û/g, "u")
     .trim();
 
+/** "1.234,56" — Türkçe sayı biçimi. */
+export const trSayi = (value, digits = 2) =>
+  Number(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
 const tr = (value, digits = 2) =>
   Number(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
@@ -63,23 +67,35 @@ export const delta = (amountValue, percentValue) => signed(amountValue) + " (" +
 /** 24.200,50 / 24200,5 / 24.5 biçimlerini okur (DemoAccount.ParseAmount). */
 export const parseAmount = (text) => {
   if (text === null || text === undefined) return NaN;
-  const raw = String(text).trim();
+  const raw = String(text).trim().replace(/[^\d.,-]/g, "");
   if (!raw) return NaN;
-  const ungrouped = raw.replace(/\.(?=\d{3}(\D|$))/g, "");
-  const value = Number(ungrouped.replace(/\./g, ",").replace(",", "."));
+  let duz;
+  if (raw.includes(",")) {
+    // Virgül varsa ondalık odur, noktalar binlik ayracıdır: 1.234,56
+    duz = raw.replace(/\./g, "").replace(",", ".");
+  } else {
+    const noktaSayisi = (raw.match(/\./g) || []).length;
+    const sonParca = raw.split(".").pop();
+    // Tek nokta ve ardından 3 hane değilse ondalıktır (288.5); değilse binliktir (40.000)
+    duz = noktaSayisi === 1 && sonParca.length !== 3 ? raw : raw.replace(/\./g, "");
+  }
+  const value = Number(duz);
   return Number.isFinite(value) ? value : NaN;
 };
 
 /** Yazarken binlik ayraç koyar (24200 → 24.200). */
 export const group = (text) => {
-  const raw = String(text ?? "").replace(/[^\d,.]/g, "");
+  // Alan zaten binlik ayraçlı yazıyor; kullanıcı yazdıkça noktalar yeniden
+  // üretilir. Bu yüzden nokta HER ZAMAN binlik ayracıdır ve atılır; ondalık
+  // yalnızca virgüldür. (Eskiden "40.000"in noktası ondalık sanılıp beş
+  // haneden sonra tutar "40,00"a düşüyordu.)
+  const raw = String(text ?? "").replace(/\./g, "").replace(/[^\d,]/g, "");
   if (!raw) return "";
-  const cleaned = raw.replace(/\.(?=\d{3}(\D|$))/g, "");
-  const parts = cleaned.replace(/\./g, ",").split(",");
-  const whole = parts[0].replace(/\D/g, "");
-  const fraction = parts.length > 1 ? "," + parts.slice(1).join("").replace(/\D/g, "").slice(0, 2) : "";
-  const grouped = whole ? Number(whole).toLocaleString("tr-TR", { maximumFractionDigits: 0 }) : "";
-  return grouped + fraction;
+  const parcalar = raw.split(",");
+  const tam = parcalar[0].replace(/\D/g, "").slice(0, 12);
+  const ondalik = parcalar.length > 1 ? "," + parcalar.slice(1).join("").replace(/\D/g, "").slice(0, 2) : "";
+  const gruplu = tam ? Number(tam).toLocaleString("tr-TR", { maximumFractionDigits: 0 }) : (ondalik ? "0" : "");
+  return gruplu + ondalik;
 };
 
 /** İşlem hacmi: "123,45 Mr ₺" ya da "850,2 Mn ₺". */

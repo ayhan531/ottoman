@@ -171,6 +171,17 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
     }));
   };
 
+  /* "Silme": nakit bakiyeyi sıfıra çeker. Gerekçe alanı boşsa kendi
+     gerekçesini yazar, çünkü sunucu gerekçesiz finansal değişiklik kabul etmiyor. */
+  const bakiyeSifirla = () => {
+    if (!window.confirm(`${user.full_name} hesabının nakit bakiyesi sıfırlanacak. Onaylıyor musun?`)) return undefined;
+    const gerekce = balance.note.trim().length >= 8 ? balance.note.trim() : "Bakiye admin tarafından sıfırlandı";
+    return calistir("bakiye", () => api("/api/admin/balances", {
+      method: "POST",
+      body: JSON.stringify({ user_id: user.id, action: "set", amount: 0, note: gerekce }),
+    }));
+  };
+
   const pozisyonUygula = () => {
     const adet = Number(position.quantity);
     const fiyat = Number(String(position.price).replace(",", "."));
@@ -250,7 +261,10 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
             <Field label="Tutar (₺)"><Input inputMode="decimal" value={balance.amount} onChange={(e) => setBalance({ ...balance, amount: e.target.value })} /></Field>
             <Field label="Gerekçe (en az 8 karakter)" wide><Input value={balance.note} onChange={(e) => setBalance({ ...balance, note: e.target.value })} /></Field>
           </div>
-          <button className="confirm" disabled={busy === "bakiye"} onClick={bakiyeUygula}>{busy === "bakiye" ? "Uygulanıyor…" : "Bakiyeyi uygula"}</button>
+          <div className="ac-actions">
+            <button className="ac-danger" disabled={busy === "bakiye"} onClick={bakiyeSifirla}>Bakiyeyi sıfırla</button>
+            <button className="confirm" disabled={busy === "bakiye"} onClick={bakiyeUygula}>{busy === "bakiye" ? "Uygulanıyor…" : "Bakiyeyi uygula"}</button>
+          </div>
         </Section>
 
         <Section title="Portföy" note="Kullanıcının pozisyonlarını doğrudan ayarla">
@@ -1000,12 +1014,47 @@ function MoneyPanel({ moneyReqs, tur, baslik, not, ensure, onNotice, refresh }) 
 
 /* ---------- 8. T+2 takip ---------- */
 
-function T2Panel({ ensure, onNotice }) {
+function T2Panel({ ensure, onNotice, settings, refresh }) {
   const { items, reload } = useEndpoint("/api/admin/t2-settlements", "t2_settlements");
   const [durum, setDurum] = useState("pending");
   const [busy, setBusy] = useState(0);
+  const [toplu, setToplu] = useState(false);
   const liste = items.filter((t) => durum === "hepsi" || t.status === durum);
-  const bekleyen = items.filter((t) => t.status === "pending").reduce((s, t) => s + Number(t.remaining_amount || 0), 0);
+  const bekleyenler = items.filter((t) => t.status === "pending");
+  const bekleyen = bekleyenler.reduce((s, t) => s + Number(t.remaining_amount || 0), 0);
+  const t2Acik = String(settings?.t2_enabled ?? "1") === "1";
+
+  // T+2 sistemini aç/kapat: kapalıyken satış tutarı anında nakde geçer.
+  const t2Degistir = async () => {
+    if (!(await ensure())) return;
+    try {
+      await api("/api/admin/system-settings", { method: "POST", body: JSON.stringify({ t2_enabled: t2Acik ? "0" : "1" }) });
+      await refresh?.();
+      onNotice("Kaydedildi", t2Acik ? "T+2 kapatıldı; satış tutarı anında nakde geçecek." : "T+2 açıldı; satış tutarı iki iş günü bekleyecek.");
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Ayar kaydedilemedi");
+    }
+  };
+
+  // Bekleyenlerin hepsini tek seferde çöz.
+  const hepsiniCoz = async () => {
+    if (!bekleyenler.length) return onNotice("Bekleyen yok", "Çözülecek T+2 kaydı yok.");
+    if (!(await ensure())) return;
+    setToplu(true);
+    let sayi = 0;
+    try {
+      for (const kayit of bekleyenler) {
+        try {
+          await api(`/api/admin/t2-settlements/${kayit.id}`, { method: "POST", body: "{}" });
+          sayi += 1;
+        } catch { /* biri olmazsa diğerleri devam etsin */ }
+      }
+      await reload();
+      onNotice("Çözüldü", `${sayi} kayıt nakde geçirildi.`);
+    } finally {
+      setToplu(false);
+    }
+  };
 
   const serbest = async (t) => {
     if (!(await ensure())) return;
@@ -1023,6 +1072,23 @@ function T2Panel({ ensure, onNotice }) {
 
   return (
     <Section title="T+2 Takip" note={`Bekleyen ${money(bekleyen)} · vadesi gelenler kendiliğinden çözülür`} action={<button className="ac-ghost" onClick={reload}>Yenile</button>}>
+      <div className="ac-list">
+        <div className="ac-line">
+          <span>
+            <strong>T+2 sistemi {t2Acik ? "açık" : "kapalı"}</strong>
+            <small>{t2Acik ? "Satış tutarı iki iş günü bekler" : "Satış tutarı anında nakde geçer"}</small>
+          </span>
+          <b className="ac-line-actions">
+            <button className={t2Acik ? "ac-danger small" : "ac-ghost"} onClick={t2Degistir}>{t2Acik ? "Kapat" : "Aç"}</button>
+          </b>
+        </div>
+        <div className="ac-line">
+          <span><strong>Bekleyen {bekleyenler.length} kayıt · {money(bekleyen)}</strong><small>Hepsini şimdi nakde geçir</small></span>
+          <b className="ac-line-actions">
+            <button className="ac-ghost" disabled={toplu || !bekleyenler.length} onClick={hepsiniCoz}>{toplu ? "Çözülüyor…" : "Hepsini çöz"}</button>
+          </b>
+        </div>
+      </div>
       <div className="ac-chips">
         {[["pending", "Bekleyen"], ["settled", "Çözülen"], ["hepsi", "Hepsi"]].map(([k, ad]) => (
           <button key={k} className={durum === k ? "on" : ""} onClick={() => setDurum(k)}>{ad}</button>
@@ -1354,7 +1420,7 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
         {sayfa === "Portföyler" && <PortfolioPanel onNotice={onNotice} ensure={lock.ensure} />}
         {sayfa === "Bakiye Detayları" && <BalancePanel onSec={(b) => setSelected(users.find((u) => u.id === b.id) || null)} />}
         {sayfa === "Emirler" && <OrdersPanel orders={orders} ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
-        {sayfa === "T+2 Takip" && <T2Panel ensure={lock.ensure} onNotice={onNotice} />}
+        {sayfa === "T+2 Takip" && <T2Panel ensure={lock.ensure} onNotice={onNotice} settings={settings} refresh={refresh} />}
         {sayfa === "Onay Bekleyenler" && <PendingPanel users={users} orders={orders} moneyReqs={moneyReqs} onGit={git} />}
         {sayfa === "Banka Hesapları" && <BankPanel onNotice={onNotice} ensure={lock.ensure} />}
         {sayfa === "Para Yatırma" && <MoneyPanel moneyReqs={moneyReqs} tur="deposit" baslik="Para Yatırma Talepleri" not="dekont doğrulanınca onayla" ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}

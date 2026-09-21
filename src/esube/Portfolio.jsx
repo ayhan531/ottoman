@@ -2,13 +2,14 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./icons.jsx";
 import { Symbol, SearchBox, Divided, Donut, Spark, Sheet } from "./ui.jsx";
-import { money, percent, signed, delta, fold } from "./market.js";
+import { money, signed, delta, fold, trSayi } from "./market.js";
 import { T, locale } from "./lang.js";
 
 const MINT = "#7FE3C4", ROSE = "#FF9EB5", MINT_SOFT = "#CFF5E6", ROSE_SOFT = "#FFD6E0", CASH_TONE = "#FFD48A";
 const FAINT = "rgba(255,255,255,.72)";
 
-const pctText = (value) => (value >= 0 ? "+" : "−") + percent(Math.abs(value || 0));
+/* Kâr/zarar oranı APK'daki gibi yazılır: yüzde işareti rakamın sonunda (+16,14%). */
+const pctText = (value) => (value >= 0 ? "+" : "−") + trSayi(Math.abs(value || 0)) + "%";
 /** Yerel saate göre YYYY-AA-GG; tarih süzgeci bununla karşılaştırır. */
 const localDay = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
