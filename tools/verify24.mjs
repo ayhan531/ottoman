@@ -1,8 +1,9 @@
 import { chromium } from "playwright";
 const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--no-sandbox"] });
-const SAYFALAR = ["Dashboard", "Kullanıcılar", "Portföyler", "Bakiye Detayları", "Belgeler", "Emirler", "T+2 Takip",
-  "Onay Bekleyenler", "Banka Hesapları", "Para Yatırma", "Para Çekme", "Krediler", "Hisse İsimleri",
-  "Hisse Açıklamaları", "Sistem Ayarları", "Denetim Kaydı"];
+const SAYFALAR = ["Dashboard", "Kullanıcılar", "Portföyler", "Bakiye Detayları", "Kredi Başvuruları",
+  "Kredi Ayarları", "T+2 Takip", "Onay Bekleyenler", "Banka Hesapları", "Para Yatırma Talepleri",
+  "Para Yükleme", "Para Çekme", "Hisse Açıklamaları", "Sistem Ayarları",
+  "Emirler", "Belgeler", "Denetim Kaydı"];
 let fail = 0;
 
 for (const [ad, w, h] of [["telefon", 393, 851], ["masaüstü", 1440, 900]]) {

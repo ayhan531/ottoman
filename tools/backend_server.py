@@ -3277,7 +3277,7 @@ class AppHandler(BaseHTTPRequestHandler):
         with connect_db() as conn:
             admin = self.require_admin(conn)
             self.require_admin_step_up(conn)
-            allowed_prefixes = ("trading_", "maintenance_", "credit_", "t2_", "commission_", "minimum_", "official_", "brand_", "ui_", "content_")
+            allowed_prefixes = ("trading_", "maintenance_", "credit_", "t2_", "commission_", "minimum_", "official_", "brand_", "ui_", "content_", "price_")
             for key, value in payload.items():
                 if not isinstance(key, str) or not key.startswith(allowed_prefixes):
                     continue

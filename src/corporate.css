@@ -22,6 +22,13 @@
 .corporate-actions .outline{background:transparent;border-color:#b5a7ce;color:white}
 .corporate-trust{display:flex;justify-content:center;gap:28px;margin-top:28px;font-size:12px;color:#e3deee;flex-wrap:wrap}
 .corporate-trust span{display:flex;align-items:center;gap:8px}
+/* SPK lisans şeridi: güven satırının hemen altında, markanın moruyla. */
+.corporate-licence{display:inline-flex;align-items:center;gap:9px;margin:18px auto 0;padding:10px 18px;border-radius:999px;
+  background:rgba(112,84,246,.18);border:1px solid rgba(160,140,255,.45);color:#efeaff;
+  font-size:13px;font-weight:700;letter-spacing:.01em;backdrop-filter:blur(6px);white-space:nowrap}
+.corporate-licence svg{flex:none;color:#b9a8ff}
+.corporate-hero .corporate-licence{display:flex;width:max-content}
+@media(max-width:460px){.corporate-licence{font-size:12px;padding:9px 14px;white-space:normal;text-align:center;line-height:1.35}}
 .corporate-section{padding:76px max(24px,calc((100% - 1200px)/2))}
 .corporate-heading{text-align:center;margin:0 auto 36px;max-width:720px}
 .corporate-heading h2{font-size:32px;line-height:1.25;margin:0 0 12px;letter-spacing:0}

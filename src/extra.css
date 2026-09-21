@@ -862,3 +862,48 @@
 .ac-field .alan-hata{color:#d64545;font-size:11.5px}
 .ac-field .alan-tamam{color:#2e9e5b;font-size:11.5px}
 a.ac-ghost{display:inline-flex;align-items:center;text-decoration:none}
+
+/* ---------- Admin: referans paneldeki düzen ---------- */
+.ac-cards.iki{grid-template-columns:repeat(2,minmax(0,1fr))}
+.ac-cards span{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ac-cards span i{font-style:normal;display:inline-flex;color:var(--muted);flex:none}
+.ac-drawer-group.ek{border-top:1px solid var(--line);margin-top:8px;padding-top:12px}
+.dark-mode .ac-drawer-group.ek{border-color:#2a3040}
+
+/* aç/kapat anahtarı */
+.ac-switch{width:52px;height:30px;border-radius:15px;background:#dcdde5;position:relative;flex:none;transition:background .18s}
+.ac-switch i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .18s}
+.ac-switch.on{background:var(--purple)}
+.ac-switch.on i{transform:translateX(22px)}
+.ac-switch:disabled{opacity:.5}
+.dark-mode .ac-switch{background:#343b4d}
+
+/* portföy özet satırları */
+.ac-ozet{display:flex;flex-direction:column;gap:10px}
+.ac-ozet>div{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px}
+.dark-mode .ac-ozet>div{background:#171c27;border-color:#303747}
+.ac-ozet .sim{width:38px;height:38px;border-radius:11px;background:#eef1f8;color:var(--purple);display:flex;align-items:center;justify-content:center;flex:none}
+.dark-mode .ac-ozet .sim{background:#222839}
+.ac-ozet .c{display:grid;gap:2px;min-width:0}
+.ac-ozet .c small{font-size:12.5px;color:var(--muted)}
+.ac-ozet .c strong{font-size:19px;font-weight:800;overflow-wrap:anywhere}
+
+/* pozisyon kartları */
+.ac-poz-baslik{font-size:17px;font-weight:800;padding:4px 2px}
+.ac-poz{display:flex;flex-direction:column;gap:10px;padding:14px;border-bottom:1px solid var(--line)}
+.ac-poz:last-child{border-bottom:0}
+.ac-poz-ust{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.ac-poz-ad{display:grid;gap:3px;min-width:0}
+.ac-poz-ad strong{font-size:16px;font-weight:800}
+.ac-poz-ad small{font-size:12.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ac-poz-ad small.kisi{display:inline-flex;align-items:center;gap:5px}
+.ac-poz-islem{display:flex;gap:6px;flex:none}
+.ac-poz-alt{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ac-poz-alt span{display:grid;gap:2px;min-width:0}
+.ac-poz-alt small{font-size:11.5px;color:var(--muted)}
+.ac-poz-alt strong{font-size:14px;font-weight:700;overflow-wrap:anywhere}
+@media(max-width:430px){.ac-poz-alt{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* son işlemler: tutar + ALIŞ/SATIŞ alt alta */
+.ac-line em.ac-al,.ac-line em.ac-sat{display:grid;justify-items:end;gap:2px;line-height:1.25}
+.ac-line em.ac-al b,.ac-line em.ac-sat b{font-size:11px;font-weight:800;letter-spacing:.03em}
