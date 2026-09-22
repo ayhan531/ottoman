@@ -19,12 +19,12 @@ let fail = 0;
   await p.waitForTimeout(700);
   const supheliRozet = await p.evaluate(() => [...document.querySelectorAll(".ac-rozet.kirmizi")].length);
   // Şüpheli T.C. süzgeci
-  await p.evaluate(() => [...document.querySelectorAll(".ac-chips button")].find(x=>x.textContent.includes("Şüpheli"))?.click());
+  await p.evaluate(() => [...document.querySelectorAll(".ac-sekme button")].find(x=>x.textContent.includes("Şüpheli"))?.click());
   await p.waitForTimeout(400);
-  const suzulmus = await p.evaluate(() => document.querySelectorAll(".ac-list .ac-line").length);
-  await p.evaluate(() => [...document.querySelectorAll(".ac-chips button")].find(x=>x.textContent.trim()==="Hepsi")?.click());
+  const suzulmus = await p.evaluate(() => document.querySelectorAll(".ac-kisi").length);
+  await p.evaluate(() => [...document.querySelectorAll(".ac-sekme button")].find(x=>x.textContent.trim().startsWith("Tümü"))?.click());
   await p.waitForTimeout(300);
-  await p.evaluate(() => document.querySelector(".ac-list .ac-line")?.click());
+  await p.evaluate(() => [...document.querySelectorAll(".ac-kisi footer .ac-ghost")][0]?.click());
   await p.waitForTimeout(900);
   const editor = await p.evaluate(() => {
     const k = document.querySelector(".ac-editor");

@@ -2028,6 +2028,8 @@ class AppHandler(BaseHTTPRequestHandler):
                 return self.api_admin_settle_t2(int(parts[3]))
             if len(parts) == 5 and parts[:3] == ["api", "admin", "users"] and parts[3].isdigit() and parts[4] == "password":
                 return self.api_admin_set_password(int(parts[3]))
+            if len(parts) == 5 and parts[:3] == ["api", "admin", "users"] and parts[3].isdigit() and parts[4] == "delete":
+                return self.api_admin_delete_user(int(parts[3]))
             if len(parts) == 4 and parts[:3] == ["api", "admin", "users"] and parts[3].isdigit():
                 return self.api_admin_update_user(int(parts[3]))
             if len(parts) == 3 and parts == ["api", "admin", "balances"]:
@@ -3570,6 +3572,26 @@ class AppHandler(BaseHTTPRequestHandler):
             conn.execute("UPDATE users SET password_salt=?, password_hash=? WHERE id=?", (salt, digest, user_id))
             conn.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))   # açık oturumlar kapansın
             audit(conn, admin["id"], "reset_password", "user", user_id)
+            conn.commit()
+            self.json_response({"ok": True})
+
+    def api_admin_delete_user(self, user_id: int) -> None:
+        """Müşteriyi ve ona bağlı tüm kayıtları siler. Geri alınamaz."""
+        payload = self.read_json()
+        onay = str(payload.get("confirm", "")).strip().upper()
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+            self.require_admin_step_up(conn)
+            hedef = conn.execute("SELECT * FROM users WHERE id=? AND role='user'", (user_id,)).fetchone()
+            if not hedef:
+                raise HttpError(404, "Kullanıcı bulunamadı")
+            if onay != "SIL":
+                raise HttpError(400, "Silme onayı için SIL yazılmalı")
+            # Yabancı anahtarlar ON DELETE CASCADE; yine de açık oturumlar kapatılır.
+            conn.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))
+            conn.execute("DELETE FROM users WHERE id=? AND role='user'", (user_id,))
+            audit(conn, admin["id"], "delete_user", "user", user_id,
+                  {"full_name": hedef["full_name"], "tc": str(hedef["tc"])[:3] + "*****"})
             conn.commit()
             self.json_response({"ok": True})
 
