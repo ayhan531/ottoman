@@ -21,7 +21,7 @@
   --s: 1;
 
   /* Vurgu rengi (Design.Accents[0] = Mor) */
-  --purple: #7054f6;
+  --purple: #2f72e8;
   --lavender: #f0ecff;
 
   --ink: #101321;
@@ -70,7 +70,7 @@
 }
 
 /* Design.Accents — açık / gece / soluk açık / soluk gece */
-[data-accent="0"] { --purple: #7054f6; --lavender: #f0ecff; }
+[data-accent="0"] { --purple: #2f72e8; --lavender: #f0ecff; }
 [data-accent="1"] { --purple: #2f72e8; --lavender: #e8f1fe; }
 [data-accent="2"] { --purple: #0e9aa7; --lavender: #e3f6f8; }
 [data-accent="3"] { --purple: #1e9e6a; --lavender: #e7f6ee; }
@@ -1498,3 +1498,10 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   outline-offset: 2px;
   border-radius: 10px;
 }
+
+/* Marka logosu: üst çubuk (mobil) ve masaüstü kenar çubuğu */
+.esube .brand-word, .overlay .brand-word { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.esube .brand-logo-icon, .overlay .brand-logo-icon { width: 26px; height: 26px; border-radius: 8px; object-fit: cover; flex: none; }
+.esube .sidebar .brandmark, .overlay .sidebar .brandmark { display: flex; align-items: center; gap: 10px; }
+.esube .sidebar .brandmark .brand-logo-icon, .overlay .sidebar .brandmark .brand-logo-icon { width: 34px; height: 34px; border-radius: 9px; }
+.esube .sidebar .brandmark span, .overlay .sidebar .brandmark span { font-family: "Dancing Script", cursive; }

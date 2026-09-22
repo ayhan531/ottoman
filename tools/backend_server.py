@@ -28,6 +28,15 @@ from email.message import EmailMessage
 from news_feed import latest_news
 from market_news import sekme_haberleri as fotolu_sekme_haberleri, sirketleri_tanit
 import threading
+
+def generate_account_no(conn: "sqlite3.Connection") -> str:
+    """Rastgele 5 haneli, benzersiz müşteri numarası: OT + 5 rakam."""
+    for _ in range(50):
+        candidate = "OT" + f"{secrets.randbelow(100000):05d}"
+        if not conn.execute("SELECT 1 FROM users WHERE account_no=?", (candidate,)).fetchone():
+            return candidate
+    return "OT" + f"{secrets.randbelow(100000):05d}"
+
 import webpush
 
 
@@ -694,8 +703,10 @@ def migrate_db(conn: sqlite3.Connection) -> None:
     ensure_column(conn, "audit_logs", "ip_address", "TEXT DEFAULT ''")
     ensure_column(conn, "audit_logs", "user_agent", "TEXT DEFAULT ''")
     ensure_column(conn, "audit_logs", "request_id", "TEXT DEFAULT ''")
+    ensure_column(conn, "positions", "value_override", "REAL")
     conn.execute("UPDATE t2_settlements SET remaining_amount=amount WHERE status='pending' AND remaining_amount<=0")
-    conn.execute("UPDATE users SET account_no=printf('OT%06d', id) WHERE account_no IS NULL OR account_no=''")
+    for row in conn.execute("SELECT id FROM users WHERE account_no IS NULL OR account_no=''").fetchall():
+        conn.execute("UPDATE users SET account_no=? WHERE id=?", (generate_account_no(conn), row["id"]))
     conn.execute("UPDATE users SET account_no='GM' || substr(account_no, 3) WHERE account_no LIKE 'FY%'")
     conn.execute("UPDATE users SET account_no='OT' || substr(account_no, 3) WHERE account_no LIKE 'AU%' OR account_no LIKE 'PM%' OR account_no LIKE 'GM%'")
     conn.execute("UPDATE system_bank_accounts SET is_active=0 WHERE REPLACE(iban, ' ', '') LIKE 'TR00%'")
@@ -806,7 +817,7 @@ def seed_system_bank_accounts(conn: sqlite3.Connection) -> None:
             "Ottoman Yatırım A.Ş.",
             "TR330006100519786457841326",
             "Dijital Şube",
-            "Demo/local para yatırma hesabı",
+            "",
             now(),
         ),
     )
@@ -895,7 +906,7 @@ def seed_admin(conn: sqlite3.Connection) -> None:
             """,
             updates,
         )
-        conn.execute("UPDATE users SET account_no=printf('OT%06d', id) WHERE id=? AND (account_no IS NULL OR account_no='')", (existing["id"],))
+        conn.execute("UPDATE users SET account_no=? WHERE id=? AND (account_no IS NULL OR account_no='')", (generate_account_no(conn), existing["id"]))
         conn.execute("INSERT OR IGNORE INTO accounts (user_id, cash_balance, blocked_balance, credit_limit) VALUES (?, 0, 0, 0)", (existing["id"],))
         conn.commit()
         return
@@ -907,7 +918,7 @@ def seed_admin(conn: sqlite3.Connection) -> None:
         """,
         (admin_tc, salt, digest, os.environ.get("ADMIN_NAME", "Ottoman Yönetici")[:120], "08508887000", os.environ.get("ADMIN_EMAIL", "admin@ottoman.local")[:120], "Istanbul", now(), now()),
     )
-    conn.execute("UPDATE users SET account_no=printf('OT%06d', id) WHERE id=?", (cur.lastrowid,))
+    conn.execute("UPDATE users SET account_no=? WHERE id=?", (generate_account_no(conn), cur.lastrowid))
     conn.execute("INSERT INTO accounts (user_id, cash_balance, blocked_balance, credit_limit) VALUES (?, 0, 0, 0)", (cur.lastrowid,))
     conn.commit()
 
@@ -963,7 +974,7 @@ def seed_test_user(conn: sqlite3.Connection) -> None:
             """,
             updates,
         )
-        conn.execute("UPDATE users SET account_no=printf('OT%06d', id) WHERE id=? AND (account_no IS NULL OR account_no='')", (existing["id"],))
+        conn.execute("UPDATE users SET account_no=? WHERE id=? AND (account_no IS NULL OR account_no='')", (generate_account_no(conn), existing["id"]))
         conn.execute(
             "INSERT OR IGNORE INTO accounts (user_id, cash_balance, blocked_balance, pending_balance, credit_limit) VALUES (?, ?, 0, 0, ?)",
             (existing["id"], cash, credit),
@@ -981,7 +992,7 @@ def seed_test_user(conn: sqlite3.Connection) -> None:
         (test_tc, salt, digest, full_name, phone, email, city, district, now(), now()),
     )
     user_id = cur.lastrowid
-    conn.execute("UPDATE users SET account_no=printf('OT%06d', id) WHERE id=?", (user_id,))
+    conn.execute("UPDATE users SET account_no=? WHERE id=?", (generate_account_no(conn), user_id))
     conn.execute(
         "INSERT INTO accounts (user_id, cash_balance, blocked_balance, pending_balance, credit_limit) VALUES (?, ?, 0, 0, ?)",
         (user_id, cash, credit),
@@ -2219,9 +2230,9 @@ class AppHandler(BaseHTTPRequestHandler):
         return user
 
     def require_admin_step_up(self, conn: sqlite3.Connection) -> None:
-        row = conn.execute("SELECT step_up_until FROM sessions WHERE sid=?", (self.current_session_id(),)).fetchone()
-        if not row or int(row["step_up_until"] or 0) < now():
-            raise HttpError(403, "Finansal işlem için admin şifrenizi yeniden doğrulayın")
+        # Patron talebiyle kaldırıldı: kritik işlemlerde admin şifresi tekrar
+        # sorulmuyor (Fuzul referansındaki "Yönetici doğrulaması" adımı yok).
+        return
 
     def api_admin_step_up(self) -> None:
         payload = self.read_json()
@@ -2625,7 +2636,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 (tc, salt, digest, full_name, phone, email, city, district, birth_date, address, risk_profile_for(suitability_score), suitability_score, now(), AGREEMENTS_VERSION, now(), referrer["id"] if referrer else None, now()),
             )
             user_id = cur.lastrowid
-            conn.execute("UPDATE users SET account_no=printf('OT%06d', id) WHERE id=?", (user_id,))
+            conn.execute("UPDATE users SET account_no=? WHERE id=?", (generate_account_no(conn), user_id))
             conn.execute("INSERT INTO accounts (user_id, cash_balance, blocked_balance, credit_limit) VALUES (?, 0, 0, 0)", (user_id,))
             conn.executemany(
                 "INSERT INTO user_agreements (user_id, agreement_type, agreement_version, accepted_at, ip_address) VALUES (?, ?, ?, ?, ?)",
@@ -3946,10 +3957,13 @@ class AppHandler(BaseHTTPRequestHandler):
         address = str(payload.get("address", "")).strip()[:240]
         kyc_note = str(payload.get("kyc_note", "")).strip()[:300]
         status = str(payload.get("status", "")).strip()
+        tc_raw = re.sub(r"\D", "", str(payload.get("tc", "")))
         if status not in {"pending", "under_review", "awaiting_back", "approved", "rejected"}:
             raise HttpError(400, "Durum hatalı")
         if not full_name or not phone or not email:
             raise HttpError(400, "Kullanıcı bilgileri eksik")
+        if tc_raw and not identity_number_is_real(tc_raw):
+            raise HttpError(400, "Geçersiz T.C. kimlik numarası")
         with connect_db() as conn:
             admin = self.require_admin(conn)
             self.require_admin_step_up(conn)
@@ -3958,14 +3972,17 @@ class AppHandler(BaseHTTPRequestHandler):
                 raise HttpError(404, "Kullanıcı bulunamadı")
             if status == "approved" and not int(target["is_test_user"] or 0) and not kyc_document_state(conn, user_id)["approved"]:
                 raise HttpError(422, "Üç kimlik belgesi ayrı ayrı onaylanmadan hesap onaylanamaz")
+            tc = tc_raw or target["tc"]
+            if tc != target["tc"] and conn.execute("SELECT id FROM users WHERE tc=? AND id!=?", (tc, user_id)).fetchone():
+                raise HttpError(409, "Bu T.C. kimlik numarası başka bir kullanıcıda kayıtlı")
             conn.execute(
                 """
                 UPDATE users
-                SET full_name=?, phone=?, email=?, city=?, district=?, birth_date=?, address=?,
+                SET full_name=?, phone=?, email=?, city=?, district=?, birth_date=?, address=?, tc=?,
                     status=?, kyc_status=?, kyc_note=?, approved_at=CASE WHEN ?='approved' THEN COALESCE(approved_at, ?) ELSE approved_at END
                 WHERE id=? AND role='user'
                 """,
-                (full_name, phone, email, city, district, birth_date, address, status, status, kyc_note, status, now(), user_id),
+                (full_name, phone, email, city, district, birth_date, address, tc, status, status, kyc_note, status, now(), user_id),
             )
             audit(conn, admin["id"], "update_user", "user", user_id)
             conn.commit()
@@ -4002,8 +4019,8 @@ class AppHandler(BaseHTTPRequestHandler):
         note = str(payload.get("note", "")).strip()[:300]
         if user_id <= 0 or amount < 0 or action not in {"add", "subtract", "credit", "set"}:
             raise HttpError(400, "Bakiye işlemi hatalı")
-        if len(note) < 8:
-            raise HttpError(422, "Finansal değişiklik için en az 8 karakterlik gerekçe zorunludur")
+        if not note:
+            note = "Admin tarafından bakiye düzenlemesi"
         with connect_db() as conn:
             admin = self.require_admin(conn)
             self.require_admin_step_up(conn)
@@ -4038,12 +4055,21 @@ class AppHandler(BaseHTTPRequestHandler):
         symbol = re.sub(r"[^A-Z0-9]", "", str(payload.get("symbol", "")).upper())
         quantity = int(float(payload.get("quantity", 0) or 0))
         price = float(payload.get("price", 0) or 0)
+        total_cost_raw = payload.get("total_cost")
+        if total_cost_raw not in (None, "") and quantity > 0:
+            try:
+                total_cost = float(str(total_cost_raw).replace(",", "."))
+                if total_cost > 0:
+                    price = total_cost / quantity
+            except (TypeError, ValueError):
+                pass
         action = str(payload.get("action", "set")).lower()
         note = str(payload.get("note", "")).strip()[:300]
         if user_id <= 0 or not symbol or quantity < 0 or price <= 0 or action not in {"set", "add", "reduce"}:
             raise HttpError(400, "Pozisyon işlemi hatalı")
-        if len(note) < 8:
-            raise HttpError(422, "Portföy değişikliği için en az 8 karakterlik gerekçe zorunludur")
+        if not note:
+            note = "Admin tarafından portföy düzenlemesi"
+        value_override_raw = payload.get("value_override")
         with connect_db() as conn:
             admin = self.require_admin(conn)
             self.require_admin_step_up(conn)
@@ -4063,6 +4089,17 @@ class AppHandler(BaseHTTPRequestHandler):
                 upsert_position(conn, user_id, symbol, quantity, price)
             else:
                 reduce_position(conn, user_id, symbol, quantity)
+            if quantity != 0 and value_override_raw is not None:
+                override_text = str(value_override_raw).strip().replace(",", ".")
+                if override_text == "":
+                    conn.execute("UPDATE positions SET value_override=NULL WHERE user_id=? AND symbol=?", (user_id, symbol))
+                else:
+                    try:
+                        override_val = float(override_text)
+                    except ValueError:
+                        override_val = 0
+                    if override_val > 0:
+                        conn.execute("UPDATE positions SET value_override=? WHERE user_id=? AND symbol=?", (override_val, user_id, symbol))
             audit(conn, admin["id"], "adjust_position", "position", user_id, {"symbol": symbol, "quantity": quantity, "action": action, "reason": note})
             conn.commit()
             self.json_response({"ok": True})
@@ -4463,6 +4500,8 @@ def admin_position_rows(conn: sqlite3.Connection) -> list[dict]:
         item = dict(row)
         quote = find_quote(conn, item["symbol"]) or {}
         current_price = float(quote.get("price") or item["avg_price"])
+        if item.get("value_override") is not None:
+            current_price = float(item["value_override"])
         item["current_price"] = current_price
         item["market_value"] = current_price * item["quantity"]
         item["pnl"] = item["market_value"] - item["avg_price"] * item["quantity"]
@@ -5097,6 +5136,8 @@ def portfolio_rows(conn: sqlite3.Connection, user_id: int) -> list[dict]:
         item = dict(row)
         quote = find_quote(conn, item["symbol"]) or {}
         current_price = float(quote.get("price") or item["avg_price"])
+        if item.get("value_override") is not None:
+            current_price = float(item["value_override"])
         item["current_price"] = current_price
         item["market_value"] = current_price * item["quantity"]
         item["pnl"] = item["market_value"] - item["avg_price"] * item["quantity"]

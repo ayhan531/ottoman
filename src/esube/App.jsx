@@ -15,7 +15,7 @@ import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHo
 import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
 import { useGeriTusu } from "./geri.js";
 import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, iosBrowser, iosToolbarAtBottom, uygulamaIciTarayici, tarayicidaAc, kurulumSemasi, adresiKopyala, kurulumAdresi, kurulumIstendi, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
-import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, parseAmount } from "./market.js";
+import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, MARKET_CONTACT_TEXT, IPO, FUNDS, parseAmount, group } from "./market.js";
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
 export const APP_VERSION = "1.6.3";
@@ -270,7 +270,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       <button className="ava" onClick={() => setOverlay({ kind: "profile" })} aria-label={T("Profil")}>
         {me?.avatar_url ? <img src={me.avatar_url} alt="" /> : monogram}
       </button>
-      <div className="brand-word">Ottoman</div>
+      <div className="brand-word"><img src="/logo-mark.png" alt="" className="brand-logo-icon" />Ottoman</div>
       <div className="brandbar-actions">
         {me?.role === "admin" && (
           <button className="icon-btn lav" onClick={onAdmin} title="Admin"><Icon name="shield" size={20} /></button>
@@ -344,6 +344,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             onPortfolio={() => go(3)}
             onBankAccounts={() => setOverlay({ kind: "banks" })}
             onNotice={showNotice}
+            onLogout={onLogout}
           />
         );
       case 5:
@@ -480,7 +481,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         </div>
       )}
       <nav className="sidebar">
-        <div className="brandmark">Ottoman</div>
+        <div className="brandmark"><img src="/logo-mark.png" alt="" className="brand-logo-icon" /><span>Ottoman Yatırım</span></div>
         {NAV.map((item, index) => (
           <button key={item.title} className={index === 2 ? "trade-cta" : navActive(index) ? "active" : ""} onClick={() => navigate(index)}>
             <Icon name={item.icon} size={20} />
@@ -744,6 +745,19 @@ function StockPicker({ instruments, marketTab, watchlist, onClose, onPick }) {
     const kodlar = new Set(takipte.map((item) => item.code));
     return [...takipte, ...list.filter((item) => !kodlar.has(item.code))];
   }, [query, list, watchlist]);
+  // Fon ve halka arz için liste hiç gösterilmez, referans yönlendirmesi çıkar.
+  if (marketTab === IPO || marketTab === FUNDS) {
+    return (
+      <Sheet title={T(MARKET_NAMES[marketTab])} onClose={onClose}>
+        <div className="picker-body">
+          <div className="referral-note">
+            <Icon name="headset" size={22} color="var(--muted)" />
+            <span>{T(MARKET_CONTACT_TEXT[marketTab])}</span>
+          </div>
+        </div>
+      </Sheet>
+    );
+  }
   return (
     <Sheet title={T("Hisse Ara")} onClose={onClose}>
       <div className="picker-body">
@@ -864,7 +878,7 @@ function TransferSheet({ deposit, available, bankAccounts, me, onClose, onDone }
             <label className="tl-field">
               <span>{T("Gönderilen Tutar")} (₺)</span>
               <input inputMode="decimal" value={amountText} placeholder="0,00"
-                onChange={(event) => setAmountText(event.target.value)} />
+                onChange={(event) => setAmountText(group(event.target.value))} />
             </label>
             <span className="tl-hint">{T("5-15 dakika içerisinde hesabınıza yansır.")}</span>
           </>
@@ -890,7 +904,7 @@ function TransferSheet({ deposit, available, bankAccounts, me, onClose, onDone }
             <label className="tl-field">
               <span>{T("Çekim Tutarı")} (₺)</span>
               <input inputMode="decimal" value={amountText} placeholder="0,00"
-                onChange={(event) => setAmountText(event.target.value)} />
+                onChange={(event) => setAmountText(group(event.target.value))} />
             </label>
           </>
         )}

@@ -14,7 +14,7 @@ const Row = ({ title, subtitle, onClick }) => (
 
 export default function Account({
   brandBar, me, account, stockValue, monogram, onOpenPersonal, onOpenSecurity, onOpenContracts,
-  onOpenNotifySettings, onTransfer, onHistory, onNotice, onPortfolio, onBankAccounts, version,
+  onOpenNotifySettings, onTransfer, onHistory, onNotice, onPortfolio, onBankAccounts, version, onLogout,
 }) {
   const [hidden, setHidden] = useState(false);
   const cash = Number(account?.cash_balance || 0);
@@ -110,6 +110,17 @@ export default function Account({
           />
         </Divided>
       </div>
+
+      <button
+        className="card outline list-card"
+        style={{ color: "var(--red, #e5484d)", fontWeight: 600, justifyContent: "center", textAlign: "center", padding: "14px" }}
+        onClick={() => {
+          if (window.confirm(T("Çıkış yapmak istediğinize emin misiniz?"))) onLogout?.();
+        }}
+      >
+        <Icon name="logout" size={18} color="var(--red, #e5484d)" />
+        {T("Çıkış Yap")}
+      </button>
     </div>
   );
 }

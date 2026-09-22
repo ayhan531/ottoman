@@ -1,7 +1,7 @@
 // Eski e-şube kabuğundan korunan parçalar: giriş ekranı ve admin paneli.
 // Bunlar APK'da bulunmayan, kuruma özgü ekranlardır; extra.css/style.css ile biçimlenir.
 import React, { useEffect, useState } from "react";
-import { Bell, CheckCircle2, Eye, EyeOff, Moon, ShieldCheck, Sun, X } from "lucide-react";
+import { Bell, Calendar, CheckCircle2, Eye, EyeOff, Moon, ShieldCheck, Sun, X } from "lucide-react";
 import { api } from "./esube/store.js";
 import { rememberAccount, takePendingTc } from "./esube/accounts.js";
 import { ILLER, ilceleri } from "./esube/regions.js";
@@ -58,7 +58,7 @@ function AuthTicker() {
           <span key={`${row.symbol}-${index}`}>
             <b>{row.symbol}</b>
             <i className={Number(row.change_pct) >= 0 ? "up" : "down"}>
-              {Number(row.change_pct) >= 0 ? "+" : "−"}%{Math.abs(Number(row.change_pct || 0)).toFixed(2).replace(".", ",")}
+              {Number(row.change_pct) >= 0 ? "+" : "−"}{Math.abs(Number(row.change_pct || 0)).toFixed(2).replace(".", ",")}%
             </i>
           </span>
         ))}
@@ -79,6 +79,57 @@ const SifreAlani = ({ name, placeholder, value, onChange }) => {
       <button type="button" onClick={() => setAcik(!acik)} aria-label="Şifreyi göster">
         {acik ? <EyeOff size={18} /> : <Eye size={18} />}
       </button>
+    </span>
+  );
+};
+
+/** Backend password_is_strong ile birebir aynı 4 kriter: uzunluk>=10,
+    büyük harf, küçük harf, rakam. "guclu" olmadan hesap açılamaz. */
+export const sifreGucu = (value) => {
+  const v = String(value || "");
+  if (!v) return null;
+  const kriterler = [v.length >= 10, /[A-ZÇĞİÖŞÜ]/.test(v), /[a-zçğıöşü]/.test(v), /\d/.test(v)];
+  const puan = kriterler.filter(Boolean).length;
+  return puan === 4 ? "guclu" : puan >= 2 ? "orta" : "zayif";
+};
+
+const SifreGucMetre = ({ value }) => {
+  const seviye = sifreGucu(value);
+  if (!seviye) return null;
+  const etiket = { zayif: "Zayıf", orta: "Orta", guclu: "Güçlü" }[seviye];
+  return (
+    <div className={`auth-strength ${seviye}`}>
+      <i /><i /><i />
+      <span>{etiket}</span>
+    </div>
+  );
+};
+
+/** GG/AA/YYYY: rakamlar yazıldıkça otomatik "/" ekler; sağdaki takvim ikonu
+    gizli bir native tarih girişini tetikler (her tarayıcıda kendi seçicisini açar). */
+const dogumBicimle = (raw) => {
+  const rakam = String(raw || "").replace(/\D/g, "").slice(0, 8);
+  const gun = rakam.slice(0, 2), ay = rakam.slice(2, 4), yil = rakam.slice(4, 8);
+  return [gun, ay, yil].filter(Boolean).join("/");
+};
+
+const DogumAlani = ({ value, onChange }) => {
+  const isoValue = (() => {
+    const [g, a, y] = String(value || "").split("/");
+    return g && a && y && y.length === 4 ? `${y}-${a.padStart(2, "0")}-${g.padStart(2, "0")}` : "";
+  })();
+  return (
+    <span className="auth-secret auth-dob">
+      <input inputMode="numeric" placeholder="GG/AA/YYYY" value={value}
+        onChange={(event) => onChange(dogumBicimle(event.target.value))} required maxLength={10} />
+      <span className="auth-dob-pick">
+        <Calendar size={18} />
+        <input type="date" tabIndex={-1} aria-label="Takvimden seç" value={isoValue}
+          onChange={(event) => {
+            const [y, a, g] = event.target.value.split("-");
+            if (y && a && g) onChange(`${g}/${a}/${y}`);
+          }} />
+      </span>
     </span>
   );
 };
@@ -208,7 +259,7 @@ function AuthScreen({ onAuthed, back }) {
               {kayit.tc.length >= 11 && !gecerliTc(kayit.tc) && <small className="alan-hata">{tcHatasi(kayit.tc)}</small>}
               {kayit.tc.length === 11 && gecerliTc(kayit.tc) && <small className="alan-tamam">Kimlik numarası doğrulandı</small>}
             </Alan>
-            <Alan label="Doğum Tarihi"><input inputMode="numeric" placeholder="GG/AA/YYYY" value={kayit.dogum} onChange={alan("dogum")} required /></Alan>
+            <Alan label="Doğum Tarihi"><DogumAlani value={kayit.dogum} onChange={(v) => setKayit((eski) => ({ ...eski, dogum: v }))} /></Alan>
           </div>
 
           <h4>İKAMET BİLGİLERİ</h4>
@@ -241,6 +292,7 @@ function AuthScreen({ onAuthed, back }) {
           <div className="auth-box">
             <Alan label="Şifre" genis>
               <SifreAlani name="password" placeholder="En az 10 karakter, büyük-küçük harf ve rakam" value={kayit.sifre} onChange={alan("sifre")} />
+              <SifreGucMetre value={kayit.sifre} />
             </Alan>
             <Alan label="Şifre Tekrar" genis>
               <SifreAlani name="password_confirm" placeholder="Şifrenizi tekrar girin" value={kayit.sifre2} onChange={alan("sifre2")} />
@@ -252,7 +304,7 @@ function AuthScreen({ onAuthed, back }) {
             KVKK aydınlatma metni, risk bildirimi ve e-şube sözleşmelerini okudum, kabul ediyorum.
           </label>
           {message && <div className="warning">{message}</div>}
-          <button className="confirm" disabled={busy}>{busy ? "Gönderiliyor…" : "Hesap Oluştur"}</button>
+          <button className="confirm" disabled={busy || sifreGucu(kayit.sifre) !== "guclu"}>{busy ? "Gönderiliyor…" : "Hesap Oluştur"}</button>
         </form>
       )}
     </main><div className="home-indicator" /></div></div>

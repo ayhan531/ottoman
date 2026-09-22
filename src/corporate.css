@@ -3,11 +3,11 @@
 .corporate a{color:inherit;text-decoration:none}
 .corporate button{font-weight:600}
 .corporate-nav{display:flex;align-items:center;gap:24px;min-height:88px;padding:16px max(24px,calc((100% - 1240px)/2));background:#fff;position:sticky;top:0;z-index:10;border-bottom:1px solid #ebe9f0}
-.corporate-nav .brand{color:#7054f6;font-size:30px;flex-shrink:0}
+.corporate-nav .brand{color:#2f72e8;font-size:30px;flex-shrink:0;display:inline-flex;align-items:center;gap:10px}.corporate-nav .brand .brand-logo-icon{width:32px;height:32px;border-radius:9px}
 .corporate-nav nav{display:flex;gap:18px;margin-left:auto;align-items:center}
 .corporate-nav nav a{font-size:13px;white-space:nowrap;font-weight:600;padding:8px 0}
-.corporate-nav nav a[aria-current]{color:#7054f6;border-bottom:2px solid #7054f6}
-.corporate-login,.corporate-primary{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:#7054f6;color:#fff;border-radius:6px;padding:12px 18px;white-space:normal}
+.corporate-nav nav a[aria-current]{color:#2f72e8;border-bottom:2px solid #2f72e8}
+.corporate-login,.corporate-primary{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:#2f72e8;color:#fff;border-radius:6px;padding:12px 18px;white-space:normal}
 .corporate-menu{display:none}
 .corporate-hero{min-height:560px;display:grid;place-items:center;text-align:center;padding:70px 24px;background:#171226;color:#fff;position:relative;isolation:isolate;overflow:hidden}
 .corporate-hero:before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(16,12,30,.94) 0%,rgba(30,22,53,.74) 49%,rgba(15,13,27,.76) 100%),url('/news/bist-markets.jpg') center 54%/cover;filter:saturate(.76) sepia(.22) contrast(1.08);opacity:.94;z-index:-1}
@@ -18,7 +18,7 @@
 .corporate-hero h2{font-size:30px;line-height:1.3;font-weight:500;margin:0 0 20px;color:#ddd2ff}
 .corporate-hero p{font-size:18px;max-width:640px;margin:0 auto;color:#dedbe8}
 .corporate-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px}
-.corporate-actions button{display:inline-flex;align-items:center;justify-content:center;gap:12px;background:#7054f6;border:1px solid #7054f6;color:white;padding:14px 24px;border-radius:6px}
+.corporate-actions button{display:inline-flex;align-items:center;justify-content:center;gap:12px;background:#2f72e8;border:1px solid #2f72e8;color:white;padding:14px 24px;border-radius:6px}
 .corporate-actions .outline{background:transparent;border-color:#b5a7ce;color:white}
 .corporate-trust{display:flex;justify-content:center;gap:28px;margin-top:28px;font-size:12px;color:#e3deee;flex-wrap:wrap}
 .corporate-trust span{display:flex;align-items:center;gap:8px}
@@ -36,10 +36,10 @@
 .corporate-services{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}
 .corporate-services article{border:1px solid #e9e7f0;border-radius:8px;padding:28px 24px;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s}
 .corporate-services article:hover{transform:translateY(-4px);box-shadow:0 12px 24px #251e4010}
-.corporate-services article>svg{color:#7054f6;margin-bottom:14px}
+.corporate-services article>svg{color:#2f72e8;margin-bottom:14px}
 .corporate-services h3{font-size:18px;line-height:1.4;margin:0 0 10px}
 .corporate-services p{font-size:14px;line-height:1.7;color:#666877;margin:0 0 22px}
-.corporate-services button,.text-link{color:#7054f6;display:inline-flex;align-items:center;gap:8px;padding:0;font-size:14px}
+.corporate-services button,.text-link{color:#2f72e8;display:inline-flex;align-items:center;gap:8px;padding:0;font-size:14px}
 .corporate-services button{margin-top:auto;align-self:flex-start}
 .corporate-center{text-align:center;margin-top:28px}
 .corporate-numbers{background:#654ab8;color:#fff;padding:56px max(24px,calc((100% - 1200px)/2))}
@@ -51,7 +51,7 @@
 .corporate-why .corporate-heading{text-align:left}
 .corporate-why ul{padding:0;margin:0 0 30px;list-style:none;display:grid;gap:14px}
 .corporate-why li{display:flex;align-items:center;gap:12px;font-size:15px}
-.corporate-why li svg{color:#7054f6;flex-shrink:0}
+.corporate-why li svg{color:#2f72e8;flex-shrink:0}
 .corporate-why img{width:100%;aspect-ratio:5/4;object-fit:cover;border-radius:8px}
 .corporate-feedback{max-width:720px;text-align:center;margin:auto;padding:24px 0}
 .corporate-feedback h3{font-size:23px;margin:0 0 12px}
@@ -64,7 +64,7 @@
 .corporate-discover button{text-align:left;border:1px solid #e9e7f0;border-radius:8px;padding:24px;position:relative}
 .corporate-discover strong,.corporate-discover span{display:block;margin-right:20px}
 .corporate-discover span{color:#6d6a79;font-size:13px;margin-top:8px}
-.corporate-discover svg{position:absolute;right:20px;top:24px;color:#7054f6}
+.corporate-discover svg{position:absolute;right:20px;top:24px;color:#2f72e8}
 .corporate-cta{text-align:center;background:#302440;color:#fff;padding:64px 24px}
 .corporate-cta h2{font-size:32px;line-height:1.3;max-width:700px;margin:0 auto 18px}
 .corporate-cta p{color:#ded6e8;max-width:650px;margin:auto}
@@ -84,7 +84,7 @@
 .corporate-faq p{color:#656171}
 .corporate-info{padding:24px 0;border-bottom:1px solid #e9e7ef;max-width:850px}
 .corporate-info h2{font-size:23px}
-.corporate-info span{color:#7054f6;font-size:11px}
+.corporate-info span{color:#2f72e8;font-size:11px}
 @keyframes corporate-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
 @media(max-width:1100px){.corporate-nav nav{gap:10px}.corporate-nav{gap:14px}.corporate-nav nav a{font-size:11px}.corporate-services,.corporate-discover{grid-template-columns:repeat(2,minmax(0,1fr))}.corporate-why{gap:32px}}
 @media(max-width:800px){.corporate-menu{display:grid;place-items:center}.corporate-nav{min-height:76px}.corporate-login{margin-left:auto;font-size:12px;padding:10px}.corporate-nav nav{display:none}.corporate-nav nav.open{display:grid;position:absolute;top:100%;left:0;right:0;background:white;padding:16px 24px;border-bottom:1px solid #e9e7ef;box-shadow:0 10px 30px #0001}.corporate-nav nav a{font-size:15px}.corporate-section{padding:48px 24px}.corporate-hero{min-height:500px;padding:50px 24px}.corporate-hero:after{right:2%;width:72vw}.corporate-hero h1{font-size:44px}.corporate-hero h2{font-size:24px}.corporate-hero p{font-size:16px}.corporate-heading h2,.corporate-cta h2{font-size:28px}.corporate-why{grid-template-columns:1fr}.corporate-why img{max-height:280px}.corporate-footer{grid-template-columns:1fr 1fr;gap:28px}.corporate-numbers>div:last-child{grid-template-columns:1fr 1fr}}

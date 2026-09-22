@@ -579,7 +579,7 @@ def sekme_haberleri(sekme: int, en_az: int = 12) -> tuple[list[dict], dict]:
             ekle(haber)
 
     temiz = []
-    for haber in secilen[:40]:
+    for haber in secilen[:28]:
         temiz.append({k: v for k, v in haber.items()
                       if not k.startswith("_") and k not in ("kodlar", "turkiye")})
     bilgi = {

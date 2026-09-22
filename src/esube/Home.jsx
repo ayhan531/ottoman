@@ -3,7 +3,8 @@ import React, { useMemo, useState } from "react";
 import Icon from "./icons.jsx";
 import { Symbol, SearchBox, Segments, Divided, Sheet, LazyList } from "./ui.jsx";
 import {
-  MARKET_NAMES, BIST, BIST100, BIST30, PARTICIPATION, CURRENCY,
+  MARKET_NAMES, BIST, BIST100, BIST30, PARTICIPATION, CURRENCY, DIVIDEND, IPO, FUNDS,
+  MARKET_CONTACT_TEXT,
   listFor, indexFor, breadth, turnover, movers, search, money, amount, move, percent,
   volumeText, isMarketOpen, parseAmount,
 } from "./market.js";
@@ -139,11 +140,16 @@ function Converter({ rates, onNotice }) {
   );
 }
 
+// Ana sayfada Al/Sat sekmeleri: BIST Temettü burada gösterilmez, yalnızca
+// Haberler'de bir filtre olarak kalır (patron talebi).
+const HOME_MARKETS = MARKET_NAMES.map((name, value) => ({ name, value })).filter((m) => m.value !== DIVIDEND);
+
 export default function Home({
   brandBar, marketTab, setMarketTab, instruments, state, watchlist, openTrade, onNotice, onAllStocks,
 }) {
   const [query, setQuery] = useState("");
   const list = useMemo(() => listFor(marketTab, instruments), [marketTab, instruments]);
+  const homeActive = Math.max(0, HOME_MARKETS.findIndex((m) => m.value === marketTab));
   const trimmed = query.trim();
   const results = useMemo(() => (trimmed ? search(trimmed, list) : []), [trimmed, list]);
 
@@ -194,6 +200,14 @@ export default function Home({
         )}
       </>
     );
+  } else if (marketTab === IPO || marketTab === FUNDS) {
+    heading = T(MARKET_NAMES[marketTab]);
+    body = (
+      <div className="referral-note">
+        <Icon name="headset" size={22} color="var(--muted)" />
+        <span>{T(MARKET_CONTACT_TEXT[marketTab])}</span>
+      </div>
+    );
   } else {
     heading = T(MARKET_NAMES[marketTab]);
     body = list.length ? (
@@ -209,7 +223,7 @@ export default function Home({
     <div className="page gap-14">
       {brandBar}
       <SearchBox placeholder={T("Ara")} value={query} onChange={setQuery} />
-      <Segments titles={MARKET_NAMES.map(T)} active={marketTab} onSelect={setMarketTab} />
+      <Segments titles={HOME_MARKETS.map((m) => T(m.name))} active={homeActive} onSelect={(index) => setMarketTab(HOME_MARKETS[index].value)} />
       {showStatus && <MarketStatus market={marketTab} list={list} instruments={instruments} state={state} />}
       {marketTab === CURRENCY && rates.length > 0 && <Converter rates={rates} onNotice={onNotice} />}
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>

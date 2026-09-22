@@ -11,7 +11,7 @@
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#171922",
-  "theme_color": "#7657ff",
+  "theme_color": "#2f72e8",
   "categories": ["finance", "business"],
   "icons": [
     { "src": "/icons/favicon-32.png", "sizes": "32x32", "type": "image/png" },

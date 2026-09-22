@@ -9,14 +9,25 @@ export const MARKET_NAMES = [
   "Halka Arzlar",
   "Fonlar",
   "Döviz",
+  "BIST 50",
 ];
 
-export const BIST = 0, BIST100 = 1, BIST30 = 2, PARTICIPATION = 3, DIVIDEND = 4, IPO = 5, FUNDS = 6, CURRENCY = 7;
+export const BIST = 0, BIST100 = 1, BIST30 = 2, PARTICIPATION = 3, DIVIDEND = 4, IPO = 5, FUNDS = 6, CURRENCY = 7, BIST50 = 8;
 
 /** Alım-satımı backend'de desteklenen sekmeler; diğerlerinde "referansınız ile iletişime geçin" çıkar. */
-export const TRADABLE_MARKETS = new Set([BIST, BIST100, BIST30, PARTICIPATION, DIVIDEND]);
+export const TRADABLE_MARKETS = new Set([BIST, BIST100, BIST30, PARTICIPATION, DIVIDEND, BIST50]);
+
+/** Al/Sat ekranı hiç açılmayan piyasalar için gösterilecek yönlendirme metni (bkz. Trade.jsx REFERRAL_TEXT). */
+export const MARKET_CONTACT_TEXT = {
+  [IPO]: "Halka arz alış satışları için referansınız ile iletişime geçiniz.",
+  [FUNDS]: "Fon alış satışları için referansınız ile iletişime geçiniz.",
+  [CURRENCY]: "Döviz alış satışları için referansınız ile iletişime geçiniz.",
+};
 
 const XU030 = ["AKBNK","AKSEN","ALARK","ASELS","ASTOR","BIMAS","BRSAN","EKGYO","ENKAI","EREGL","FROTO","GARAN","GUBRF","HEKTS","ISCTR","KCHOL","KOZAL","KRDMD","MGROS","ODAS","OYAKC","PETKM","PGSUS","SAHOL","SASA","SISE","TCELL","THYAO","TOASO","TUPRS"];
+
+// XU050 (BIST 50 endeksi) bileşenleri — getmidas.com ve infoyatirim.com XU050 listeleriyle çapraz doğrulanmıştır (Eylül 2026).
+const XU050 = ["AEFES","AKBNK","AKSEN","ALARK","ASELS","ASTOR","BIMAS","BRSAN","BTCIM","CANTE","CCOLA","CIMSA","DSTKF","ECILC","EFOR","EKGYO","ENKAI","EREGL","FROTO","GARAN","GLRMK","GUBRF","HALKB","HEKTS","ISCTR","KCHOL","KRDMD","KTLEV","KUYAS","MGROS","MIATK","OYAKC","PASEU","PETKM","PGSUS","SAHOL","SASA","SISE","TAVHL","TCELL","THYAO","TOASO","TRALT","TRMET","TTKOM","TUPRS","TURSG","ULKER","VAKBN","YKBNK"];
 
 const XU100_EXTRA = ["AEFES","AGHOL","AHGAZ","AKFGY","AKFYE","AKSA","ALFAS","ALTNY","ANSGR","ARCLK","ARDYZ","AVPGY","BERA","BFREN","BINHO","BOBET","BRYAT","BSOKE","BTCIM","CANTE","CCOLA","CIMSA","CVKMD","CWENE","DOAS","DOHOL","ECILC","EGEEN","ENERY","ENJSA","ESEN","EUPWR","EUREN","FENER","GESAN","GOLTS","GSDHO","GWIND","HTTBT","IPEKE","ISDMR","ISMEN","IZENR","KARSN","KAYSE","KCAER","KONTR","KONYA","KORDS","KOZAA","KTLEV","MAVI","MIATK","MPARK","OBAMS","OTKAR","PAPIL","PENTA","PSGYO","REEDR","SDTTR","SKBNK","SMRTG","SOKM","TAVHL","TKFEN","TMSN","TSKB","TTKOM","TTRAK","TUKAS","TURSG","ULKER","VAKBN","VESBE","VESTL","YEOTK","YKBNK","YYLGD","ZOREN"];
 
@@ -28,6 +39,7 @@ const XHARZ = ["ALTNY","BINHO","OBAMS","REEDR","PAPIL","SDTTR","MIATK","KCAER","
 
 const setOf = (list) => new Set(list);
 const S_XU030 = setOf(XU030);
+const S_XU050 = setOf(XU050);
 const S_XU100 = setOf([...XU030, ...XU100_EXTRA]);
 const S_XKTUM = setOf(XKTUM);
 const S_XTMTU = setOf(XTMTU);
@@ -55,14 +67,14 @@ export const money = (value) => "₺" + tr(value);
 /** Endeks/döviz gibi birim farkı olan değerler. */
 export const amount = (value, currency) =>
   currency === "" ? tr(value) : currency === "USD" ? "$" + tr(value) : currency === "EUR" ? "€" + tr(value) : "₺" + tr(value);
-/** "%4,55" */
-export const percent = (value) => "%" + tr(value);
+/** "4,55%" — yüzde işareti sonda (referans: +16,14% / -3,91%) */
+export const percent = (value) => tr(value) + "%";
 /** "+₺391,00" / "−₺391,00" */
 export const signed = (value) => (Number(value) >= 0 ? "+" : "−") + money(Math.abs(Number(value) || 0));
-/** "+%1,12" — Design.Move */
+/** "+1,12%" / "−1,12%" — Design.Move, yüzde işareti sonda */
 export const move = (value) => (Number(value) >= 0 ? "+" : "−") + percent(Math.abs(Number(value) || 0));
-/** "−₺337,50 (%0,17)" */
-export const delta = (amountValue, percentValue) => signed(amountValue) + " (" + percent(Math.abs(Number(percentValue) || 0)) + ")";
+/** "−₺337,50 (−0,17%)" — yüzde işareti sonda, kendi işaretiyle */
+export const delta = (amountValue, percentValue) => signed(amountValue) + " (" + move(Number(percentValue) || 0) + ")";
 
 /** 24.200,50 / 24200,5 / 24.5 biçimlerini okur (DemoAccount.ParseAmount). */
 export const parseAmount = (text) => {
@@ -172,6 +184,8 @@ export function listFor(market, instruments) {
       return stocks.filter((item) => S_XU100.has(item.code));
     case BIST30:
       return stocks.filter((item) => S_XU030.has(item.code));
+    case BIST50:
+      return stocks.filter((item) => S_XU050.has(item.code));
     case PARTICIPATION:
       return stocks.filter((item) => S_XKTUM.has(item.code));
     case DIVIDEND:

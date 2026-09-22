@@ -34,11 +34,9 @@ function useLock() {
   const [soru, setSoru] = useState(null); // { çöz, reddet }
   const gecerli = () => Date.now() < until;
 
-  // Kritik işlemden önce çağrılır: kilit açıksa hemen, değilse şifre sorar.
-  const ensure = useCallback(() => {
-    if (Date.now() < until) return Promise.resolve(true);
-    return new Promise((resolve) => setSoru({ resolve }));
-  }, [until]);
+  // Patron talebiyle kaldırıldı: kritik işlemlerde artık admin şifresi
+  // tekrar sorulmuyor, doğrudan izin veriliyor.
+  const ensure = useCallback(() => Promise.resolve(true), []);
 
   const dogrula = async (password) => {
     await api("/api/admin/step-up", { method: "POST", body: JSON.stringify({ password }) });
@@ -122,6 +120,7 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
     full_name: user.full_name || "", phone: user.phone || "", email: user.email || "",
     city: user.city || "", district: user.district || "", birth_date: user.birth_date || "",
     address: user.address || "", kyc_note: user.kyc_note || "", status: user.status || "pending",
+    tc: user.tc || "",
   });
   const [busy, setBusy] = useState("");
   const [history, setHistory] = useState([]);
@@ -164,7 +163,6 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
   const bakiyeUygula = () => {
     const tutar = Number(String(balance.amount).replace(",", "."));
     if (!Number.isFinite(tutar) || tutar < 0) return onNotice("Tutar hatalı", "Sıfır ya da üzeri bir tutar gir.");
-    if (balance.note.trim().length < 8) return onNotice("Gerekçe kısa", "Finansal değişiklik için en az 8 karakter gerekçe yaz.");
     return calistir("bakiye", () => api("/api/admin/balances", {
       method: "POST",
       body: JSON.stringify({ user_id: user.id, action: balance.action, amount: tutar, note: balance.note.trim() }),
@@ -175,7 +173,7 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
      gerekçesini yazar, çünkü sunucu gerekçesiz finansal değişiklik kabul etmiyor. */
   const bakiyeSifirla = () => {
     if (!window.confirm(`${user.full_name} hesabının nakit bakiyesi sıfırlanacak. Onaylıyor musun?`)) return undefined;
-    const gerekce = balance.note.trim().length >= 8 ? balance.note.trim() : "Bakiye admin tarafından sıfırlandı";
+    const gerekce = balance.note.trim() || "Bakiye admin tarafından sıfırlandı";
     return calistir("bakiye", () => api("/api/admin/balances", {
       method: "POST",
       body: JSON.stringify({ user_id: user.id, action: "set", amount: 0, note: gerekce }),
@@ -188,7 +186,6 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
     if (!position.symbol.trim()) return onNotice("Sembol gerekli", "Örnek: THYAO");
     if (!Number.isFinite(adet) || adet < 0) return onNotice("Adet hatalı", "Sıfır ya da üzeri bir adet gir.");
     if (!Number.isFinite(fiyat) || fiyat <= 0) return onNotice("Fiyat hatalı", "Sıfırdan büyük bir fiyat gir.");
-    if (position.note.trim().length < 8) return onNotice("Gerekçe kısa", "Portföy değişikliği için en az 8 karakter gerekçe yaz.");
     return calistir("pozisyon", () => api("/api/admin/positions", {
       method: "POST",
       body: JSON.stringify({
@@ -238,6 +235,10 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
           <div className="ac-form">
             <Field label="Ad soyad"><Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} /></Field>
             <Field label="Telefon"><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
+            <Field label="T.C. Kimlik No">
+              <Input value={form.tc} maxLength={11} inputMode="numeric" onChange={(e) => setForm({ ...form, tc: e.target.value.replace(/\D/g, "").slice(0, 11) })} />
+              {form.tc && !gecerliTc(form.tc) && <small className="ac-hint kirmizi">{tcHatasi(form.tc)}</small>}
+            </Field>
             <Field label="E-posta"><Input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></Field>
             <Field label="Doğum tarihi"><Input value={form.birth_date} placeholder="1990-01-01" onChange={(e) => setForm({ ...form, birth_date: e.target.value })} /></Field>
             <Field label="İl"><Input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></Field>
@@ -259,7 +260,7 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
               />
             </Field>
             <Field label="Tutar (₺)"><Input inputMode="decimal" value={balance.amount} onChange={(e) => setBalance({ ...balance, amount: e.target.value })} /></Field>
-            <Field label="Gerekçe (en az 8 karakter)" wide><Input value={balance.note} onChange={(e) => setBalance({ ...balance, note: e.target.value })} /></Field>
+            <Field label="Gerekçe (opsiyonel)" wide><Input value={balance.note} onChange={(e) => setBalance({ ...balance, note: e.target.value })} /></Field>
           </div>
           <div className="ac-actions">
             <button className="ac-danger" disabled={busy === "bakiye"} onClick={bakiyeSifirla}>Bakiyeyi sıfırla</button>
@@ -289,7 +290,7 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
             <Field label="Sembol"><Input value={position.symbol} placeholder="THYAO" onChange={(e) => setPosition({ ...position, symbol: e.target.value.toUpperCase() })} /></Field>
             <Field label="Adet (lot)"><Input inputMode="numeric" value={position.quantity} onChange={(e) => setPosition({ ...position, quantity: e.target.value })} /></Field>
             <Field label="Ortalama fiyat"><Input inputMode="decimal" value={position.price} onChange={(e) => setPosition({ ...position, price: e.target.value })} /></Field>
-            <Field label="Gerekçe (en az 8 karakter)" wide><Input value={position.note} onChange={(e) => setPosition({ ...position, note: e.target.value })} /></Field>
+            <Field label="Gerekçe (opsiyonel)" wide><Input value={position.note} onChange={(e) => setPosition({ ...position, note: e.target.value })} /></Field>
           </div>
           <button className="confirm" disabled={busy === "pozisyon"} onClick={pozisyonUygula}>{busy === "pozisyon" ? "Uygulanıyor…" : "Pozisyonu uygula"}</button>
         </Section>
@@ -968,7 +969,7 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
   const [query, setQuery] = useState("");
   const [kisi, setKisi] = useState("hepsi");
   const [duzenlenen, setDuzenlenen] = useState(null);
-  const [form, setForm] = useState({ quantity: "", price: "", note: "" });
+  const [form, setForm] = useState({ quantity: "", price: "", totalCost: "", valueOverride: "", note: "" });
   const [busy, setBusy] = useState(false);
 
   const liste = useMemo(() => {
@@ -993,6 +994,8 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
           user_id: duzenlenen.user_id, symbol: duzenlenen.symbol, action: "set",
           quantity: Number(form.quantity) || 0,
           price: Number(String(form.price).replace(",", ".")) || duzenlenen.avg_price,
+          total_cost: form.totalCost.trim() ? String(form.totalCost).replace(",", ".") : "",
+          value_override: form.valueOverride.trim() ? String(form.valueOverride).replace(",", ".") : "",
           note: form.note.trim().length >= 8 ? form.note.trim() : "Pozisyon admin tarafından düzenlendi",
         }),
       });
@@ -1061,7 +1064,7 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
                   </td>
                   <td className="sag">
                     <span className="ac-poz-islem">
-                      <button className="ac-ghost kare" aria-label="Düzenle" onClick={() => { setDuzenlenen(p); setForm({ quantity: String(p.quantity), price: String(p.avg_price), note: "" }); }}>
+                      <button className="ac-ghost kare" aria-label="Düzenle" onClick={() => { setDuzenlenen(p); setForm({ quantity: String(p.quantity), price: String(p.avg_price), totalCost: String((Number(p.avg_price) || 0) * (Number(p.quantity) || 0)), valueOverride: p.value_override != null ? String(p.value_override) : "", note: "" }); }}>
                         <Icon name="sliders" size={15} />
                       </button>
                       <button className="ac-danger kare" aria-label="Sil" onClick={() => sil(p)}><Icon name="trash" size={15} /></button>
@@ -1086,7 +1089,7 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
                 <small className="kisi"><Icon name="user" size={13} /> {p.full_name} {p.account_no ? `(${p.account_no})` : `(${p.user_id})`}</small>
               </span>
               <span className="ac-poz-islem">
-                <button className="ac-ghost" aria-label="Düzenle" onClick={() => { setDuzenlenen(p); setForm({ quantity: String(p.quantity), price: String(p.avg_price), note: "" }); }}>Düzenle</button>
+                <button className="ac-ghost" aria-label="Düzenle" onClick={() => { setDuzenlenen(p); setForm({ quantity: String(p.quantity), price: String(p.avg_price), totalCost: String((Number(p.avg_price) || 0) * (Number(p.quantity) || 0)), valueOverride: p.value_override != null ? String(p.value_override) : "", note: "" }); }}>Düzenle</button>
                 <button className="ac-danger small" aria-label="Sil" onClick={() => sil(p)}>Sil</button>
               </span>
             </div>
@@ -1109,7 +1112,9 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
             <div className="ac-form">
               <Field label="Adet"><Input inputMode="numeric" value={form.quantity} onChange={(e) => setForm((x) => ({ ...x, quantity: e.target.value.replace(/\D/g, "") }))} /></Field>
               <Field label="Alış fiyatı"><Input inputMode="decimal" value={form.price} onChange={(e) => setForm((x) => ({ ...x, price: e.target.value }))} /></Field>
-              <Field label="Gerekçe (en az 8 karakter)" wide><Input value={form.note} onChange={(e) => setForm((x) => ({ ...x, note: e.target.value }))} placeholder="Örn: Müşteri talebi üzerine düzeltme" /></Field>
+              <Field label="Toplam maliyet (opsiyonel)"><Input inputMode="decimal" value={form.totalCost} onChange={(e) => setForm((x) => ({ ...x, totalCost: e.target.value }))} placeholder="Doldurulursa alış fiyatının yerine geçer" /></Field>
+              <Field label="Güncel değer fiyatı (opsiyonel)"><Input inputMode="decimal" value={form.valueOverride} onChange={(e) => setForm((x) => ({ ...x, valueOverride: e.target.value }))} placeholder="Boş bırakılırsa canlı fiyat kullanılır" /></Field>
+              <Field label="Gerekçe (opsiyonel)" wide><Input value={form.note} onChange={(e) => setForm((x) => ({ ...x, note: e.target.value }))} placeholder="Örn: Müşteri talebi üzerine düzeltme" /></Field>
             </div>
             <div className="ac-actions">
               <button className="ac-ghost" onClick={() => setDuzenlenen(null)}>Vazgeç</button>
@@ -1813,7 +1818,6 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
   const uygula = async () => {
     const tutar = Number(String(form.amount).replace(/\./g, "").replace(",", "."));
     if (!Number.isFinite(tutar) || tutar <= 0) return onNotice("Tutar hatalı", "Sıfırdan büyük bir tutar gir.");
-    if (form.note.trim().length < 8) return onNotice("Gerekçe kısa", "En az 8 karakter gerekçe yaz.");
     if (!(await ensure())) return;
     setBusy(true);
     try {
@@ -1867,7 +1871,7 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
             <Field label="Tutar (₺)" wide>
               <Input inputMode="decimal" value={form.amount} onChange={(e) => setForm((x) => ({ ...x, amount: e.target.value }))} placeholder="0,00" />
             </Field>
-            <Field label="Gerekçe (en az 8 karakter)" wide>
+            <Field label="Gerekçe (opsiyonel)" wide>
               <Input value={form.note} onChange={(e) => setForm((x) => ({ ...x, note: e.target.value }))} placeholder="Örn: Havale dekontu doğrulandı" />
             </Field>
             <div className="ac-actions">
@@ -2140,7 +2144,7 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
     <nav className="ac-drawer" onClick={(e) => e.stopPropagation()}>
       <header>
         <div className="ac-drawer-brand">
-          <span className="brand">Ottoman</span>
+          <img src="/logo-mark.png" alt="" className="brand-logo-icon" /><span className="brand">Ottoman</span>
           <div><strong>Admin Panel</strong><small>Yönetim</small></div>
         </div>
         <button className="ac-drawer-close" onClick={() => setMenuAcik(false)} aria-label="Kapat">✕</button>
