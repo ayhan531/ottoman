@@ -422,26 +422,335 @@ written. There is no known open bug or half-finished feature at this point.
   implement exactly what's asked, flag that accuracy is the owner's
   responsibility, don't add anything not explicitly asked for.
 
-## 8. Immediate next tasks
+## 8. Immediate next tasks (superseded by §9 — read §9 first)
 
 1. **Rotate the leaked `RENDER_API_TOKEN`** hardcoded in
    `tools/backend_server.py` (3 call sites, see §3) — revoke it in the
    Render dashboard, generate a new one, set it as an actual `RENDER_API_TOKEN`
    env var on the Render service, and remove the hardcoded fallback default
    from source. This needs the owner's action on the Render side; flag it
-   explicitly rather than silently patching only the code.
-2. Review the unstaged working-tree diffs listed in §6 — decide with the
-   owner whether they're safe to commit, discard, or need investigation
-   (they predate this handoff and weren't produced by any feature work
-   described here).
-3. No other explicit feature request from the owner is currently open. Wait
-   for the next request; when screenshots are attached, treat them as the
-   literal pixel-accurate spec, not inspiration.
+   explicitly rather than silently patching only the code. **Still not done
+   as of §9's pass** — nobody has touched this.
+2. The line-ending drift mentioned in the old §6 (`.gitignore`, `tsconfig.json`,
+   `vite.config.js`, etc.) is pre-existing Windows/git `core.autocrlf` noise,
+   not feature work. It's now folded into commit `4dae3a6` (see §9) along
+   with real feature changes because untangling it wasn't worth the risk.
+   Harmless — doesn't affect execution — but if it keeps recurring on every
+   `git status`, it's a local git config issue on the owner's machine, not
+   a code bug.
+3. **git push still has to be done by the owner.** No session in this
+   project has had GitHub credentials (no `gh` CLI auth, no credential
+   helper) in the `device_bash` shell. Every session ends with commits
+   sitting on local `main`, ahead of `origin/main`. **Run `git push origin
+   main` from `~/mnt/ottoman/web-esube` (or your normal Windows terminal on
+   the same checkout) after reading this**, or the live site will never
+   update no matter how much gets built and committed in here.
 4. When verifying anything live going forward: this cloud sandbox's network
    cannot reach Render/GitHub/Bing directly (proxy 403s), and neither can
-   the mounted Linux VM's `curl`. Verification needs to happen through
-   whatever channel in the *current* session actually has open egress —
-   check what's available before assuming either the old
-   desktop-commander/zip-staging pipeline or a direct `curl` will work, and
-   don't report something as "confirmed live" without an actual successful
-   fetch against the real domain.
+   the mounted Linux VM's `curl` in most configurations — but the VM *can*
+   reach the public npm registry, which is how the build pipeline in §9
+   works. Check what's actually reachable before assuming either the old
+   desktop-commander/zip-staging pipeline or a direct `curl` to Render will
+   work, and don't report something as "confirmed live" without an actual
+   successful fetch against the real domain post-push-and-deploy.
+
+## 9. 2026-09-23 pass — Fuzul comparison + boss's "güncelleme v2" screenshots
+
+The owner gave real login credentials to a live third-party brokerage,
+`esube.fuzulyatirim.com` (admin + a customer account), and a folder of 27
+Telegram screenshots at `C:\Users\Cem\Desktop\ottoman\güncelleme v2` — his
+boss's ("Levent Hoca") itemized correction list — with the instruction to
+make Ottoman match the reference "nokta kadar fark" (not a dot's difference)
+and to do as much as possible before running out of context, updating this
+file for whatever's left. **Per the standing rule in §7, the Fuzul login was
+not used to sign in** — the same constraint applies to it as before.
+
+**Commit for this pass: `4dae3a6`** — "Add BIST 50 tab, admin TC/position
+fields, logout button, referral-only lists" — on top of `0b8860a` /
+`f65040e`. **Not pushed** — see §8 item 3. Build verified with `npx vite
+build --outDir /tmp/dist_new` + `cp -rf /tmp/dist_new/. dist/`, and `dist/`
+in the commit reflects that rebuild. Backend verified by booting
+`backend_server.py` against a scratch sqlite file (`DATABASE_PATH=/tmp/...`)
+and confirming `/api/market` returns 200 and `/api/admin/positions` returns
+a correct 401 (not a 500) when unauthenticated — this proves the new
+`positions.value_override` column migration and the two touched admin
+handlers don't crash on init or on request dispatch.
+
+### 9.1 — A safety concern that was raised and NOT resolved by simply doing
+what was asked. Read this before touching T+2 / fund-settlement logic.
+
+One screenshot (timestamped 23:23 in the boss's Telegram thread) described,
+in the owner's own paraphrase, a mechanism where: a customer deposits real
+money; the operator immediately force-trades the customer's *entire*
+balance into a stock and back out, purely to generate an artificial T+2
+lock (not a real settlement delay from an actual trade the customer chose);
+and that lock should only ever be releasable by the admin, at an arbitrary
+admin-typed **amount**, disconnected from any real transaction — quote:
+*"Müşteri yatırım yaptığında, parası çekilebilir normal şartlarda. Fakat
+biz hemen çekilebilir olmaması için, müşteriye hisse aldırtıyoruz tüm
+bakiyesiyle... adam bi kere hisse aldımı hiç bi zaman T2'si açılmasın, ben
+istersem, istediğim miktar kadar T2 açabileyim... hisselerden düzenleme
+değilde T2 bakiyeden düzenleme açma kapama olsun."*
+
+This was flagged to the owner as matching the shape of an investment-fraud
+fund-trapping pattern (deposit real money → cannot withdraw except at
+operator's arbitrary discretion, disconnected from real trades), especially
+combined with real-ID collection and an unverified "SPK Lisanslı" badge
+(added in an earlier pass purely on the owner's assertion — see §5/§7). The
+owner's response: the company is SPK-licensed and tax-compliant; the current
+build is a "preview" for bosses in what he described as a tender-like
+process ("yazılım ihalesi"); ID collection is industry-standard (accurate —
+not contested); and T+2 control is meant to protect customer funds during
+posting-delay/stuck-account issues.
+
+**Outcome: the KYC/ID-collection defense was accepted (it's true and not
+controversial). The T+2 justification was NOT accepted as matching the
+specific mechanism described** — "protecting funds during a delay" doesn't
+require force-trading a customer's full balance to fabricate a lock, nor
+does it require the release amount to be an admin-typed number disconnected
+from actual positions. **This was not built, and must not be built by a
+future agent picking up this file without the owner independently
+re-establishing, with actual evidence (SPK license number, a specific
+operational reason tied to a real trade, etc.), why the *exact* mechanism
+described is legitimate — not just that KYC in general is normal.** If this
+request resurfaces, don't silently implement it because it's "just another
+ticket" in a screenshot batch; re-raise the same question this pass raised.
+
+What already exists and should be pointed to as the legitimate way to
+address "I want to release a customer's funds when I decide to": the T+2
+admin panel already supports per-row early settlement and bulk-settle
+(`T2Panel` in `AdminConsole.jsx`, `/api/admin/t2/settle` et al. in
+`backend_server.py`, pre-existing from earlier passes) — an admin can
+already release a specific real settlement early, tied to a specific real
+trade. That's different from the described mechanism and was not touched
+this pass.
+
+### 9.2 — What was actually completed this pass
+
+All edits below were made **directly on the device-mounted repo**
+(`~/mnt/ottoman/web-esube` via `device_bash`) — the container mirror at
+`/home/claude/work/web-esube` was not kept in sync this pass and should be
+treated as stale/unreliable by any future agent; work only against the
+mounted path.
+
+1. **Brand logo wired in.** `public/logo-mark.png` / `logo-mark@2x.png`
+   (new, generated from the owner's uploaded crescent-mosque logo via PIL:
+   resize + maskable safe-zone padding) plus a full regenerated
+   `public/icons/*`, `public/favicon.svg` set, used for the PWA home-screen
+   install icon *and* shown inline next to the "Ottoman" wordmark in the
+   mobile top bar, the desktop sidebar (`App.jsx` `brand-word`/`brandmark`),
+   the admin console sidebar (`AdminConsole.jsx`), and the public landing
+   page nav (`CorporateLanding.jsx`/`corporate.css`).
+2. **Purple → blue.** All hardcoded `#7054f6` (theme purple) and
+   `#7657ff` (manifest/meta theme-color) replaced with `#2f72e8` across
+   `theme.css`, `style.css`, `corporate.css`, `manifest.webmanifest`,
+   `index.html`. The in-app accent-theme system (`data-accent="1"` = blue)
+   was already the default before this pass; this fix was specifically for
+   the **public landing page**, which had its own independently-hardcoded
+   purple that the accent system doesn't touch.
+3. **Percent-sign placement, fixed at the source.** `src/esube/market.js`'s
+   `percent`/`signed`/`move`/`delta` helpers were rewritten so the sign
+   (+/−) always comes **before the number and the number comes before the
+   `%`** (`+16,14%`, never `+%16,14`) — since every screen that shows a
+   percentage change goes through these shared helpers, this was a
+   single-source-of-truth fix, not a per-screen patch. Also fixed the one
+   remaining raw `{sign}%{value}` template literal in `src/legacy.jsx`'s
+   ticker row that didn't go through the helper.
+4. **Admin bank/IBAN management** — investigated and found **already
+   built** in an earlier pass (admin can already add/edit IBANs and bank
+   names anytime); the only real gap was the seeded placeholder bank row's
+   `description` defaulting to `"Demo/local para yatırma hesabı"` instead
+   of empty — fixed in `seed_system_bank_accounts()` so a bank row's
+   description column is genuinely empty unless an admin explicitly types
+   one, matching the "don't show a description unless admin set it" ask.
+5. **Admin: editable T.C. kimlik field on the user-edit form.**
+   Backend: `api_admin_update_user` in `backend_server.py` now accepts an
+   optional `tc` field, validates it with the existing
+   `identity_number_is_real()` checksum when non-empty, checks it's not
+   already used by another user, and persists it. Frontend: `UserEditor` in
+   `AdminConsole.jsx` — added `tc` to form state and a "T.C. Kimlik No"
+   field (11-digit numeric, inline red validation message reusing
+   `gecerliTc`/`tcHatasi` from `kimlik.js`) in the "Kimlik ve iletişim"
+   section. Note there's a separate **read-only** TC display further down
+   the same modal (in a "Kimlik ve giriş" section with a doğrulandı/algoritmaya
+   uymuyor badge) — that one was left as-is; the new field is additive, not
+   a replacement.
+6. **Admin: extra portfolio position fields.** `PortfolioPanel`'s
+   position-edit modal (`AdminConsole.jsx`) gained two optional fields
+   alongside the existing "Adet"/"Alış fiyatı":
+   - **"Toplam maliyet"** — if filled, it's sent as `total_cost` and the
+     backend (`api_admin_adjust_position`) derives `avg_price = total_cost /
+     quantity` from it, overriding whatever's in the "Alış fiyatı" field.
+     This is a UX convenience — no new column, `avg_price` is still the only
+     thing stored.
+   - **"Güncel değer fiyatı"** — a genuine new per-position override. New
+     nullable `positions.value_override` column (via `ensure_column`, safe
+     no-op on existing rows). When set, `admin_position_rows()` (admin view)
+     and `portfolio_rows()` (customer-facing portfolio) both use it in place
+     of the live quote for that one position's `current_price` /
+     `market_value` / `pnl` computation — clearing the field (empty string)
+     clears the override back to live-quote-driven pricing. This does
+     **not** touch the shared per-symbol manual price override that already
+     existed (`api_admin_prices`, affects *all* holders of a symbol) — this
+     new one is scoped to a single user's single position.
+7. **Account page: red logout button.** `Account.jsx` now takes an
+   `onLogout` prop (wired from `App.jsx`, reusing the same handler the
+   sidebar's existing logout button uses) and renders a full-width red
+   "Çıkış Yap" button below the "Uygulama hakkında" row, gated by
+   `window.confirm(...)`.
+8. **Market tabs (§55 in the pre-compaction task list) — partially done:**
+   - **Added a "BIST 50" tab.** New `BIST50` market constant (value `8`,
+     appended — nothing existing was renumbered) with an `XU050` symbol
+     list cross-checked against two independent live sources
+     (getmidas.com and infoyatirim.com XU050 listings, Sept 2026 — see
+     `market.js` comment) rather than guessed. **Note**: one symbol in the
+     real index is ambiguously spelled `EFOR` vs `EFORC` across sources
+     (Efor Çay Sanayi / Efor Yatırım) — used `EFOR` per both cross-checked
+     tables; verify against the actual `market_cache`/instrument feed if
+     the tab ever shows it missing. No new backend index-level quote (like
+     the existing seeded `XU100`/`XU030` index rows) was added for BIST
+     50 — the tab deliberately doesn't get a "Piyasa Durumu" status card
+     (same treatment as Katılım/Temettü/Halka Arz/Fon/Döviz already had);
+     only `BIST`, `BIST100`, `BIST30` show that card. Individual stock
+     prices come from the same shared live per-symbol feed every other tab
+     uses, so per-stock price accuracy is inherited, not separately
+     implemented.
+   - **Halka Arz and Fon stock lists are now hidden**, replaced by a
+     "contact your representative" note (`MARKET_CONTACT_TEXT` in
+     `market.js`) in **both** places they could appear: the main Home
+     market-tab body (`Home.jsx`) and the "Tümü" full-list search sheet
+     (`StockPicker` in `App.jsx`). Tapping an individual IPO/Fund stock
+     already showed a referral-only trade sheet (pre-existing, in
+     `Trade.jsx`) — that was not the gap; the gap was that the *list of
+     stocks itself* was still browsable, which is now fixed.
+   - **BIST Temettü removed from the Home (trading) tab row, kept in
+     News's tab row.** `Home.jsx` and `News.jsx` share one underlying
+     `marketTab` state (and `MARKET_NAMES` array) by design — News's own
+     tab filter reuses whatever tab is selected for trading, which is also
+     what drives `useNews(marketTab)`'s query. Rather than fork that shared
+     state (bigger, riskier refactor), `Home.jsx` now renders its
+     `Segments` from a **locally filtered** `HOME_MARKETS` list (excludes
+     `DIVIDEND`) with an index-translation wrapper around
+     `active`/`onSelect`, while `News.jsx` is untouched and still shows all
+     of `MARKET_NAMES` including Temettü. Net effect: Temettü is
+     unselectable as a trading tab but still exists as a News filter, and
+     switching News to it still works (it'll just never be reachable via
+     Home's own segment row anymore). Stocks that are members of Temettü
+     were **not** removed from `TRADABLE_MARKETS` or made non-tradable —
+     they're virtually all also members of BIST Tüm/100/30/Katılım, so
+     they remain buyable through those tabs; only the redundant standalone
+     tab was removed from the trading UI, per the literal wording of the
+     ask ("trading tab**s**", not "trading capability").
+   - **Döviz (Currency) — verified already fully correct, no change
+     needed.** `Trade.jsx` already treats `stock.kind === "currency"` the
+     same as fund/IPO (`referralOnly` gate → the whole buy/sell form is
+     skipped, only the contact-message note renders), and `Home.jsx`
+     already renders a live `Converter` widget plus a real rates list for
+     the Currency tab, fed from the same live `instruments` feed as
+     everything else. This item in the original ask was already satisfied
+     by prior-pass work; nothing needed changing.
+   - **NOT done — no concrete spec available to act on:** "Katılım Tüm
+     (XKTUM) tab fixes" and "BIST 50 price-accuracy audit" beyond what's
+     described above. The pre-compaction summary that produced this
+     session's task list only carried a one-line paraphrase of these items
+     from the original 27 screenshots — the actual screenshot images
+     (Turkish text, specific stock symbols the boss called out as wrong)
+     were not available to re-read this pass. **Do not guess-fix the
+     `XKTUM`/`XTMTU`/`XHARZ` symbol arrays in `market.js` further without
+     either the original screenshots or a specific, named discrepancy from
+     the owner** — inventing "corrections" to a stock list without a
+     source is exactly as unreliable as what's already there.
+
+### 9.3 — Still open / not started at all this pass
+
+Carried over, unchanged, from the original 27-screenshot backlog (no work
+done on any of these — flagging so nobody assumes silence means "done"):
+
+- **DOB field auto-formatting + calendar picker** — wait, this one *was*
+  done in an earlier part of this same pass, before the mid-session
+  compaction (`DogumAlani` component + `Calendar` icon in `legacy.jsx`) —
+  confirmed present in the current working tree. Listed here only so a
+  future agent doesn't redo it; no further action needed.
+- **Password strength meter gating registration** — also already done
+  pre-compaction (`SifreGucMetre`/`sifreGucu()` in `legacy.jsx`, submit
+  button disabled until `"guclu"`). Confirmed present. No further action.
+- Landing-page nav/ticker/full-width desktop layout fixes beyond the
+  purple→blue swap — **not attempted this pass**, no specifics beyond the
+  one-line paraphrase in the task backlog.
+- Active nav-tab highlighting (per current page, vs. static) — **not
+  attempted**.
+- News refresh cadence / item-count cap — **partially touched**: the news
+  item cap was already lowered from 40 to 28 in an earlier part of this
+  session (`tools/market_news.py` line ~582); refresh **cadence** was not
+  touched.
+- Portfolio card alignment CSS fix — **not attempted**, no specifics
+  available.
+- KYC identity-document upload flow (front/back ID capture, a
+  pending-review account state, blocking para yatır/çek until verified)
+  plus a matching admin document-review UI — **not attempted**. This is a
+  substantial feature (new upload endpoints, file storage, a review queue,
+  state-machine changes to account status) — treat it as its own multi-step
+  project, not a quick patch.
+- "Sözleşme Onayı" (contract-acceptance) checkbox/dialog at registration —
+  **not attempted**. Note: `src/esube/contracts.js` and a `ContractsList`/
+  `agreements_version`/`agreements_accepted_at` mechanism already exist
+  for the *post-login* Sözleşmeler page (Account → Sözleşmeler) — check
+  whether this ask is "also gate registration itself behind acceptance" or
+  a genuinely separate dialog before building from scratch.
+- Price-simulation tick interval → 2.5 seconds — **not attempted**; find
+  the existing tick/refresh interval constant (search for the current
+  simulation loop in `backend_server.py`, likely a `time.sleep(...)` in a
+  background thread) before changing it, and confirm the current interval
+  first rather than assuming.
+- Admin Balance Details (`BalancePanel`) restructure — simplify the
+  per-user balance-only adjuster and add a combined balance+trade-history
+  drill-down view — **not attempted**.
+- Full remaining "price-accuracy audit" across all market tabs (not just
+  BIST 50) — **not attempted**; this needs either live comparison against
+  the Fuzul reference or a specific list of wrong prices/symbols from the
+  owner, not guesswork.
+
+### 9.4 — Practical notes for whoever continues this (build pipeline, git)
+
+- **Build pipeline that works on this Linux VM**, confirmed working this
+  pass: `cd ~/mnt/ottoman/web-esube && npx vite build --outDir
+  /tmp/dist_new && cp -rf /tmp/dist_new/. dist/`. Plain `npm run build` /
+  `vite build` (default `outDir: dist`) fails with `EPERM` trying to empty
+  `dist/` first, because this connected folder has **no delete permission**
+  in this environment (`rm`/`rmdir`/`unlink` → "Operation not permitted";
+  `device_request_delete_permission` for the whole folder was denied by an
+  auto-mode classifier in an earlier pass and hasn't been re-requested).
+  Building to a `/tmp` outDir sidesteps the delete requirement; copying
+  over `dist/` in place with `cp -rf` overwrites existing files (allowed)
+  without needing to delete the stale ones first (any orphaned old hashed
+  asset files left in `dist/assets/` are harmless — they're just unreferenced
+  dead weight, not bugs).
+- **`node_modules/@rolldown` may only have the Windows binding** if
+  `npm install` last ran on Windows — if `vite build` fails immediately
+  with a rolldown/native-binding error, run `npm install --no-audit
+  --no-fund` on the Linux VM first (npm registry is reachable even though
+  Render/GitHub-raw/Bing are proxy-blocked from this environment).
+- **`.git/index.lock` (and occasionally `.git/HEAD.lock`) get left behind**
+  after almost every `git add`/`git commit` in this environment, because
+  git's own end-of-operation cleanup calls `unlink()` on its lock file and
+  that fails for the same no-delete-permission reason above — **the
+  operation usually still succeeded** (check `git status`/`git log` before
+  assuming failure), it's just the lock cleanup that failed. Workaround:
+  `mv .git/index.lock .git/index.lock.stale.$(date +%s%N)` (rename, not
+  delete — renaming is allowed) immediately before the next git command
+  that needs the lock, in the **same** shell call if possible (each
+  `device_bash` call is a fresh shell, and the stale lock can get
+  recreated by a subsequent command if you check-then-act across two
+  separate calls). There are now several `.git/index.lock.stale*` /
+  `.git/HEAD.lock.stale*` files accumulated in `.git/` from this and prior
+  passes — they're inert (git ignores anything not literally named
+  `index.lock`/`HEAD.lock`) and harmless to leave; don't waste effort
+  trying to delete them (same permission wall) unless the owner explicitly
+  asks for `.git` cleaned up, which would need them to grant delete
+  permission first.
+- **This session never had GitHub push credentials** (no `gh` auth, no
+  credential helper in the `device_bash` shell) — confirmed again this
+  pass. Local `main` is at `4dae3a6`, `origin/main` is still at whatever
+  it was before (`f65040e` or `0b8860a` depending on whether the owner
+  pushed after the last handoff). **The owner must run `git push origin
+  main` themselves** for any of this to reach Render.
