@@ -3,7 +3,7 @@ const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-119
 const SAYFALAR = ["Dashboard", "Kullanıcılar", "Portföyler", "Bakiye Detayları", "Kredi Başvuruları",
   "Kredi Ayarları", "T+2 Takip", "Onay Bekleyenler", "Banka Hesapları", "Para Yatırma Talepleri",
   "Para Yükleme", "Para Çekme", "Hisse Açıklamaları", "Sistem Ayarları",
-  "Emirler", "Belgeler", "Denetim Kaydı"];
+  "Piyasa Kontrolü", "Emirler", "Belgeler", "Denetim Kaydı"];
 let fail = 0;
 
 for (const [ad, w, h] of [["telefon", 393, 851], ["masaüstü", 1440, 900]]) {

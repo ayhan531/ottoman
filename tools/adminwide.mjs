@@ -20,7 +20,9 @@ const git = async (ad, dosya) => {
   await p.waitForTimeout(800);
   await p.screenshot({ path: dosya });
 };
-await git("Kullanıcılar", "/tmp/w-kul.png");
-await git("Portföyler", "/tmp/w-pf.png");
-await git("Para Yükleme", "/tmp/w-py.png");
+await git("Bakiye Detayları", "/tmp/w-bakiye.png");
+await git("T+2 Takip", "/tmp/w-t2.png");
+await git("Onay Bekleyenler", "/tmp/w-onay.png");
+await git("Para Yatırma Talepleri", "/tmp/w-yatir.png");
+await git("Piyasa Kontrolü", "/tmp/w-piyasa.png");
 await b.close();
