@@ -735,9 +735,14 @@ function KycUserModal({ user, documents, onClose, onNotice, ensure, refresh }) {
         <Field label="Gerekçe (opsiyonel)" wide>
           <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Örn: Dekont doğrulandı" />
         </Field>
-        <div className="ac-list scroll" style={{ maxHeight: 340 }}>
+        <div className="ac-list scroll ac-kyc-belgeler" style={{ maxHeight: 420 }}>
           {documents.map((d) => (
-            <div className="ac-line" key={d.id}>
+            <div className="ac-line ac-kyc-belge" key={d.id}>
+              {d.url && (
+                <a href={d.url} target="_blank" rel="noreferrer" className="ac-kyc-thumb" title="Büyük görüntüle">
+                  <img src={d.url} alt={d.doc_type_label || d.doc_type} loading="lazy" />
+                </a>
+              )}
               <span>
                 <strong>{d.doc_type_label || d.doc_type}</strong>
                 <small>{d.status_label || d.status}</small>
