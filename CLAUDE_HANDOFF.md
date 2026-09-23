@@ -1108,3 +1108,72 @@ Not re-verified live on Render yet (same stale-deployment caveat as the prior pa
 not appear to auto-redeploy promptly last time even after a confirmed-matching push): after Cem
 pushes, worth a live check that the new bundle hash is actually served before assuming any of
 this is visible to real users.
+
+## 2026-09-23 (yet later) — favicon/SEO stale-cache fallout, Service Worker fix, and a new 6-item request
+
+Between the pass above and this one, Cem reported (angrily, across many screenshots) that none of
+the favicon/logo/SEO work looked live. Investigation split this into genuinely separate problems
+that had all been conflated as "nothing you did is live":
+
+- **Real bug, fixed** (`d072526`): `favicon.svg` had the wrong image (mosque skyline) baked in
+  under 44KB of AI-generator C2PA metadata, and `index.html`/`robots.txt`/`sitemap.xml` had the
+  wrong canonical domain (`ottoman-eggb.onrender.com` instead of `ottomanyatirim.com`) hardcoded
+  in ~27 places (canonical, hreflang, OG/Twitter tags, JSON-LD). Rebuilt all icon files from
+  `logo-icon@2x.png` and fixed every domain reference.
+- **Real bug, fixed** (`ceefc81`): the Service Worker (`public/sw.js`) was the actual cause of
+  "still shows old content after a confirmed-good deploy" — confirmed live via
+  `navigator.serviceWorker.getRegistrations()` showing an active worker while `WebFetch`
+  (no cookies/no SW, independent of the browser) proved the server was already serving the fresh
+  build. Bumped `SURUM` to `v3` and changed the navigate handler to retry once after 400ms before
+  falling back to the cached shell, instead of falling back on the first hiccup.
+- **Not a bug**: a transient `ERR_NAME_NOT_RESOLVED` on Cem's own network, and a "no separate
+  branch / deploy not happening" theory that didn't hold up (`git branch -a` / `git ls-remote`
+  showed only `main`, correctly configured) — verified with hard evidence rather than deferring to
+  either theory, then reported back exactly what did and didn't check out.
+
+**IMPORTANT — still unpushed as of this writing**: `ceefc81` (SW v3) was never pushed by Cem
+before the next request came in. It and everything below are sitting on local `main`, one and two
+commits ahead of `origin/main`. **Cem must run `git push origin main` himself** — this environment
+has no push credentials and never pushes on its own, even though `device_bash` runs directly on
+his machine with his own git identity.
+
+### New 6-item request, all done in commit `df63cfb`
+
+1. **BIST 50 tab moved between BIST 100 and BIST 30.** Renumbering the `BIST/BIST100/.../BIST50`
+   constants in `market.js` would have touched every switch/Set/map that keys off them, so instead
+   added a separate display-order array, `MARKET_TAB_ORDER = [BIST, BIST100, BIST50, BIST30,
+   PARTICIPATION, IPO, FUNDS, CURRENCY]`, consumed only by `Home.jsx`'s tab rendering
+   (`HOME_MARKETS`). Also added `NEWS_TAB_ORDER` (same order, with `DIVIDEND` kept in its original
+   slot since Haberler still shows Temettü as a filter) and wired it into `News.jsx` for
+   consistency, since it's the same set of market tabs.
+2. **"Öne çıkan yükselenler/düşenler" (gainers/losers) extended.** Previously only rendered on the
+   "BIST Tüm" tab. Now also computed and shown on BIST 100, BIST 30, and BIST 50 (Katılım/IPO/Fon
+   tabs unaffected — those stay as pure lists/referral notices, they don't have a meaningful
+   gainers/losers concept the same way).
+3. **New "Bakiye İşlemleri" section on the Account screen**, inserted between "Hesap İşlemleri"
+   and "Diğer": Para yatır, Para çek, Banka hesaplarım (moved here from Hesap İşlemleri, since it's
+   a balance-related action), Bakiye Geçmişi. This groups all money-movement entry points in one
+   place instead of splitting them across two unrelated sections.
+4. **Deposit/withdraw admin-approval-message flow** — already working (this is the item #9 work
+   from the pass before last: admin-approved balance history with an optional admin note). Cem's
+   screenshot of it showed it working correctly; no further change needed here.
+5. **Admin panel "İşlem Notu \*" (required) screenshot** — checked exhaustively
+   (`grep -rn "İşlem Notu" src/ tools/`, zero matches anywhere in the current source). The current
+   "Bakiye Yükle" modal already shows "Gerekçe (opsiyonel)", not a required field. This screenshot
+   almost certainly reflects a stale cached copy of the admin panel in Cem's browser from before
+   item #10 of the pass-before-last removed the mandatory-reason gate — worth trying an incognito
+   window or clearing the Service Worker/cache for the admin panel's origin specifically.
+6. **Copyable IBANs in the admin panel.** Added a small `KopyaBtn` component (reuses the existing
+   `kopyala()` clipboard helper, shows a brief "Kopyalandı" confirmation) and wired it into the
+   three places IBANs appear in `AdminConsole.jsx`: the platform's own bank accounts
+   (`BankaKarti`), the "Müşteri IBAN'ları" list, and — the one that actually matters for "kolayca
+   transfer yapabilelim" — each pending withdrawal request in the Para Çekme queue, so the admin
+   can copy the customer's IBAN with one click when sending the transfer.
+
+Build verified clean (`npx vite build`, no errors/warnings besides the pre-existing >500KB chunk
+size notice). Markers checked in the new bundle: `"Öne çıkan yükselenler"` and `"Kopyalandı"` both
+present exactly once, only in the newly-built `index-D6J8fi5Z.js` (not the stale bundles still
+sitting untracked-by-reference in `dist/assets/` from earlier builds — `dist/index.html` correctly
+points at the new hash). Committed as `df63cfb`.
+
+**Cem still needs to `git push origin main`** to get `ceefc81` and `df63cfb` onto GitHub/Render.
