@@ -847,3 +847,58 @@ done, or is blocked on something that isn't a quick patch. `HEAD` is still
   bolt-on under time pressure. Next agent (or this one, in a following
   turn): treat this as a standalone task, scope it out first, and build
   it deliberately rather than fast.
+
+
+## 2026-09-23 — Ticker viewport bug, contract scroll-gate, Kayıt Ol, admin lock cleanup
+
+Commit `b6d80d9` (on top of `505066f`). User reported (angry, run-on message) 6 issues from a
+"güncelleme v2" reference folder plus his own account-screen screenshots:
+
+1. **Top price ticker "overlapping/disappearing in places"** — root cause identified as the
+   classic mobile `100vh` bug: `.phone`/`.auth-phone` used `vh` units for height, which on real
+   mobile browsers (address bar show/hide) don't match the actual visible viewport, so content
+   near the edges can get clipped/squeezed. Fixed by layering `100dvh`/`94dvh` (dynamic viewport
+   height) on top of the `vh` fallback. Also hardened `.auth-ticker` with `position:relative;
+   z-index:2;flex:none` and `flex-wrap:nowrap` on the lane so it can never be shrunk/overlapped
+   by flex reflow. Could not perfectly reproduce the exact overlap live (Chrome window resize in
+   this sandbox doesn't actually change the rendered viewport), so this is the most defensible
+   fix for the reported symptom — flag to re-check on a real phone if it recurs.
+2. **Contract acceptance was a single inline checkbox** — user said (again) this needed to be a
+   popup that can't be accepted until each document is scrolled to the end. Built `SozlesmeModal`
+   in `src/legacy.jsx`: steps through KVKK Aydınlatma Metni → Risk Bildirimi → Çerçeve Sözleşmesi
+   (pulled from the existing `CONTRACTS` array in `esube/contracts.js`, reusing the same
+   head/bullet/paragraph block-parsing logic as the in-app `DocumentPage`). Each step's "Devam
+   Et"/"Kabul Ediyorum" button stays disabled until `onScroll` detects the reader has hit the
+   bottom. The old single checkbox is now a fake-checkbox trigger button that opens this modal;
+   `sozlesme` state only flips true when all 3 steps are completed.
+3. **No "Kayıt Ol" button next to "E-Şube Giriş"** in the corporate header — added. Threaded an
+   `authMode` ("login"/"register") through `main.jsx` → `CorporateLanding`'s `openAuth(mode)` →
+   `AuthScreen`'s new `initialMode` prop, so the new button opens straight to the register tab.
+4. **Two password-show icons on the register password field** — confirmed via the Chrome a11y
+   tree that our own DOM only ever renders one `<button>` toggle; the second eye is the browser's
+   own native reveal icon (Edge's `::-ms-reveal`). Fixed by hiding it globally:
+   `input[type="password"]::-ms-reveal,::-ms-clear{display:none}` in `style.css`.
+5. **Account screen profile card was left-aligned** ("ismi ve profili ortaya al") — `.pcard` in
+   `esube/Account.jsx`/`theme.css` changed from a 3-column grid (avatar | name | chevron) to a
+   centered flex column; the chevron moved to an absolutely-positioned corner badge so it doesn't
+   fight the centering.
+6. **"Yönetici koruması" in admin panel** — traced to leftover dead UI: the step-up
+   re-authentication itself was already disabled in an earlier pass (`useLock().ensure()` is a
+   no-op that always resolves `true` — see the comment at `AdminConsole.jsx:33`), but the visible
+   "Yönetici kilidi kapalı" status pill + "Kilidi aç" button + `LockDialog` were never removed, so
+   the panel still *looked* gated even though it wasn't. Removed that dead JSX entirely
+   (`ac-lockbar` div + the `lock.soru && <LockDialog/>` render). Left the ~24 `await ensure()`
+   guard calls in place since they're harmless no-ops — not worth touching 24 call sites for a
+   pure no-op removal.
+
+Also cleaned up 6 stale pre-hotfix `dist/assets/index-*.{js,css}` bundles that were still
+tracked in git but no longer referenced by `dist/index.html` (accumulated across several earlier
+`git add -f` build commits without ever being pruned).
+
+**Not addressed this turn / still open if the user brings it up again:** the exact repro for the
+ticker overlap (fixed defensively, not confirmed against the real complaint); Sözleşme Onayı
+matching Fuzul's reference more closely beyond the scroll-gate; "ilk açılış rengi mavi olsun".
+
+Standing rule still in force: **git add -f is required for any new file under `dist/`** —
+`git add -A` will not pick up new files in a gitignored directory, only modifications to files
+already tracked there.
