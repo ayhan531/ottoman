@@ -988,3 +988,123 @@ Build: `npx vite build --outDir /tmp/dist_new && cp -rf /tmp/dist_new/. dist/`, 
 markers ("Bakiye Geçmişi", the KYC banner string, `tile-passive`, `kyc_missing_label`,
 `bk-aktif`) are present in the built `dist/assets/index-*.js`/`.css` before committing. Cem still
 needs to run `git push origin main` himself (no push credentials in this environment).
+
+## 2026-09-23 (later) — 11-item angry-screenshot pass (logo, KYC selfie, auth width, sell color, news photos, portfolio alignment, Katılım referral, admin gerekçe removal, Bakiye Geçmişi money moves)
+
+Cem sent 6 screenshots and 11 numbered complaints, several of them re-flagging things from the
+prior pass that he felt were still wrong or half-done. Went through every item individually
+against the real code via `device_bash`, fixed what was actually still broken, and verified with
+a fresh build. All 11 items landed in a single commit: "Katılım referans yönlendirme, admin
+gerekçe zorunluluğu kaldırma, bakiye geçmişinde para hareketleri" (`0e3627a`).
+
+Status of all 11 items:
+
+1. **Logo removed from in-app UI, favicon-only** — removed the 5 remaining inline
+   `<img src="/logo-icon.png">` usages: `App.jsx` (mobile top bar `brand-word` + sidebar
+   `brandmark`), `legacy.jsx` (`AuthScreen` `auth-logo brand`), `CorporateLanding.jsx` (header
+   brand link). Favicon (`public/icons/favicon-32.png`) already used the same crescent-moon+star
+   icon and was untouched — no favicon-side change needed. All in-app spots now show plain text
+   "Ottoman Yatırım".
+2. **"Kimlikli Selfie" KYC requirement removed** — `REQUIRED_IDENTITY_DOCUMENTS` in
+   `backend_server.py` now `{"identity_front", "identity_back"}` (was including `"selfie"`);
+   `api_upload_documents` no longer accepts/expects a selfie; `App.jsx` `KYC_DOC_LABELS` and the
+   `KycUpload` intro text no longer mention it. (Note: `backend_server.py` still has a
+   `"selfie": "Yüz Doğrulama"` label string in one historical-data label dict — harmless, kept
+   only so any pre-existing old `documents` rows with `doc_type='selfie'` still render a label
+   instead of the raw key; does not re-enable the requirement.)
+3. **Desktop login/register width** — traced the CSS cascade: `extra.css`'s
+   `@media (min-width:761px)` block had `.auth-screen{max-width:540px}`, which was overriding the
+   more specific `.auth-phone{max-width:1180px}` rule due to load order, not specificity. Changed
+   `.auth-screen`'s desktop max-width to `720px`.
+4. Same as #1 (duplicate complaint) — done.
+5. **Sell/red color** — the `--red`/`--rose` CSS custom properties in `theme.css` were a
+   pink-leaning hue (`#d95577`/`#fce9ef` light, `#d6657f`/`#3a2631` dark). Changed to a proper red
+   (`#e5484d`/`#fdeaea` light, `#ff5c5c`/`#3a2323` dark) at the variable level so it cascades to
+   every sell-related usage (badges, price-down indicators, trade sheet, error text) at once
+   rather than patching one button.
+6. **News**:
+   - *Photo-less articles*: found the actual bug — `market_news(market)` in `backend_server.py`
+     had a 3rd-tier fallback (`items = fetch_market_news(market)`, unfiltered) after the two
+     photo-filtered tiers had already failed, which let photo-less items through. Removed that
+     fallback line entirely; only photo-having items can appear now, at the cost of an empty tab
+     when no photo article is available for a market.
+   - *"3 hours stale" freshness complaint*: audited every refresh-interval constant —
+     `NEWS_REFRESH_SECONDS=900`, `MARKET_NEWS_REFRESH_SECONDS=600`,
+     `YENILEME_SANIYE=600` — all already correctly 10-15 min, not a bug in the code. Tried to
+     empirically reproduce the staleness by running `market_news.sekme_haberleri()` directly via
+     `device_bash python3` from Cem's Windows machine; **all 13 upstream news sources failed with
+     `URLError`** from that machine (likely a local network/firewall restriction on that specific
+     path), so this could not be used to prove or disprove the live Render server's actual
+     fetch behavior. **Unresolved**: if the news is still showing 3-hour-old articles on the live
+     site after this deploy, the likely next step is checking Render's own outbound network / the
+     upstream RSS sources' actual response times from Render's IP, not the refresh-interval config
+     (which is already correct).
+7. **Portfolio donut/label alignment** — `.pf-alloc` in `theme.css` was `align-self:end`, which
+   bottom-aligned the donut+legend within its `grid-row: 2 / span 3` cell, visually detaching it
+   from the "Toplam değer" line at the top of the same row span. Changed to `align-self:start`
+   with a small `margin-top` so it lines up with the top of the cash/gain summary instead.
+8. **Katılım (BIST XKTUM) → referral-only, list stays visible with live prices** — this was the
+   most involved fix. Previously Katılım was fully tradable (confirmed correct in an earlier,
+   now-superseded reading of an older screenshot); this message explicitly says it should behave
+   like Halka Arz/Fon/Döviz (referral-only) but with the list still shown (unlike Halka
+   Arz/Fon, which hide the list entirely). Implementation:
+   - `market.js`: `listFor()`'s `PARTICIPATION` case now tags every returned instrument with
+     `kind: "participation"` (same pattern as IPO); removed `PARTICIPATION` from
+     `TRADABLE_MARKETS`; added a `[PARTICIPATION]` entry to `MARKET_CONTACT_TEXT`.
+   - `App.jsx`: added `participation` to the `REFERRAL_ONLY` map (the central `openTrade`
+     function checks `REFERRAL_ONLY[stock.kind]` before ever opening the trade sheet — this is
+     what makes the block work from **every** entry point, including the "Tüm Hisseler"
+     `StockPicker` search sheet, not just the Home tab's own click handler); fixed the Home-tab
+     wrapper's `marketTab → kind` ternary (was hardcoded `6→fund, 5→ipo, else→currency` with no
+     branch for Katılım, which would've mislabeled the referral message as "Döviz işlemleri");
+     added `PARTICIPATION` to the `market.js` import list.
+   - `StockPicker` (in `App.jsx`) already had an early-return that hides the list entirely for
+     `marketTab === IPO || marketTab === FUNDS` — deliberately did **not** add PARTICIPATION to
+     that check, so Katılım's list stays visible and searchable, per the boss's explicit "tüm
+     hisseleri eklenecekti" instruction.
+   - **Price accuracy**: confirmed Katılım/XKTUM is just a static code whitelist
+     (`S_XKTUM` in `market.js`) filtering the *same* live `stocks` array every other BIST tab
+     reads from — there is no separate/stale data source for Katılım, so "hep güncel doğru olması
+     gerekiyordu" was already structurally satisfied once the filter/tagging above was in place.
+9. **Bakiye Geçmişi shows admin-approved deposit/withdraw requests, admin note optional** —
+   `admin_money_action` in `backend_server.py` already wrote a `user_transactions` row
+   (`transaction_type: "deposit"/"withdrawal"`) on every approval, but (a) the frontend
+   `Portfolio.jsx` "Geçmiş" tab was filtering the transaction list down to
+   `trade_buy/trade_sell/stock_sale` only — deposits/withdrawals never rendered there at all —
+   and (b) the transaction's `note` was pulled from the user's own request note, not the admin's.
+   Fixed both: added a `moneyMoves` memo + a new `MoneyMoveCard` component (shows "Para
+   Yatırma"/"Para Çekme", an "Onaylandı" badge, the note if present, signed amount, date); merged
+   it with the existing stock-trade list into one chronologically-sorted `gecmisAkisi` feed shown
+   under the "Tümü" filter (the "Alış"/"Satış" filter chips stay stock-trade-only, since those
+   labels mean buy/sell of a stock, not a cash movement). Backend: `admin_money_action` now writes
+   the transaction's `note` from the admin's `reason` field (falling back to the existing generic
+   "... talebi onaylandı" text when the admin leaves it blank) instead of echoing back the user's
+   own request note — this is what "admin not ekleyebilsin" actually needed.
+10. **All mandatory admin "gerekçe" requirements removed** — found and removed 3 separate
+    server-side 8-character-minimum gates: `api_admin_action` (`entity in {"orders","money"}`,
+    used for both order approval/rejection and the Para Talepleri queue) and
+    `api_admin_document_action` (KYC document reject/retry). All three now accept an empty
+    `reason`/`note`. Frontend: removed the matching client-side blocking checks and
+    "(zorunlu, en az 8 karakter)" labels in `AdminConsole.jsx`'s `ApprovalList` (documents),
+    `OrdersPanel`, and `MoneyPanel` — all three note fields are now genuinely optional
+    ("(opsiyonel)") rather than merely appearing optional while still blocking submission.
+11. Meta-complaint about thoroughness — addressed by re-reading each of the 6 screenshots against
+    the live `device_bash`-read code before touching anything (not from memory of the prior
+    pass), and by re-testing every numbered item against the actual file content rather than
+    assuming an earlier pass's notes were still accurate.
+
+Explicitly re-declined again this pass (unchanged, will keep being declined regardless of
+rephrasing — see §9.1): the T+2 fund-lock-on-any-trade mechanism, and the ±0.10%/2.5s fake price
+jitter. Neither was requested this time, but flagging again per standing instructions.
+
+Build: `npx vite build --outDir /tmp/dist_new --emptyOutDir && cp -rf /tmp/dist_new/. dist/`.
+Verified markers in the built bundle before committing: `"Katılım hisse işlemleri"`, `"Bakiye
+Geçmişi"`, `"Onaylandı"`, `max-width:720px` in the CSS, and that `"Gerekçe kısa"` (the old
+mandatory-reason error string) no longer appears anywhere in the new JS bundle. `dist/index.html`
+was confirmed to reference the freshly-built hashed filenames. **Cem still needs to run
+`git push origin main` himself — no push credentials in this environment.**
+
+Not re-verified live on Render yet (same stale-deployment caveat as the prior pass — Render did
+not appear to auto-redeploy promptly last time even after a confirmed-matching push): after Cem
+pushes, worth a live check that the new bundle hash is actually served before assuming any of
+this is visible to real users.
