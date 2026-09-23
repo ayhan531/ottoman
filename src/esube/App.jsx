@@ -36,6 +36,88 @@ function useOnline() {
   return online;
 }
 
+/** Kimlik doğrulama belgesi yükleme: kimliğin ön yüzü, arka yüzü ve kimlikle
+ * çekilmiş bir selfie - hesabın onaylanması ve para yatır/çek işlemlerinin
+ * açılması için üçü birlikte gönderilir (bkz. backend api_upload_documents). */
+const KYC_DOC_LABELS = { identity_front: "Kimlik Ön Yüz", identity_back: "Kimlik Arka Yüz", selfie: "Kimlikli Selfie" };
+
+function KycUpload({ documents, onNotice, onUploaded }) {
+  const [files, setFiles] = useState({ identity_front: null, identity_back: null, selfie: null });
+  const [busy, setBusy] = useState(false);
+
+  const latest = useMemo(() => {
+    const map = {};
+    for (const doc of documents || []) {
+      const current = map[doc.doc_type];
+      if (!current || Number(doc.id) > Number(current.id)) map[doc.doc_type] = doc;
+    }
+    return map;
+  }, [documents]);
+
+  const allApproved = Object.keys(KYC_DOC_LABELS).every((type) => latest[type]?.status === "approved");
+
+  const submit = async () => {
+    const missing = Object.keys(KYC_DOC_LABELS).filter((type) => !files[type]);
+    if (missing.length) {
+      onNotice?.(T("Kimlik Doğrulama"), T("Devam etmek için üç fotoğrafı da (ön yüz, arka yüz, selfie) seçmelisin."));
+      return;
+    }
+    setBusy(true);
+    try {
+      const form = new FormData();
+      for (const type of Object.keys(KYC_DOC_LABELS)) form.append(type, files[type]);
+      await api("/api/profile/documents", { method: "POST", body: form });
+      setFiles({ identity_front: null, identity_back: null, selfie: null });
+      onNotice?.(T("Kimlik Doğrulama"), T("Belgelerin onaya gönderildi. İnceleme tamamlanınca hesabın onaylanacak."));
+      await onUploaded?.();
+    } catch (error) {
+      onNotice?.(T("Kimlik Doğrulama"), error.message || T("Belgeler yüklenemedi."));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <p style={{ margin: 0, color: "var(--muted)", fontSize: 13, lineHeight: 1.4 }}>
+        {T("Hesabını onaylatmak ve para yatırma/çekme işlemlerini açmak için kimliğinin ön yüzünü, arka yüzünü ve kimliğinle birlikte çekilmiş bir selfie fotoğrafını yükle.")}
+      </p>
+      <div className="card outline list-card">
+        <Divided>
+          {Object.entries(KYC_DOC_LABELS).map(([type, label]) => {
+            const doc = latest[type];
+            const statusText = doc ? (doc.status_label || doc.status) : (files[type] ? files[type].name : T("Henüz yüklenmedi"));
+            return (
+              <div className="settings-row" key={type}>
+                <span>
+                  <strong>{label}</strong>
+                  <small>{statusText}</small>
+                </span>
+                <label className="ac-ghost" style={{ cursor: "pointer", padding: "8px 14px", borderRadius: 10, border: "1px solid var(--edge)" }}>
+                  {T("Seç")}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={(event) => setFiles((current) => ({ ...current, [type]: event.target.files?.[0] || null }))}
+                  />
+                </label>
+              </div>
+            );
+          })}
+        </Divided>
+      </div>
+      {allApproved ? (
+        <div className="warning" style={{ color: "var(--ink-green, #159578)", background: "var(--tint-green, #e1f8ed)" }}>
+          {T("Kimlik doğrulaman onaylandı.")}
+        </div>
+      ) : (
+        <button className="confirm" disabled={busy} onClick={submit}>{busy ? T("Gönderiliyor…") : T("Belgeleri Gönder")}</button>
+      )}
+    </div>
+  );
+}
+
 // APK'da kimlik bilgileri maskeli görünür: "1•• ••• ••• 46".
 const maskTc = (value) => {
   const digits = String(value || "").replace(/\D/g, "");
@@ -255,6 +337,8 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const orders = portfolio.data?.orders?.filter((order) => order.status === "pending") || [];
   const transactions = portfolio.data?.transactions || [];
   const bankAccounts = portfolio.data?.system_bank_accounts || [];
+  const kycDocuments = portfolio.data?.documents || [];
+  const kycApproved = Boolean(me?.is_test_user) || me?.status === "approved";
   const stockValue = holdings.reduce((sum, item) => sum + item.value, 0);
   const cash = Number(account?.cash_balance || 0);
   const blocked = Number(account?.blocked_balance || 0);
@@ -270,7 +354,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       <button className="ava" onClick={() => setOverlay({ kind: "profile" })} aria-label={T("Profil")}>
         {me?.avatar_url ? <img src={me.avatar_url} alt="" /> : monogram}
       </button>
-      <div className="brand-word"><img src="/logo-mark.png" alt="" className="brand-logo-icon" />Ottoman</div>
+      <div className="brand-word"><img src="/logo-icon.png" alt="" className="brand-logo-icon" />Ottoman Yatırım</div>
       <div className="brandbar-actions">
         {me?.role === "admin" && (
           <button className="icon-btn lav" onClick={onAdmin} title="Admin"><Icon name="shield" size={20} /></button>
@@ -339,10 +423,18 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             onOpenSecurity={() => { loadSecurity(); go(8, 4); }}
             onOpenContracts={() => go(6, 4)}
             onOpenNotifySettings={() => go(13, 4)}
-            onTransfer={(deposit) => setOverlay({ kind: "transfer", deposit })}
+            onOpenKyc={() => setOverlay({ kind: "kyc" })}
+            kycApproved={kycApproved}
+            onTransfer={(deposit) => {
+              if (!kycApproved) { showNotice(T("Kimlik Doğrulaması Olmadan İşlem Yapılamaz"), T("Para yatırma ve çekme işlemleri için önce Hesap İşlemleri altındaki Kimlik Doğrulama adımını tamamla.")); return; }
+              setOverlay({ kind: "transfer", deposit });
+            }}
             onHistory={() => { setPortfolioTab(2); go(3); }}
             onPortfolio={() => go(3)}
-            onBankAccounts={() => setOverlay({ kind: "banks" })}
+            onBankAccounts={() => {
+              if (!kycApproved) { showNotice(T("Kimlik Doğrulaması Olmadan İşlem Yapılamaz"), T("Banka hesaplarını yönetmek için önce Hesap İşlemleri altındaki Kimlik Doğrulama adımını tamamla.")); return; }
+              setOverlay({ kind: "banks" });
+            }}
             onNotice={showNotice}
             onLogout={onLogout}
           />
@@ -481,7 +573,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         </div>
       )}
       <nav className="sidebar">
-        <div className="brandmark"><img src="/logo-mark.png" alt="" className="brand-logo-icon" /><span>Ottoman Yatırım</span></div>
+        <div className="brandmark"><img src="/logo-icon.png" alt="" className="brand-logo-icon" /><span>Ottoman Yatırım</span></div>
         {NAV.map((item, index) => (
           <button key={item.title} className={index === 2 ? "trade-cta" : navActive(index) ? "active" : ""} onClick={() => navigate(index)}>
             <Icon name={item.icon} size={20} />
@@ -552,6 +644,12 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             <ValueRow label={T("Doğum Tarihi")} value={me?.birth_date || "••.••.••••"} />
             <ValueRow label={T("Müşteri No")} value={me?.account_no || "—"} />
           </Divided>
+        </Sheet>
+      )}
+
+      {overlay?.kind === "kyc" && (
+        <Sheet title={T("Kimlik Doğrulama")} onClose={() => setOverlay(null)}>
+          <KycUpload documents={kycDocuments} onNotice={showNotice} onUploaded={() => { portfolio.reload(); refreshMe?.(); }} />
         </Sheet>
       )}
 
@@ -997,7 +1095,7 @@ export function InstallSheet({ onClose, onNotice }) {
     <Sheet title={T("Uygulamayı yükle")} onClose={onClose}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         <div className="install-hero">
-          <img src="/icons/icon-192.png" alt="Ottoman" width={64} height={64} />
+          <img src="/icons/icon-192.png" alt="Ottoman Yatırım" width={64} height={64} />
           <div className="install-copy">
             <strong>Ottoman Yatırım</strong>
           </div>

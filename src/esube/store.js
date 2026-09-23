@@ -44,7 +44,7 @@ export const api = async (path, options = {}) => {
 };
 
 const MARKET_MS = 30_000;
-const NEWS_MS = 5 * 60_000;
+const NEWS_MS = 10 * 60_000;
 
 export function useMarket() {
   const [instruments, setInstruments] = useState([]);

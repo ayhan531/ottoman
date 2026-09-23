@@ -4,7 +4,8 @@
 .app-stage .screen,.admin-stage .screen{inset:0 0 64px}
 .admin-stage .screen{inset:0}
 .app-stage .modal-layer,.admin-stage .modal-layer{inset:0}
-.auth-logo{font-size:44px;text-align:center}
+.auth-logo{font-size:clamp(26px,4vw,42px);text-align:center;display:flex;align-items:center;justify-content:center;gap:12px}
+.auth-logo-icon{width:1em;height:1em;flex:none}
 .auth-card{width:min(100%,860px);margin:0 auto;border:1px solid #dfe3f0;border-radius:24px;padding:26px 28px;background:rgba(255,255,255,.92);box-shadow:0 24px 70px rgba(65,77,120,.12)}
 .auth-card h1{margin:0 0 8px;font-size:32px}
 .auth-card p{margin:0 0 16px;color:var(--muted);line-height:1.45}
@@ -315,6 +316,10 @@
   .portfolio-screen .chart-card{margin-top:0;padding-bottom:14px}
   .portfolio-screen .chart-card{min-height:188px}
   .portfolio-screen .return-chart{height:118px;margin-top:4px}
+  .auth-stage{padding:0;place-items:stretch}
+  .auth-phone{width:100vw;height:100vh;max-width:none;border-radius:0;box-shadow:none}
+  .auth-screen{max-width:540px;margin:0 auto;width:100%}
+  .auth-card{width:100%}
 }
 @media (max-width:760px){
   .landing-nav nav{display:none}
@@ -609,11 +614,11 @@
 .portfolio-screen .portfolio-carousel{width:100%;min-width:0;height:auto;min-height:0;margin:0 0 28px;gap:16px;padding:0 0 8px;align-items:stretch}
 .portfolio-screen .portfolio-carousel>.portfolio-card{flex:0 0 100%;min-width:0;min-height:310px;height:auto;box-shadow:none;padding:28px 32px;margin:0;overflow:visible;border-radius:16px;scroll-snap-stop:always}
 .portfolio-screen .portfolio-carousel{scroll-behavior:smooth}
-.portfolio-screen .portfolio-grid{grid-template-columns:minmax(0,1fr) 160px;gap:24px}
+.portfolio-screen .portfolio-grid{grid-template-columns:minmax(0,1fr) 160px;gap:24px;align-items:start}
 .portfolio-screen .portfolio-grid h1{font-size:38px;margin:18px 0 12px;overflow-wrap:anywhere}
-.portfolio-screen .legend{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:12px 24px;margin:24px 0 0}
+.portfolio-screen .legend{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:12px 24px;margin:10px 0 0}
 .portfolio-screen .legend span{font-size:13px}
-.portfolio-screen .donut{width:126px;height:126px;justify-self:center}
+.portfolio-screen .donut{width:126px;height:126px;justify-self:center;margin-top:2px}
 .portfolio-screen .donut div{width:86px;height:86px;font-size:26px}
 .portfolio-screen .return-chart{height:210px;margin:0}
 .portfolio-screen .segments{max-width:520px;margin:0 0 18px}

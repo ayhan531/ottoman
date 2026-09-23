@@ -15,6 +15,7 @@ const Row = ({ title, subtitle, onClick }) => (
 export default function Account({
   brandBar, me, account, stockValue, monogram, onOpenPersonal, onOpenSecurity, onOpenContracts,
   onOpenNotifySettings, onTransfer, onHistory, onNotice, onPortfolio, onBankAccounts, version, onLogout,
+  onOpenKyc, kycApproved,
 }) {
   const [hidden, setHidden] = useState(false);
   const cash = Number(account?.cash_balance || 0);
@@ -89,6 +90,11 @@ export default function Account({
         <Divided>
           <Row title={T("Kişisel bilgiler")} subtitle={T("Kimlik ve iletişim bilgilerinizi yönetin")} onClick={onOpenPersonal} />
           <Row title={T("Güvenlik")} subtitle={T("Şifre, iki adımlı doğrulama ve güvenlik ayarları")} onClick={onOpenSecurity} />
+          <Row
+            title={T("Kimlik Doğrulama")}
+            subtitle={kycApproved ? T("Onaylandı") : T("Hesabını onaylatmak için belgelerini yükle")}
+            onClick={onOpenKyc}
+          />
           <Row title={T("Banka hesaplarım")} subtitle={T("Para yatırma ve çekme işlemleri için hesaplarınız")} onClick={onBankAccounts} />
           <Row title={T("Sözleşmeler")} subtitle={T("Çerçeve sözleşme, risk bildirimi ve bilgilendirme metinleri")} onClick={onOpenContracts} />
         </Divided>
@@ -106,14 +112,14 @@ export default function Account({
           <Row
             title={T("Uygulama hakkında")}
             subtitle={`${T("Sürüm")} ${version} · ${T("Sürümünüz güncel.")}`}
-            onClick={() => onNotice("Ottoman", `${T("Sürüm")} ${version} · ${T("Sürümünüz güncel.")}`)}
+            onClick={() => onNotice("Ottoman Yatırım", `${T("Sürüm")} ${version} · ${T("Sürümünüz güncel.")}`)}
           />
         </Divided>
       </div>
 
       <button
         className="card outline list-card"
-        style={{ color: "var(--red, #e5484d)", fontWeight: 600, justifyContent: "center", textAlign: "center", padding: "14px" }}
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, color: "var(--red, #e5484d)", fontWeight: 600, padding: "14px" }}
         onClick={() => {
           if (window.confirm(T("Çıkış yapmak istediğinize emin misiniz?"))) onLogout?.();
         }}

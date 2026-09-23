@@ -2144,7 +2144,7 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
     <nav className="ac-drawer" onClick={(e) => e.stopPropagation()}>
       <header>
         <div className="ac-drawer-brand">
-          <img src="/logo-mark.png" alt="" className="brand-logo-icon" /><span className="brand">Ottoman</span>
+          <img src="/logo-icon.png" alt="" className="brand-logo-icon" /><span className="brand">Ottoman Yatırım</span>
           <div><strong>Admin Panel</strong><small>Yönetim</small></div>
         </div>
         <button className="ac-drawer-close" onClick={() => setMenuAcik(false)} aria-label="Kapat">✕</button>

@@ -170,9 +170,9 @@ FALLBACK_QUOTES = [
     ("XU100", "BIST 100", 11048.12, 0.72, 0, "index"),
     ("XU030", "BIST 30", 12204.48, 0.68, 0, "index"),
     ("XBANK", "BIST Banka", 15782.35, 1.18, 0, "index"),
-    ("USDTRY", "Amerikan Doları", 40.87, 0.15, 0, "fx"),
-    ("EURTRY", "Euro", 47.28, 0.11, 0, "fx"),
-    ("GBPTRY", "İngiliz Sterlini", 54.62, 0.09, 0, "fx"),
+    ("USDTRY", "Amerikan Doları", 48.81, 0.0, 0, "fx"),
+    ("EURTRY", "Euro", 56.07, 0.0, 0, "fx"),
+    ("GBPTRY", "İngiliz Sterlini", 65.22, 0.0, 0, "fx"),
     ("XAUTRY", "Gram Altın", 4424.18, 0.44, 0, "commodity"),
     ("XAGTRY", "Gram Gümüş", 52.31, -0.22, 0, "commodity"),
     ("BRENT", "Brent Petrol", 80.24, -0.36, 0, "commodity"),
@@ -1303,7 +1303,78 @@ def refresh_company_metadata(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+FX_REFRESH_SECONDS = int(os.environ.get("FX_REFRESH_SECONDS", str(6 * 60 * 60)))
+FX_SOURCE_URL = "https://api.frankfurter.dev/v1/latest?from=USD&to=TRY,EUR,GBP"
+
+
+def fetch_fx_quotes(conn: sqlite3.Connection) -> list[dict]:
+    """USD/EUR/GBP -> TRY kurlarını gerçek bir kaynaktan çeker.
+
+    TradingView tabanlı ana besleme (MARKET_URLS) sadece BIST hisse ve
+    endekslerini döndürüyor, döviz sembolü içermiyor - bu yüzden USDTRY/
+    EURTRY/GBPTRY ayrı, bağımsız bir kaynaktan güncellenir. Bu olmadan bu
+    üç satır ilk kurulumdaki sabit değerde donup kalıyordu (bkz. CLAUDE_HANDOFF
+    2026-09-23 notu - gerçek kur ~48.8 iken ekranda ~40.87 gösteriliyordu).
+    """
+    try:
+        request = urllib.request.Request(FX_SOURCE_URL, headers={"User-Agent": "OttomanBackend/2.0"})
+        with urllib.request.urlopen(request, timeout=MARKET_TIMEOUT) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        rates = payload.get("rates") or {}
+        usdtry = float(rates.get("TRY"))
+        eur_per_usd = float(rates.get("EUR"))
+        gbp_per_usd = float(rates.get("GBP"))
+        if not (usdtry > 0 and eur_per_usd > 0 and gbp_per_usd > 0):
+            return []
+    except Exception:
+        return []
+
+    ts = now()
+    fresh = {
+        "USDTRY": ("Amerikan Doları", round(usdtry, 4)),
+        "EURTRY": ("Euro", round(usdtry / eur_per_usd, 4)),
+        "GBPTRY": ("İngiliz Sterlini", round(usdtry / gbp_per_usd, 4)),
+    }
+    quotes = []
+    for symbol, (name, price) in fresh.items():
+        prior = conn.execute("SELECT price FROM market_cache WHERE symbol=?", (symbol,)).fetchone()
+        prior_price = float(prior["price"]) if prior and prior["price"] else 0.0
+        change_pct = round((price - prior_price) / prior_price * 100, 2) if prior_price > 0 else 0.0
+        quotes.append({
+            "symbol": symbol, "name": name, "price": price, "change_pct": change_pct,
+            "volume": 0, "asset_class": "fx", "updated_at": ts,
+        })
+    return quotes
+
+
+def refresh_fx(conn: sqlite3.Connection) -> None:
+    row = conn.execute(
+        "SELECT MIN(updated_at) AS oldest FROM market_cache WHERE symbol IN ('USDTRY','EURTRY','GBPTRY')"
+    ).fetchone()
+    oldest = int(row["oldest"]) if row and row["oldest"] is not None else 0
+    if now() - oldest < FX_REFRESH_SECONDS:
+        return
+    quotes = fetch_fx_quotes(conn)
+    if not quotes:
+        return
+    conn.executemany(
+        """
+        INSERT INTO market_cache
+          (symbol, name, price, change_pct, volume, asset_class, updated_at)
+        VALUES
+          (:symbol, :name, :price, :change_pct, :volume, :asset_class, :updated_at)
+        ON CONFLICT(symbol) DO UPDATE SET
+          price=excluded.price,
+          change_pct=excluded.change_pct,
+          updated_at=excluded.updated_at
+        """,
+        quotes,
+    )
+    conn.commit()
+
+
 def refresh_market(conn: sqlite3.Connection) -> list[dict]:
+    refresh_fx(conn)
     if not market_feed_enabled(conn):
         # Panelden "borsadan fiyat çekmeyi durdur" denmiş: son fiyatlar dondurulur.
         apply_manual_prices(conn)
