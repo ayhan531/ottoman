@@ -1056,7 +1056,24 @@ def account_for(conn: sqlite3.Connection, user_id: int) -> dict:
         row = conn.execute("SELECT * FROM accounts WHERE user_id=?", (user_id,)).fetchone()
     account = dict(row)
     account["orders_reserved"] = orders_reserved_for(conn, user_id)
+    account["pending_withdrawals"] = pending_withdrawals_for(conn, user_id)
     return account
+
+
+def pending_withdrawals_for(conn: sqlite3.Connection, user_id: int) -> float:
+    """Onay bekleyen para çekme taleplerinin toplamı.
+
+    Bu tutar bir talep oluşturulduğunda cash_balance'tan hemen düşülmüyor
+    (sadece admin onayladığında düşülüyor); bu yüzden aynı parayla hem
+    çekim talebi açılıp hem de emir verilebiliyordu (ikisi de anda
+    "yeterli bakiye" görüyordu). buying_power() ve yeni çekim talebi
+    doğrulaması bu tutarı düşerek gerçek kullanılabilir tutarı hesaplar.
+    """
+    row = conn.execute(
+        "SELECT COALESCE(SUM(amount), 0) AS toplam FROM money_requests WHERE user_id=? AND request_type='withdraw' AND status='pending'",
+        (user_id,),
+    ).fetchone()
+    return round(float(row["toplam"] or 0), 2)
 
 
 def orders_reserved_for(conn: sqlite3.Connection, user_id: int) -> float:
@@ -3170,7 +3187,8 @@ class AppHandler(BaseHTTPRequestHandler):
                     raise HttpError(400, "Geçerli bir Türkiye IBAN'ı giriniz")
                 if re.sub(r"\s+", " ", account_holder).strip().casefold() != re.sub(r"\s+", " ", user["full_name"]).strip().casefold():
                     raise HttpError(400, "Çekim hesabı sahibi kullanıcı adıyla aynı olmalıdır")
-                if account["cash_balance"] < amount:
+                cekilebilir = round(float(account["cash_balance"]) - pending_withdrawals_for(conn, user["id"]), 2)
+                if cekilebilir + 0.001 < amount:
                     raise HttpError(422, "Yetersiz bakiye")
                 conn.execute(
                     """
@@ -3247,6 +3265,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 """
                 SELECT u.*, a.cash_balance, a.blocked_balance, a.pending_balance, a.credit_limit,
                   (SELECT COALESCE(SUM(o2.cash_reserved + o2.pending_reserved), 0) FROM orders o2 WHERE o2.user_id=u.id AND o2.status='pending') AS orders_reserved,
+                  (SELECT COALESCE(SUM(m2.amount), 0) FROM money_requests m2 WHERE m2.user_id=u.id AND m2.request_type='withdraw' AND m2.status='pending') AS pending_withdrawals,
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id) AS document_count,
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='identity_front') AS has_front,
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='identity_back') AS has_back,
@@ -3407,7 +3426,8 @@ class AppHandler(BaseHTTPRequestHandler):
             rows = conn.execute(
                 """
                 SELECT u.id, u.account_no, u.full_name, u.email, u.city, u.district, u.status, a.cash_balance, a.blocked_balance, a.pending_balance, a.credit_limit,
-                  (SELECT COALESCE(SUM(o2.cash_reserved + o2.pending_reserved), 0) FROM orders o2 WHERE o2.user_id=u.id AND o2.status='pending') AS orders_reserved
+                  (SELECT COALESCE(SUM(o2.cash_reserved + o2.pending_reserved), 0) FROM orders o2 WHERE o2.user_id=u.id AND o2.status='pending') AS orders_reserved,
+                  (SELECT COALESCE(SUM(m2.amount), 0) FROM money_requests m2 WHERE m2.user_id=u.id AND m2.request_type='withdraw' AND m2.status='pending') AS pending_withdrawals
                 FROM users u
                 LEFT JOIN accounts a ON a.user_id=u.id
                 WHERE u.role='user'
@@ -4663,7 +4683,8 @@ def t2_is_enabled(conn: sqlite3.Connection) -> bool:
 
 
 def buying_power(account: dict) -> float:
-    return round(float(account["cash_balance"]) + float(account["pending_balance"]), 2)
+    reserved_withdrawals = float(account.get("pending_withdrawals", 0) or 0)
+    return round(float(account["cash_balance"]) + float(account["pending_balance"]) - reserved_withdrawals, 2)
 
 
 def ensure_pending_allocations(conn: sqlite3.Connection, user_id: int) -> None:
@@ -5032,6 +5053,7 @@ def public_user(user: dict, include_sensitive: bool = False) -> dict:
         data["cash_balance"] = user.get("cash_balance", 0)
         data["blocked_balance"] = user.get("blocked_balance", 0)
         data["orders_reserved"] = user.get("orders_reserved", 0)
+        data["pending_withdrawals"] = user.get("pending_withdrawals", 0)
         data["pending_balance"] = user.get("pending_balance", 0)
         data["credit_limit"] = user.get("credit_limit", 0)
         data["document_count"] = user.get("document_count", 0)

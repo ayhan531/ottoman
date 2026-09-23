@@ -339,7 +339,8 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const stockValue = holdings.reduce((sum, item) => sum + item.value, 0);
   const cash = Number(account?.cash_balance || 0);
   const legacyBlocked = Number(account?.blocked_balance || 0);
-  const available = Math.max(0, cash - legacyBlocked);
+  const pendingWithdrawals = Number(account?.pending_withdrawals || 0);
+  const available = Math.max(0, cash - legacyBlocked - pendingWithdrawals);
   const monogram = monogramOf(me?.full_name || "İsim Soyisim");
 
   const toggleWatch = (code) =>

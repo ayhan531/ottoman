@@ -406,9 +406,10 @@ export default function Portfolio({
 
   const cash = Number(account?.cash_balance || 0);
   const legacyBlocked = Number(account?.blocked_balance || 0);
+  const pendingWithdrawals = Number(account?.pending_withdrawals || 0);
   const blocked = Number(account?.orders_reserved || 0);
   const pending = Number(account?.pending_balance || 0);
-  const available = Math.max(0, cash - legacyBlocked);
+  const available = Math.max(0, cash - legacyBlocked - pendingWithdrawals);
   const t2 = cash + pending;
   const stockValue = holdings.reduce((sum, item) => sum + item.value, 0);
   const cost = holdings.reduce((sum, item) => sum + item.cost, 0);
