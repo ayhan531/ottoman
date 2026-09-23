@@ -2262,8 +2262,8 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
   const settings = data?.system_settings || {};
 
   const belgeleriYukle = useCallback(
-    () => api("/api/admin/documents").then((veri) => setDocuments(veri.documents || [])).catch(() => setDocuments([])),
-    [],
+    () => api("/api/admin/documents").then((veri) => setDocuments(veri.documents || [])).catch(() => setDocuments([])).then(() => refresh()),
+    [refresh],
   );
   useEffect(() => { if (sayfa === "Kullanıcı Doğrulama") belgeleriYukle(); }, [sayfa, belgeleriYukle]);
 
