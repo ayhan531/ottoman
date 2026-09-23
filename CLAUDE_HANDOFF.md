@@ -1177,3 +1177,39 @@ sitting untracked-by-reference in `dist/assets/` from earlier builds — `dist/i
 points at the new hash). Committed as `df63cfb`.
 
 **Cem still needs to `git push origin main`** to get `ceefc81` and `df63cfb` onto GitHub/Render.
+
+## 2026-09-23 (still later) — undo a wrong call, redesign two admin screens (`c21a8ac`)
+
+Cem pointed out two real mistakes from the previous pass, both now fixed:
+
+1. **The new "Bakiye İşlemleri" section in Account.jsx was a mistake.** I hadn't noticed the
+   Account screen already has a quick-action tile row at the top (Para yatır / Para çek / Banka
+   hesaplarım / Bakiye Geçmişi) — the settings-list section I added below duplicated all four of
+   those. Removed it; "Banka hesaplarım" is back in the "Hesap İşlemleri" list where it was
+   before (it was moved out by mistake).
+2. **Bakiye Geçmişi didn't show the balance after each transaction, and the admin panel didn't
+   match the reference panel Cem sent screenshots of.** Fixes:
+   - `Portfolio.jsx`: the transactions table already stores `balance_after` per row (backend
+     always computed it, just wasn't surfaced) — added a "Yeni: <bakiye>" line under each
+     deposit/withdrawal history card using that existing field.
+   - `AdminConsole.jsx`: renamed "Para Yükleme" → **"Bakiye Yönetimi"** (matches the reference's
+     name for that screen) and added a sort control (İsim / Bakiye yüksek-düşük) — the screen
+     itself (search + per-customer Bakiye Yükle/Çıkar buttons) already matched.
+   - `AdminConsole.jsx`: replaced the old per-document "Belgeler" list with a per-**user** KYC
+     queue, **"Kullanıcı Doğrulama"**: an icon count bar (toplam/inceleniyor/onaylı/reddedilen/
+     eksik belge, matching the reference's people/clock/check/x/question icons), a search box,
+     and a card per user (avatar, name, id, status badge, phone, location) with a "Belgeleri
+     İncele" button that opens a modal listing that user's documents with real Onayla/Reddet
+     actions (previously this button in other panels just opened the generic user editor).
+   - Note: "Onay Bekleyenler" (a different, pre-existing screen covering pending users/orders/
+     money together) was left untouched — it's one of the reference panel's original 14 screens
+     and serves a different, broader purpose than the new per-user KYC queue.
+   - `extra.css`: added `.ac-select` (the new sort dropdown) and `.ac-kyc-sayaclar` (the icon
+     count bar) styles; no changes to existing badge colors (`.ac-durum.onay/bekle/incele/ret`
+     were already exactly right for this — green/amber/blue/red).
+
+Build verified clean. Bundle markers checked: `"Bakiye İşlemleri"` no longer appears anywhere in
+the new JS bundle; `"Bakiye Yönetimi"`, `"Kullanıcı Doğrulama"`, `"Belgeleri İncele"` all present.
+`dist/index.html` updated to the new hash. Committed as `c21a8ac`.
+
+**Cem still needs to `git push origin main`.**
