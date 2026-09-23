@@ -29,8 +29,8 @@
   --soft: #f5f5f8;
   --edge: #ebecf1;
   --green: #168b70;
-  --red: #d95577;
-  --rose: #fce9ef;
+  --red: #e5484d;
+  --rose: #fdeaea;
   --tint-green: #e7f6ee;
   --ink-green: #1e9e6a;
   --tint-blue: #e8f1fe;
@@ -54,8 +54,8 @@
   --soft: #262830;
   --edge: #343640;
   --green: #2ca684;
-  --red: #d6657f;
-  --rose: #3a2631;
+  --red: #ff5c5c;
+  --rose: #3a2323;
   --tint-green: #1b372c;
   --ink-green: #37af82;
   --tint-blue: #1c2b3e;
@@ -917,7 +917,7 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
 .esube .pf-mini, .overlay .pf-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
 .esube .pf-mini span, .overlay .pf-mini span { font-size: calc(12.5px * var(--s)); color: rgba(255, 255, 255, 0.72); display: block; margin-bottom: 4px; }
 .esube .pf-mini b, .overlay .pf-mini b { font-size: calc(16px * var(--s)); font-weight: 700; }
-.esube .pf-alloc, .overlay .pf-alloc { min-width: 0; grid-column: 2; grid-row: 2 / span 3; align-self: end; justify-self: end; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.esube .pf-alloc, .overlay .pf-alloc { min-width: 0; grid-column: 2; grid-row: 2 / span 3; align-self: start; justify-self: end; display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 2px; }
 .esube .pf-legend, .overlay .pf-legend { display: flex; flex-direction: column; gap: 4px; }
 .esube .pf-legend div, .overlay .pf-legend div { display: inline-flex; align-items: center; gap: 6px; font-size: calc(11.5px * var(--s)); font-weight: 700; color: rgba(255, 255, 255, 0.72); white-space: nowrap; }
 .esube .pf-legend i, .overlay .pf-legend i { width: 9px; height: 9px; border-radius: 4.5px; display: block; }

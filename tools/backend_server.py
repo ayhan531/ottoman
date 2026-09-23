@@ -1482,7 +1482,7 @@ def status_label(value: str) -> str:
     }.get(value, value)
 
 
-REQUIRED_IDENTITY_DOCUMENTS = {"identity_front", "identity_back", "selfie"}
+REQUIRED_IDENTITY_DOCUMENTS = {"identity_front", "identity_back"}
 
 
 def kyc_document_state(conn: sqlite3.Connection, user_id: int) -> dict:
@@ -1808,8 +1808,8 @@ def market_news(market: int) -> tuple[list[dict], bool]:
         items = []
     if not items:
         items = [haber for haber in fetch_market_news(market) if haber.get("image_url")]
-    if not items:
-        items = fetch_market_news(market)
+    # Fotoğrafsız haber gösterilmez: görselsiz Bing yedeğine asla düşülmez,
+    # bulunamazsa sekme boş kalır ya da son bilinen fotoğraflı listeye dönülür.
 
     if items:
         MARKET_NEWS_CACHE[market] = {"items": items, "updated_at": now()}
@@ -2489,7 +2489,7 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def api_upload_documents(self) -> None:
         form = self.read_multipart()
-        sent_types = [doc_type for doc_type in ("identity_front", "identity_back", "selfie") if doc_type in form]
+        sent_types = [doc_type for doc_type in ("identity_front", "identity_back") if doc_type in form]
         if not sent_types:
             raise HttpError(400, "En az bir belge seçmelisin")
         with connect_db() as conn:
@@ -3232,7 +3232,6 @@ class AppHandler(BaseHTTPRequestHandler):
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id) AS document_count,
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='identity_front') AS has_front,
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='identity_back') AS has_back,
-                  (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='selfie') AS has_selfie,
                   (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id) AS order_count,
                   (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id AND o.side='buy') AS buy_count,
                   (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id AND o.side='sell') AS sell_count,
@@ -4070,8 +4069,6 @@ class AppHandler(BaseHTTPRequestHandler):
         if action not in {"approve", "reject", "retry"}:
             raise HttpError(404, "Belge işlemi bulunamadı")
         note = str(payload.get("note", "")).strip()[:300]
-        if action in {"reject", "retry"} and len(note) < 8:
-            raise HttpError(422, "Belge işlemi için en az 8 karakterlik inceleme gerekçesi zorunludur")
         with connect_db() as conn:
             admin = self.require_admin(conn)
             self.require_admin_step_up(conn)
@@ -4186,8 +4183,6 @@ class AppHandler(BaseHTTPRequestHandler):
             raise HttpError(404, "İşlem bulunamadı")
         payload = self.read_json()
         reason = str(payload.get("reason", "")).strip()[:300]
-        if entity in {"orders", "money"} and len(reason) < 8:
-            raise HttpError(422, "Finansal onay veya ret için en az 8 karakterlik gerekçe zorunludur")
         with connect_db() as conn:
             admin = self.require_admin(conn)
             if entity in {"users", "orders", "money"}:
@@ -4275,14 +4270,14 @@ class AppHandler(BaseHTTPRequestHandler):
             before = float(account["cash_balance"])
             after = round(before + float(item["amount"]), 2)
             conn.execute("UPDATE accounts SET cash_balance=? WHERE user_id=?", (after, item["user_id"]))
-            write_transaction(conn, item["user_id"], "deposit", item["amount"], before, after, money_request_id=request_id, note=item["note"] or "Para yatırma talebi onaylandı")
+            write_transaction(conn, item["user_id"], "deposit", item["amount"], before, after, money_request_id=request_id, note=reason or "Para yatırma talebi onaylandı")
         elif item["request_type"] == "withdraw":
             if account["cash_balance"] < item["amount"]:
                 raise HttpError(422, "Bakiye yetersiz")
             before = float(account["cash_balance"])
             after = round(before - float(item["amount"]), 2)
             conn.execute("UPDATE accounts SET cash_balance=? WHERE user_id=?", (after, item["user_id"]))
-            write_transaction(conn, item["user_id"], "withdrawal", item["amount"], before, after, money_request_id=request_id, note=item["note"] or "Para çekme talebi onaylandı")
+            write_transaction(conn, item["user_id"], "withdrawal", item["amount"], before, after, money_request_id=request_id, note=reason or "Para çekme talebi onaylandı")
         elif item["request_type"] == "credit":
             conn.execute("UPDATE accounts SET credit_limit=credit_limit+? WHERE user_id=?", (item["amount"], item["user_id"]))
         conn.execute("UPDATE money_requests SET status='approved', admin_note=?, reviewed_at=? WHERE id=?", (reason, now(), request_id))
@@ -5024,8 +5019,7 @@ def public_user(user: dict, include_sensitive: bool = False) -> dict:
             eksik = []
             if not user.get("has_front"): eksik.append("Ön Yüz")
             if not user.get("has_back"): eksik.append("Arka Yüz")
-            if not user.get("has_selfie"): eksik.append("Selfie")
-            data["kyc_missing_label"] = f"{', '.join(eksik)} Bekleniyor" if eksik and len(eksik) < 3 else None
+            data["kyc_missing_label"] = f"{', '.join(eksik)} Bekleniyor" if eksik and len(eksik) < 2 else None
         else:
             data["kyc_missing_label"] = None
         data["order_count"] = user.get("order_count", 0)

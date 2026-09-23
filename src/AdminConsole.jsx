@@ -602,7 +602,7 @@ function ApprovalList({ title, note, items, render, onAct, ensure, onNotice, ref
   const [busy, setBusy] = useState(0);
   const calistir = async (item, action) => {
     const gerekce = reason.trim();
-    if (reasonRequired && gerekce.length < 8) return onNotice("Gerekçe kısa", "Onay veya ret için en az 8 karakter gerekçe yaz.");
+
     if (!(await ensure())) return;
     setBusy(item.id);
     try {
@@ -618,13 +618,11 @@ function ApprovalList({ title, note, items, render, onAct, ensure, onNotice, ref
   };
   return (
     <Section title={title} note={note}>
-      {reasonRequired && (
-        <div className="ac-form">
-          <Field label="Gerekçe (onay/ret için zorunlu, en az 8 karakter)" wide>
-            <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Örn: Dekont doğrulandı" />
-          </Field>
-        </div>
-      )}
+      <div className="ac-form">
+        <Field label="Gerekçe (opsiyonel)" wide>
+          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Örn: Dekont doğrulandı" />
+        </Field>
+      </div>
       <div className="ac-list scroll">
         {items.length === 0 && <div className="ac-line"><span><strong>Kayıt yok</strong><small>Bekleyen bir şey yok</small></span></div>}
         {items.map((item) => (
@@ -1173,7 +1171,6 @@ function OrdersPanel({ orders, ensure, onNotice, refresh }) {
 
   const calistir = async (order, action) => {
     const gerekce = reason.trim();
-    if (gerekce.length < 8) return onNotice("Gerekçe kısa", "Onay veya ret için en az 8 karakter gerekçe yaz.");
     if (!(await ensure())) return;
     setBusy(order.id);
     try {
@@ -1199,7 +1196,7 @@ function OrdersPanel({ orders, ensure, onNotice, refresh }) {
         ))}
       </div>
       <div className="ac-form">
-        <Field label="Gerekçe (onay/ret için zorunlu, en az 8 karakter)" wide>
+        <Field label="Gerekçe (opsiyonel)" wide>
           <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Örn: Piyasa fiyatı doğrulandı" />
         </Field>
       </div>
@@ -1256,7 +1253,6 @@ function MoneyPanel({ moneyReqs, tur, baslik, not, ensure, onNotice, refresh }) 
 
   const calistir = async (item, action) => {
     const gerekce = reason.trim();
-    if (gerekce.length < 8) return onNotice("Gerekçe kısa", "Onay veya ret için en az 8 karakter gerekçe yaz.");
     if (!(await ensure())) return;
     setBusy(item.id);
     try {
@@ -1281,7 +1277,7 @@ function MoneyPanel({ moneyReqs, tur, baslik, not, ensure, onNotice, refresh }) 
         ))}
       </div>
       <div className="ac-form">
-        <Field label="Gerekçe (onay/ret için zorunlu, en az 8 karakter)" wide>
+        <Field label="Gerekçe (opsiyonel)" wide>
           <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Örn: Dekont doğrulandı" />
         </Field>
       </div>
@@ -2106,7 +2102,7 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
     <nav className="ac-drawer" onClick={(e) => e.stopPropagation()}>
       <header>
         <div className="ac-drawer-brand">
-          <img src="/logo-icon.png" alt="" className="brand-logo-icon" /><span className="brand">Ottoman Yatırım</span>
+          <span className="brand">Ottoman Yatırım</span>
           <div><strong>Admin Panel</strong><small>Yönetim</small></div>
         </div>
         <button className="ac-drawer-close" onClick={() => setMenuAcik(false)} aria-label="Kapat">✕</button>

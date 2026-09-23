@@ -15,7 +15,7 @@ import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHo
 import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
 import { useGeriTusu } from "./geri.js";
 import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, iosBrowser, iosToolbarAtBottom, uygulamaIciTarayici, tarayicidaAc, kurulumSemasi, adresiKopyala, kurulumAdresi, kurulumIstendi, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
-import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, MARKET_CONTACT_TEXT, IPO, FUNDS, parseAmount, group } from "./market.js";
+import { listFor, search, money, monogram as monogramOf, BIST, TRADABLE_MARKETS, MARKET_NAMES, MARKET_CONTACT_TEXT, IPO, FUNDS, PARTICIPATION, parseAmount, group } from "./market.js";
 import { T, setLangIndex, LANG_CODES } from "./lang.js";
 
 export const APP_VERSION = "1.6.3";
@@ -36,10 +36,10 @@ function useOnline() {
   return online;
 }
 
-/** Kimlik doğrulama belgesi yükleme: kimliğin ön yüzü, arka yüzü ve kimlikle
- * çekilmiş bir selfie - hesabın onaylanması ve para yatır/çek işlemlerinin
- * açılması için üçü birlikte gönderilir (bkz. backend api_upload_documents). */
-const KYC_DOC_LABELS = { identity_front: "Kimlik Ön Yüz", identity_back: "Kimlik Arka Yüz", selfie: "Kimlikli Selfie" };
+/** Kimlik doğrulama belgesi yükleme: kimliğin ön yüzü ve arka yüzü - hesabın
+ * onaylanması ve para yatır/çek işlemlerinin açılması için gönderilir (bkz.
+ * backend api_upload_documents). Her biri bağımsız yüklenir. */
+const KYC_DOC_LABELS = { identity_front: "Kimlik Ön Yüz", identity_back: "Kimlik Arka Yüz" };
 
 function KycUpload({ documents, onNotice, onUploaded }) {
   const [busyType, setBusyType] = useState("");
@@ -76,7 +76,7 @@ function KycUpload({ documents, onNotice, onUploaded }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <p style={{ margin: 0, color: "var(--muted)", fontSize: 13, lineHeight: 1.4 }}>
-        {T("Hesabını onaylatmak ve para yatırma/çekme işlemlerini açmak için kimliğinin ön yüzünü, arka yüzünü ve kimliğinle birlikte çekilmiş bir selfie fotoğrafını yükle. Her belgeyi ayrı ayrı, istediğin sırayla yükleyebilirsin.")}
+        {T("Hesabını onaylatmak ve para yatırma/çekme işlemlerini açmak için kimliğinin ön yüzünü ve arka yüzünü yükle. Her belgeyi ayrı ayrı, istediğin sırayla yükleyebilirsin.")}
       </p>
       <div className="card outline list-card">
         <Divided>
@@ -318,6 +318,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
     fund: ["Fon işlemleri", "Fon alış satışları için referansınız ile iletişime geçiniz."],
     ipo: ["Halka arz talebi", "Halka arz alış satışları için referansınız ile iletişime geçiniz."],
     currency: ["Döviz işlemleri", "Döviz alış satışları için referansınız ile iletişime geçiniz."],
+    participation: ["Katılım hisse işlemleri", "Katılım hisse alış satışları için referansınız ile iletişime geçiniz."],
   };
   const openTrade = (item, { sheet = false, buying = true, searchable = false } = {}) => {
     const stock = asStock(item);
@@ -350,7 +351,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
       <button className="ava" onClick={() => setOverlay({ kind: "profile" })} aria-label={T("Profil")}>
         {me?.avatar_url ? <img src={me.avatar_url} alt="" /> : monogram}
       </button>
-      <div className="brand-word"><img src="/logo-icon.png" alt="" className="brand-logo-icon" />Ottoman Yatırım</div>
+      <div className="brand-word">Ottoman Yatırım</div>
       <div className="brandbar-actions">
         {me?.role === "admin" && (
           <button className="icon-btn lav" onClick={onAdmin} title="Admin"><Icon name="shield" size={20} /></button>
@@ -536,7 +537,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             watchlist={watchlist}
             openTrade={(item) => {
               if (!TRADABLE_MARKETS.has(marketTab)) {
-                const kind = marketTab === 6 ? "fund" : marketTab === 5 ? "ipo" : "currency";
+                const kind = marketTab === FUNDS ? "fund" : marketTab === IPO ? "ipo" : marketTab === PARTICIPATION ? "participation" : "currency";
                 showNotice(REFERRAL_ONLY[kind][0], REFERRAL_ONLY[kind][1]);
                 return;
               }
@@ -569,7 +570,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         </div>
       )}
       <nav className="sidebar">
-        <div className="brandmark"><img src="/logo-icon.png" alt="" className="brand-logo-icon" /><span>Ottoman Yatırım</span></div>
+        <div className="brandmark"><span>Ottoman Yatırım</span></div>
         {NAV.map((item, index) => (
           <button key={item.title} className={index === 2 ? "trade-cta" : navActive(index) ? "active" : ""} onClick={() => navigate(index)}>
             <Icon name={item.icon} size={20} />

@@ -262,6 +262,29 @@ function TransactionCard({ trade, logo, onOpen }) {
     : <div className="trx-card">{content}</div>;
 }
 
+/** Para yatırma/çekme hareketi: admin onayından geçmiş, opsiyonel admin notu ile. */
+function MoneyMoveCard({ move }) {
+  const deposit = move.type === "deposit";
+  return (
+    <div className="trx-card">
+      <div className="trx-grid">
+        <Symbol logo="" letter={deposit ? "+" : "−"} size={40} tinted />
+        <span className="c">
+          <span className="hd">
+            <strong>{T(deposit ? "Para Yatırma" : "Para Çekme")}</strong>
+            <span className={`badge-sm ${deposit ? "buy" : "sell"}`}>{T("Onaylandı")}</span>
+          </span>
+          {move.note && <span>{move.note}</span>}
+        </span>
+        <span className="r">
+          <span className="tot b" style={{ color: deposit ? "var(--green)" : "var(--red)" }}>{deposit ? "+" : "−"}{money(move.amount)}</span>
+          <span className="dt">{move.date.toLocaleDateString(locale(), { day: "numeric", month: "short" })} {move.date.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- işlem detayı ---------- */
 
 export function TransactionDetail({ trade, logo, onClose }) {
@@ -418,6 +441,31 @@ export default function Portfolio({
       .sort((a, b) => b.date - a.date);
   }, [transactions, filter, query, day]);
 
+  // Para yatırma/çekme talepleri admin onayından geçince burada, "Tümü" görünümünde görünür.
+  const moneyMoves = useMemo(() => {
+    if (filter !== 0) return [];
+    const needle = fold(query);
+    return transactions
+      .filter((row) => row.transaction_type === "deposit" || row.transaction_type === "withdrawal")
+      .map((row) => ({
+        id: row.id,
+        type: row.transaction_type,
+        amount: Number(row.total || 0),
+        note: row.note || "",
+        date: new Date((Number(row.created_at) || 0) * 1000),
+      }))
+      .filter((move) => (!needle || fold(move.note).includes(needle)) && (!day || localDay(move.date) === day))
+      .sort((a, b) => b.date - a.date);
+  }, [transactions, filter, query, day]);
+
+  const gecmisAkisi = useMemo(() => {
+    const merged = [
+      ...trades.map((trade) => ({ kind: "trade", date: trade.date, data: trade })),
+      ...moneyMoves.map((move) => ({ kind: "money", date: move.date, data: move })),
+    ];
+    return merged.sort((a, b) => b.date - a.date);
+  }, [trades, moneyMoves]);
+
   return (
     <div className="page gap-16">
       <div
@@ -554,8 +602,10 @@ export default function Portfolio({
             </button>
           )}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {trades.length ? trades.map((trade, index) => (
-              <TransactionCard key={index} trade={trade} logo={logoOf(trade.symbol)} onOpen={setDetail} />
+            {gecmisAkisi.length ? gecmisAkisi.map((entry, index) => (
+              entry.kind === "trade"
+                ? <TransactionCard key={`t-${index}`} trade={entry.data} logo={logoOf(entry.data.symbol)} onOpen={setDetail} />
+                : <MoneyMoveCard key={`m-${entry.data.id}`} move={entry.data} />
             )) : (
               <div className="notice-box" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <strong style={{ fontSize: "calc(18px * var(--s))", color: "var(--ink)" }}>{T("İşlem bulunamadı")}</strong>

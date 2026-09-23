@@ -15,13 +15,14 @@ export const MARKET_NAMES = [
 export const BIST = 0, BIST100 = 1, BIST30 = 2, PARTICIPATION = 3, DIVIDEND = 4, IPO = 5, FUNDS = 6, CURRENCY = 7, BIST50 = 8;
 
 /** Alım-satımı backend'de desteklenen sekmeler; diğerlerinde "referansınız ile iletişime geçin" çıkar. */
-export const TRADABLE_MARKETS = new Set([BIST, BIST100, BIST30, PARTICIPATION, DIVIDEND, BIST50]);
+export const TRADABLE_MARKETS = new Set([BIST, BIST100, BIST30, DIVIDEND, BIST50]);
 
 /** Al/Sat ekranı hiç açılmayan piyasalar için gösterilecek yönlendirme metni (bkz. Trade.jsx REFERRAL_TEXT). */
 export const MARKET_CONTACT_TEXT = {
   [IPO]: "Halka arz alış satışları için referansınız ile iletişime geçiniz.",
   [FUNDS]: "Fon alış satışları için referansınız ile iletişime geçiniz.",
   [CURRENCY]: "Döviz alış satışları için referansınız ile iletişime geçiniz.",
+  [PARTICIPATION]: "Katılım hisse alış satışları için referansınız ile iletişime geçiniz.",
 };
 
 const XU030 = ["AKBNK","AKSEN","ALARK","ASELS","ASTOR","BIMAS","BRSAN","EKGYO","ENKAI","EREGL","FROTO","GARAN","GUBRF","HEKTS","ISCTR","KCHOL","KOZAL","KRDMD","MGROS","ODAS","OYAKC","PETKM","PGSUS","SAHOL","SASA","SISE","TCELL","THYAO","TOASO","TUPRS"];
@@ -187,7 +188,7 @@ export function listFor(market, instruments) {
     case BIST50:
       return stocks.filter((item) => S_XU050.has(item.code));
     case PARTICIPATION:
-      return stocks.filter((item) => S_XKTUM.has(item.code));
+      return stocks.filter((item) => S_XKTUM.has(item.code)).map((item) => ({ ...item, kind: "participation" }));
     case DIVIDEND:
       return stocks.filter((item) => S_XTMTU.has(item.code));
     case IPO:
