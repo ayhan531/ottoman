@@ -2188,11 +2188,6 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
           </div>
         </header>
 
-        <div className="ac-lockbar">
-          <span className={lock.gecerli() ? "on" : ""}>{lock.gecerli() ? "Yönetici kilidi açık" : "Yönetici kilidi kapalı"}</span>
-          {!lock.gecerli() && <button className="ac-ghost" onClick={() => lock.ensure()}>Kilidi aç</button>}
-        </div>
-
         {sayfa === "Dashboard" && <Dashboard summary={summary} users={users} orders={orders} moneyReqs={moneyReqs} onGit={git} />}
         {sayfa === "Kullanıcılar" && <UsersPanel users={users} onSec={setSelected} onNotice={onNotice} ensure={lock.ensure} refresh={refresh} />}
         {sayfa === "Portföyler" && <PortfolioPanel users={users} onNotice={onNotice} ensure={lock.ensure} />}
@@ -2232,8 +2227,6 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
       {selected && (
         <UserEditor user={selected} onClose={() => setSelected(null)} onNotice={onNotice} ensure={lock.ensure} refresh={refresh} />
       )}
-
-      {lock.soru && <LockDialog onSubmit={lock.dogrula} onCancel={lock.iptal} />}
 
       {notice && (
         <div className="modal-layer" onClick={() => setNotice(null)}>

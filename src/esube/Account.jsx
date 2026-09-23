@@ -29,12 +29,12 @@ export default function Account({
       {brandBar}
 
       <button className="card outline pcard" onClick={onOpenPersonal}>
-        <span className="ava n44">{me?.avatar_url ? <img src={me.avatar_url} alt="" /> : monogram}</span>
+        <Icon name="chevron" size={18} color="var(--muted)" className="pcard-chevron" />
+        <span className="ava n50">{me?.avatar_url ? <img src={me.avatar_url} alt="" /> : monogram}</span>
         <span className="who">
           <strong>{me?.full_name || "İsim Soyisim"}</strong>
           <span>{T("Müşteri No:")} {me?.account_no || me?.id || "—"}</span>
         </span>
-        <Icon name="chevron" size={18} color="var(--muted)" />
       </button>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

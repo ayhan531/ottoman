@@ -588,8 +588,9 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
 .esube .page-head h1.t22, .overlay .page-head h1.t22 { font-size: calc(22px * var(--s)); text-align: left; }
 
 /* ---------- hesap ekranı ---------- */
-.esube .pcard, .overlay .pcard { display: grid; grid-template-columns: 44px 1fr auto; gap: 11px; align-items: center; padding: 15px; width: 100%; }
-.esube .pcard .who, .overlay .pcard .who { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.esube .pcard, .overlay .pcard { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 22px 15px; width: 100%; }
+.esube .pcard .who, .overlay .pcard .who { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+.esube .pcard .pcard-chevron, .overlay .pcard .pcard-chevron { position: absolute; top: 16px; right: 16px; }
 .esube .pcard .who strong, .overlay .pcard .who strong { font-size: calc(15.5px * var(--s)); font-weight: 700; }
 .esube .pcard .who span, .overlay .pcard .who span { font-size: calc(12px * var(--s)); color: var(--muted); }
 

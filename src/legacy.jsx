@@ -1,11 +1,13 @@
 // Eski e-şube kabuğundan korunan parçalar: giriş ekranı ve admin paneli.
 // Bunlar APK'da bulunmayan, kuruma özgü ekranlardır; extra.css/style.css ile biçimlenir.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Bell, Calendar, CheckCircle2, Eye, EyeOff, Moon, ShieldCheck, Sun, X } from "lucide-react";
 import { api } from "./esube/store.js";
 import { rememberAccount, takePendingTc } from "./esube/accounts.js";
 import { ILLER, ilceleri } from "./esube/regions.js";
 import { gecerliTc, tcHatasi } from "./esube/kimlik.js";
+import Icon from "./esube/icons.jsx";
+import { CONTRACTS } from "./esube/contracts.js";
 
 const money = (value) => `₺${Number(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const compactDate = () => new Date().toLocaleDateString("tr-TR", { day: "2-digit", month: "long", year: "numeric" });
@@ -134,17 +136,90 @@ const DogumAlani = ({ value, onChange }) => {
   );
 };
 
+/** Metni başlık/madde/paragraf bloklarına ayırır (Sözleşmeler ekranındaki DocumentPage ile aynı mantık). */
+const belgeBloklariniAyir = (doc) => {
+  const out = [];
+  for (const raw of (doc?.body || "").split("\n")) {
+    const line = raw.trim();
+    if (!line) continue;
+    if (line.startsWith("* ")) { out.push({ type: "bullet", text: line.slice(2) }); continue; }
+    const numbered = line.length > 2 && /^\d/.test(line) && line.indexOf(". ") >= 0 && line.indexOf(". ") < 4;
+    const heading = line.startsWith("Madde ") || numbered || (line.length < 64 && !".;:,".includes(line[line.length - 1]));
+    out.push({ type: heading ? "head" : "text", text: line });
+  }
+  return out;
+};
+
+const KAYIT_SOZLESME_ADIMLARI = () => {
+  const bul = (anahtar) => CONTRACTS.find((c) => c.title.includes(anahtar));
+  return [
+    { key: "kvkk", title: "KVKK Aydınlatma Metni", doc: bul("Kişisel Verilerin Korunması") },
+    { key: "risk", title: "Risk Bildirimi", doc: bul("Risk Bildirimi") },
+    { key: "sozlesme", title: "E-Şube Sözleşmesi", doc: bul("Çerçeve Sözleşmesi") },
+  ].filter((adim) => adim.doc);
+};
+
+/** Sözleşmeleri okumadan onaylanamaz: her metin sonuna kadar kaydırılmadan
+    "Devam Et" açılmaz; son metin de okunduktan sonra kabul tamamlanır. */
+function SozlesmeModal({ onClose, onComplete }) {
+  const adimlar = useMemo(KAYIT_SOZLESME_ADIMLARI, []);
+  const [index, setIndex] = useState(0);
+  const [okunanlar, setOkunanlar] = useState(() => new Set());
+  const adim = adimlar[index];
+  const okundu = adim ? okunanlar.has(adim.key) : false;
+  const blocks = useMemo(() => belgeBloklariniAyir(adim?.doc), [adim]);
+
+  const kaydirildi = (event) => {
+    const el = event.currentTarget;
+    if (el.scrollHeight - (el.scrollTop + el.clientHeight) < 16) {
+      setOkunanlar((eski) => (eski.has(adim.key) ? eski : new Set(eski).add(adim.key)));
+    }
+  };
+
+  const devamEt = () => {
+    if (!okundu) return;
+    if (index < adimlar.length - 1) setIndex((i) => i + 1);
+    else onComplete();
+  };
+
+  if (!adim) return null;
+
+  return (
+    <div className="modal-layer sozlesme-layer" onClick={onClose}>
+      <section className="trade-modal sozlesme-modal" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="close" onClick={onClose} aria-label="Kapat"><X size={18} /></button>
+        <div className="sozlesme-progress">
+          {adimlar.map((a, i) => <span key={a.key} className={i <= index ? "on" : ""} />)}
+        </div>
+        <h2>{adim.title}</h2>
+        <div className="doc-card sozlesme-body" onScroll={kaydirildi}>
+          {blocks.map((block, i) =>
+            block.type === "head" ? <h3 key={i}>{block.text}</h3>
+              : block.type === "bullet" ? <div className="bullet" key={i}><span>•</span><span>{block.text}</span></div>
+                : <p key={i}>{block.text}</p>
+          )}
+        </div>
+        {!okundu && <small className="sozlesme-hint">Devam edebilmek için metnin tamamını okuyup en alta kaydırmalısın.</small>}
+        <button type="button" className="confirm" disabled={!okundu} onClick={devamEt}>
+          {index < adimlar.length - 1 ? "Okudum, Devam Et" : "Okudum, Kabul Ediyorum"}
+        </button>
+      </section>
+    </div>
+  );
+}
+
 const BOS_KAYIT = {
   ad: "", soyad: "", tc: "", dogum: "", il: "", ilce: "",
   telefon: "", eposta: "", referans: "", sifre: "", sifre2: "",
 };
 
-function AuthScreen({ onAuthed, back }) {
-  const [mode, setMode] = useState("login");
+function AuthScreen({ onAuthed, back, initialMode }) {
+  const [mode, setMode] = useState(initialMode === "register" ? "register" : "login");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [kayit, setKayit] = useState(BOS_KAYIT);
   const [sozlesme, setSozlesme] = useState(false);
+  const [sozlesmeModal, setSozlesmeModal] = useState(false);
   // Hesap değiştirilirken kimlik numarası hazır gelir; şifre her zaman istenir.
   const [prefillTc] = useState(() => takePendingTc());
   const [girisTc, setGirisTc] = useState(prefillTc);
@@ -299,15 +374,22 @@ function AuthScreen({ onAuthed, back }) {
             </Alan>
           </div>
 
-          <label className="checkline">
-            <input type="checkbox" checked={sozlesme} onChange={(event) => setSozlesme(event.target.checked)} />
-            KVKK aydınlatma metni, risk bildirimi ve e-şube sözleşmelerini okudum, kabul ediyorum.
-          </label>
+          <button type="button" className={`checkline sozlesme-trigger${sozlesme ? " on" : ""}`} onClick={() => setSozlesmeModal(true)}>
+            <span className="fake-check">{sozlesme && <Icon name="check" size={12} color="#fff" />}</span>
+            <span>KVKK aydınlatma metni, risk bildirimi ve e-şube sözleşmelerini {sozlesme ? "okudum, kabul ettim." : "okumak ve kabul etmek için dokun."}</span>
+          </button>
           {message && <div className="warning">{message}</div>}
           <button className="confirm" disabled={busy || sifreGucu(kayit.sifre) !== "guclu"}>{busy ? "Gönderiliyor…" : "Hesap Oluştur"}</button>
         </form>
       )}
-    </main><div className="home-indicator" /></div></div>
+    </main>
+    {sozlesmeModal && (
+      <SozlesmeModal
+        onClose={() => setSozlesmeModal(false)}
+        onComplete={() => { setSozlesme(true); setSozlesmeModal(false); }}
+      />
+    )}
+    <div className="home-indicator" /></div></div>
   );
 }
 

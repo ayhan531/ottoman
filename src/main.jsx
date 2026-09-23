@@ -21,6 +21,7 @@ function Root() {
   const [ready, setReady] = useState(false);
   // Ana ekrandaki kısayoldan açıldıysa tanıtım sayfası atlanır, doğrudan e-şube açılır.
   const [authOpen, setAuthOpen] = useState(() => isStandalone());
+  const [authMode, setAuthMode] = useState("login");
   const [showAdmin, setShowAdmin] = useState(false);
   const [adminData, setAdminData] = useState(null);
   // Kurulum bağlantısıyla gelenlerde kurulum ekranı tanıtım sayfasının üstünde açılır.
@@ -91,7 +92,7 @@ function Root() {
   if (!me && !authOpen) {
     return (
       <>
-        <CorporateLanding openAuth={() => setAuthOpen(true)} />
+        <CorporateLanding openAuth={(mode) => { setAuthMode(mode === "register" ? "register" : "login"); setAuthOpen(true); }} />
         {kurEkrani && <InstallSheet onClose={() => setKurEkrani(false)} onNotice={(baslik, metin) => setUyari({ baslik, metin })} />}
         {uyari && (
           <Dialog title={uyari.baslik} onClose={() => setUyari(null)}>
@@ -102,7 +103,7 @@ function Root() {
       </>
     );
   }
-  if (!me) return <AuthScreen onAuthed={(data) => setMe(normalize(data))} back={() => setAuthOpen(false)} />;
+  if (!me) return <AuthScreen onAuthed={(data) => setMe(normalize(data))} back={() => setAuthOpen(false)} initialMode={authMode} />;
   if (me.role === "admin" && showAdmin) {
     return <AdminConsole data={adminData || {}} refresh={loadAdmin} logout={logout} onClose={() => setShowAdmin(false)} />;
   }
