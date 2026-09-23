@@ -87,7 +87,7 @@ export default function Account({
         </button>
       </div>
 
-      <span className="section-label">{T("Para Talepleriniz")}</span>
+      <span className="section-label">{T("Bakiye Geçmişi")}</span>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
         {(moneyRequests && moneyRequests.length) ? moneyRequests.map((item) => {
           const renk = item.status === "rejected" ? "var(--red)" : item.status === "approved" ? "var(--green)" : "var(--ink-blue)";
