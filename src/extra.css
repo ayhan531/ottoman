@@ -851,6 +851,16 @@
 .ac-toolbar{display:flex;gap:8px;align-items:center}
 .ac-search{flex:1;height:46px;border:1px solid var(--line);border-radius:12px;background:#f7f7fb;padding:0 14px;font-size:14.5px;color:inherit;width:100%;box-sizing:border-box}
 .dark-mode .ac-search{background:#171c27;border-color:#303747;color:#f7f8ff}
+.ac-select{flex:none;height:46px;border:1px solid var(--line);border-radius:12px;background:#f7f7fb;padding:0 12px;font-size:13.5px;font-weight:700;color:inherit}
+.dark-mode .ac-select{background:#171c27;border-color:#303747;color:#f7f8ff}
+
+.ac-kyc-sayaclar{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-bottom:2px}
+.ac-kyc-sayaclar button{display:flex;flex-direction:column;align-items:center;gap:4px;background:#f7f7fb;border-radius:12px;padding:10px 4px;color:var(--muted)}
+.ac-kyc-sayaclar button b{font-size:15px;font-weight:800;color:inherit}
+.ac-kyc-sayaclar button.on{background:#eef0ff;color:var(--purple)}
+.dark-mode .ac-kyc-sayaclar button{background:#171c27;color:#aeb6c7}
+.dark-mode .ac-kyc-sayaclar button.on{background:#252a3a;color:#b9a8ff}
+@media (max-width:480px){.ac-kyc-sayaclar{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .ac-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
 .ac-chips button{flex:none;height:34px;padding:0 13px;border-radius:17px;background:#f2f2f6;color:var(--muted);font-size:13px;font-weight:700}
 .ac-chips button.on{background:var(--purple);color:#fff}

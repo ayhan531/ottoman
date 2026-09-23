@@ -279,6 +279,7 @@ function MoneyMoveCard({ move }) {
         <span className="r">
           <span className="tot b" style={{ color: deposit ? "var(--green)" : "var(--red)" }}>{deposit ? "+" : "−"}{money(move.amount)}</span>
           <span className="dt">{move.date.toLocaleDateString(locale(), { day: "numeric", month: "short" })} {move.date.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" })}</span>
+          {move.balanceAfter != null && <span className="dt">{T("Yeni")}: {money(move.balanceAfter)}</span>}
         </span>
       </div>
     </div>
@@ -451,6 +452,7 @@ export default function Portfolio({
         id: row.id,
         type: row.transaction_type,
         amount: Number(row.total || 0),
+        balanceAfter: row.balance_after != null ? Number(row.balance_after) : null,
         note: row.note || "",
         date: new Date((Number(row.created_at) || 0) * 1000),
       }))

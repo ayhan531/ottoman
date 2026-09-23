@@ -619,6 +619,145 @@ function SettingsPanel({ settings, onNotice, ensure, refresh }) {
 
 /* ---------- onay kuyrukları ---------- */
 
+/** Kullanıcı doğrulama kuyruğu: kişi başına kimlik durumu, arama ve belge inceleme. */
+const KYC_ROZET_SINIFI = { review: "incele", approved: "onay", rejected: "ret", incomplete: "bekle" };
+const KYC_ROZET_METNI = { review: "İnceleniyor", approved: "Onaylandı", rejected: "Reddedildi", incomplete: "Eksik Belge" };
+
+function kycGrubu(user) {
+  const durum = user.kyc_status || "pending";
+  if (durum === "approved" || durum === "test_account") return "approved";
+  if (durum === "under_review") return "review";
+  if (durum === "rejected") return "rejected";
+  return "incomplete"; // pending, awaiting_back
+}
+
+function KycQueuePanel({ users = [], documents = [], ensure, onNotice, refresh }) {
+  const [query, setQuery] = useState("");
+  const [durum, setDurum] = useState("hepsi");
+  const [secili, setSecili] = useState(null);
+
+  const sayilar = useMemo(() => {
+    const acc = { review: 0, approved: 0, rejected: 0, incomplete: 0 };
+    users.forEach((u) => { const g = kycGrubu(u); acc[g] = (acc[g] || 0) + 1; });
+    return acc;
+  }, [users]);
+
+  const liste = useMemo(() => {
+    const needle = fold(query);
+    return users
+      .filter((u) => durum === "hepsi" || kycGrubu(u) === durum)
+      .filter((u) => eslesir(u, ["full_name", "account_no", "tc"], needle));
+  }, [users, query, durum]);
+
+  const sayac = (key, icon, deger) => (
+    <button type="button" className={durum === key ? "on" : ""} onClick={() => setDurum(key)}>
+      <Icon name={icon} size={16} />
+      <b>{deger}</b>
+    </button>
+  );
+
+  return (
+    <Section title="Kullanıcı Doğrulama" note="Kimlik belgesi inceleme ve onay işlemleri">
+      <div className="ac-kyc-sayaclar">
+        {sayac("hepsi", "user", users.length)}
+        {sayac("review", "clock", sayilar.review)}
+        {sayac("approved", "check", sayilar.approved)}
+        {sayac("rejected", "close", sayilar.rejected)}
+        {sayac("incomplete", "question", sayilar.incomplete)}
+      </div>
+      <AraSatiri value={query} onChange={setQuery} placeholder="Ad, soyad, hesap no veya TC ile ara…" />
+      <div className="ac-kisiler">
+        {liste.map((user) => {
+          const grup = kycGrubu(user);
+          return (
+            <article className="ac-kisi ac-kyc-satir" key={user.id}>
+              <header>
+                <span className="av"><Icon name="user" size={17} /></span>
+                <span className="ad">
+                  <strong>{user.full_name}</strong>
+                  <small># {user.account_no}</small>
+                </span>
+                <em className={`ac-durum ${KYC_ROZET_SINIFI[grup]}`}>{KYC_ROZET_METNI[grup]}</em>
+              </header>
+              <ul>
+                <li><Icon name="phone" size={13} /> {user.phone || "—"}</li>
+                <li><Icon name="globe" size={13} /> {[user.district, user.city].filter(Boolean).join(", ") || "—"}</li>
+              </ul>
+              <footer>
+                <button className="ac-ghost" style={{ flex: 1 }} onClick={() => setSecili(user)}>
+                  <Icon name="eye" size={16} /> Belgeleri İncele
+                </button>
+              </footer>
+            </article>
+          );
+        })}
+        {!liste.length && <Bos metin="Kayıt yok" />}
+      </div>
+
+      {secili && (
+        <KycUserModal
+          user={secili}
+          documents={documents.filter((d) => d.user_id === secili.id)}
+          onClose={() => setSecili(null)}
+          onNotice={onNotice}
+          ensure={ensure}
+          refresh={refresh}
+        />
+      )}
+    </Section>
+  );
+}
+
+/** Tek kullanıcının kimlik belgelerini inceleme modalı. */
+function KycUserModal({ user, documents, onClose, onNotice, ensure, refresh }) {
+  const [reason, setReason] = useState("");
+  const [busy, setBusy] = useState(0);
+
+  const calistir = async (doc, action) => {
+    if (!(await ensure())) return;
+    setBusy(doc.id);
+    try {
+      await api(`/api/admin/documents/${doc.id}/${action}`, { method: "POST", body: JSON.stringify({ note: reason.trim() || "Admin kararı" }) });
+      await refresh();
+      onNotice("Tamam", action === "approve" ? "Onaylandı." : action === "reject" ? "Reddedildi." : "Belge tekrar istendi.");
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "İşlem tamamlanamadı");
+    } finally {
+      setBusy(0);
+    }
+  };
+
+  return (
+    <div className="modal-layer" onClick={onClose}>
+      <section className="trade-modal readable-modal ac-notice" onClick={(e) => e.stopPropagation()}>
+        <h2>{user.full_name}</h2>
+        <p className="subtle-count">#{user.account_no} · Kimlik belgeleri</p>
+        <Field label="Gerekçe (opsiyonel)" wide>
+          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Örn: Dekont doğrulandı" />
+        </Field>
+        <div className="ac-list scroll" style={{ maxHeight: 340 }}>
+          {documents.map((d) => (
+            <div className="ac-line" key={d.id}>
+              <span>
+                <strong>{d.doc_type_label || d.doc_type}</strong>
+                <small>{d.status_label || d.status}</small>
+              </span>
+              {d.status === "pending" && (
+                <b className="ac-line-actions">
+                  <button className="ac-ghost" disabled={busy === d.id} onClick={() => calistir(d, "approve")}>Onayla</button>
+                  <button className="ac-danger small" disabled={busy === d.id} onClick={() => calistir(d, "reject")}>Reddet</button>
+                </b>
+              )}
+            </div>
+          ))}
+          {!documents.length && <div className="ac-line"><span><strong>Belge yok</strong><small>Kullanıcı henüz belge yüklememiş</small></span></div>}
+        </div>
+        <button className="ac-ghost" onClick={onClose} style={{ marginTop: 10 }}>Kapat</button>
+      </section>
+    </div>
+  );
+}
+
 function ApprovalList({ title, note, items, render, onAct, ensure, onNotice, refresh, reasonRequired }) {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(0);
@@ -1552,7 +1691,7 @@ function PendingPanel({ users, orders, moneyReqs, onGit, onSec }) {
               </ul>
               {u.kyc_missing_label && <em className="ac-rozet sari">{u.kyc_missing_label}</em>}
               <footer>
-                <button className="ac-ghost" onClick={() => (onSec ? onSec(u) : onGit("Belgeler"))}>
+                <button className="ac-ghost" onClick={() => (onSec ? onSec(u) : onGit("Kullanıcı Doğrulama"))}>
                   <Icon name="eye" size={15} /> Belgeleri İncele
                 </button>
               </footer>
@@ -1782,9 +1921,16 @@ function CreditSettings({ settings, ensure, onNotice, refresh }) {
 
 /* ---------- 12b. Para yükleme ---------- */
 
-/** Referanstaki "Para Yükleme": her müşteri kartında yükle / çıkar düğmesi. */
+/** Referanstaki "Bakiye Yönetimi": her müşteri kartında yükle / çıkar düğmesi. */
+const BAKIYE_SIRALAMA = [
+  ["isim", "İsim (A-Z)"],
+  ["bakiye-yuksek", "Bakiye (yüksek-düşük)"],
+  ["bakiye-dusuk", "Bakiye (düşük-yüksek)"],
+];
+
 function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
   const [query, setQuery] = useState("");
+  const [siralama, setSiralama] = useState("isim");
   const [kutu, setKutu] = useState(null);   // { user, yon }
   const [form, setForm] = useState({ amount: "", note: "" });
   const [busy, setBusy] = useState(false);
@@ -1792,8 +1938,13 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
 
   const liste = useMemo(() => {
     const needle = fold(query);
-    return users.filter((u) => eslesir(u, ["full_name", "account_no", "email", "phone", "tc"], needle));
-  }, [users, query]);
+    const filtreli = users.filter((u) => eslesir(u, ["full_name", "account_no", "email", "phone", "tc"], needle));
+    const sirali = [...filtreli];
+    if (siralama === "bakiye-yuksek") sirali.sort((a, b) => Number(b.cash_balance || 0) - Number(a.cash_balance || 0));
+    else if (siralama === "bakiye-dusuk") sirali.sort((a, b) => Number(a.cash_balance || 0) - Number(b.cash_balance || 0));
+    else sirali.sort((a, b) => fold(a.full_name).localeCompare(fold(b.full_name), "tr"));
+    return sirali;
+  }, [users, query, siralama]);
 
   const uygula = async () => {
     const tutar = Number(String(form.amount).replace(/\./g, "").replace(",", "."));
@@ -1817,8 +1968,17 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
   };
 
   return (
-    <Section title="Para Yükleme" note={`${liste.length} müşteri · bakiye yükleyin ya da çıkarın`}>
-      <AraSatiri value={query} onChange={setQuery} placeholder="Ad, soyad, hesap numarası veya T.C. ile ara…" />
+    <Section title="Bakiye Yönetimi" note={`${liste.length} müşteri · bakiye yükleyin ya da çıkarın`}>
+      <AraSatiri
+        value={query}
+        onChange={setQuery}
+        placeholder="Ad, soyad, hesap numarası veya T.C. ile ara…"
+        sag={(
+          <select className="ac-select" value={siralama} onChange={(e) => setSiralama(e.target.value)} aria-label="Sıralama">
+            {BAKIYE_SIRALAMA.map(([k, ad]) => <option key={k} value={k}>{ad}</option>)}
+          </select>
+        )}
+      />
       <div className="ac-list scroll tall">
         {liste.slice(0, adet).map((u) => (
           <div className="ac-yukle" key={u.id}>
@@ -2039,7 +2199,7 @@ const MENU = [
   ["Onay Bekleyenler", "check"],
   ["Banka Hesapları", "bank"],
   ["Para Yatırma Talepleri", "deposit"],
-  ["Para Yükleme", "trend"],
+  ["Bakiye Yönetimi", "trend"],
   ["Para Çekme", "withdraw"],
   ["Hisse Açıklamaları", "table"],
   ["Sistem Ayarları", "gear"],
@@ -2050,7 +2210,7 @@ const MENU = [
 const EK_MENU = [
   ["Piyasa Kontrolü", "trend"],
   ["Emirler", "swap"],
-  ["Belgeler", "history"],
+  ["Kullanıcı Doğrulama", "history"],
   ["Denetim Kaydı", "shield"],
 ];
 
@@ -2066,13 +2226,13 @@ const ALT_BASLIKLAR = {
   "Onay Bekleyenler": "Onay bekleyen tüm kayıtlar",
   "Banka Hesapları": "Kurum hesaplarını yönetin",
   "Para Yatırma Talepleri": "Yatırma taleplerini onaylayın",
-  "Para Yükleme": "Müşteri bakiyesini yükleyin ya da çıkarın",
+  "Bakiye Yönetimi": "Müşteri bakiyesini yükleyin ya da çıkarın",
   "Para Çekme": "Çekme taleplerini onaylayın",
   "Hisse Açıklamaları": "Hisse adlarını ve açıklamalarını düzenleyin",
   "Sistem Ayarları": "Platform ayarlarını yapılandırın",
   "Piyasa Kontrolü": "Fiyat akışını durdurun, fiyatları elle belirleyin",
   "Emirler": "Emirleri onaylayın ya da reddedin",
-  "Belgeler": "Kimlik belgelerini onaylayın",
+  "Kullanıcı Doğrulama": "Kimlik belgesi inceleme ve onay işlemleri",
   "Denetim Kaydı": "Tüm yönetici işlemlerinin kaydı",
 };
 
@@ -2100,7 +2260,7 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
     () => api("/api/admin/documents").then((veri) => setDocuments(veri.documents || [])).catch(() => setDocuments([])),
     [],
   );
-  useEffect(() => { if (sayfa === "Belgeler") belgeleriYukle(); }, [sayfa, belgeleriYukle]);
+  useEffect(() => { if (sayfa === "Kullanıcı Doğrulama") belgeleriYukle(); }, [sayfa, belgeleriYukle]);
 
   // Menü açıkken gövde kaymasın.
   useEffect(() => {
@@ -2178,25 +2338,15 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
         {sayfa === "Onay Bekleyenler" && <PendingPanel users={users} orders={orders} moneyReqs={moneyReqs} onGit={git} onSec={setSelected} />}
         {sayfa === "Banka Hesapları" && <BankPanel onNotice={onNotice} ensure={lock.ensure} />}
         {sayfa === "Para Yatırma Talepleri" && <MoneyPanel moneyReqs={moneyReqs} tur="deposit" baslik="Para Yatırma Talepleri" not="dekont doğrulanınca onayla" ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
-        {sayfa === "Para Yükleme" && <LoadMoneyPanel users={users} ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
+        {sayfa === "Bakiye Yönetimi" && <LoadMoneyPanel users={users} ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
         {sayfa === "Para Çekme" && <MoneyPanel moneyReqs={moneyReqs} tur="withdraw" baslik="Para Çekme Talepleri" not="IBAN kontrol edilir" ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
         {sayfa === "Hisse Açıklamaları" && <StockNamesPanel onNotice={onNotice} ensure={lock.ensure} />}
         {sayfa === "Sistem Ayarları" && <SettingsPanel settings={settings} onNotice={onNotice} ensure={lock.ensure} refresh={refresh} />}
         {sayfa === "Piyasa Kontrolü" && <MarketPanel ensure={lock.ensure} onNotice={onNotice} />}
         {sayfa === "Emirler" && <OrdersPanel orders={orders} ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
         {sayfa === "Denetim Kaydı" && <AuditPanel />}
-        {sayfa === "Belgeler" && (
-          <ApprovalList
-            title="Kimlik belgeleri" note={`${documents.length} belge`} items={documents} reasonRequired
-            ensure={lock.ensure} onNotice={onNotice} refresh={belgeleriYukle}
-            render={(d) => (
-              <span>
-                <strong>{d.doc_type_label || d.doc_type}</strong>
-                <small>{d.full_name} · {d.status_label || d.status}</small>
-              </span>
-            )}
-            onAct={(d, action, note) => api(`/api/admin/documents/${d.id}/${action}`, { method: "POST", body: JSON.stringify({ note }) })}
-          />
+        {sayfa === "Kullanıcı Doğrulama" && (
+          <KycQueuePanel users={users} documents={documents} ensure={lock.ensure} onNotice={onNotice} refresh={belgeleriYukle} />
         )}
       </main>
 
