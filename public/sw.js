@@ -10,7 +10,7 @@
  * verilir.
  */
 
-const SURUM = "ottoman-v2";
+const SURUM = "ottoman-v3";
 const KABUK = `${SURUM}-kabuk`;
 const VERI = `${SURUM}-veri`;
 const APP_URL = "/?uygulama=1";
@@ -66,18 +66,24 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(istek.url);
   if (url.origin !== self.location.origin) return;
 
-  // 1) Sayfa açılışı: önce ağ, olmazsa önbellekteki uygulama kabuğu.
+  // 1) Sayfa açılışı: önce ağ (bir kez daha denenir, ani/kısa kesintide
+  // hemen bayat önbelleğe düşülmesin), olmazsa önbellekteki uygulama kabuğu.
   if (istek.mode === "navigate") {
     event.respondWith((async () => {
       try {
         return await agdanAl(istek, KABUK);
       } catch {
-        const kutu = await caches.open(KABUK);
-        return (await kutu.match("/"))
-          || (await kutu.match(istek))
-          || new Response("<!doctype html><meta charset=utf-8><title>Ottoman</title><p>Çevrimdışısınız.", {
-            headers: { "Content-Type": "text/html; charset=utf-8" },
-          });
+        try {
+          await new Promise((cozele) => setTimeout(cozele, 400));
+          return await agdanAl(istek.clone(), KABUK);
+        } catch {
+          const kutu = await caches.open(KABUK);
+          return (await kutu.match("/"))
+            || (await kutu.match(istek))
+            || new Response("<!doctype html><meta charset=utf-8><title>Ottoman</title><p>Çevrimdışısınız.", {
+              headers: { "Content-Type": "text/html; charset=utf-8" },
+            });
+        }
       }
     })());
     return;
