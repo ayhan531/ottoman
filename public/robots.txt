@@ -3,4 +3,4 @@ Allow: /
 Disallow: /api/
 Disallow: /uploads/
 
-Sitemap: https://ottoman-eggb.onrender.com/sitemap.xml
+Sitemap: https://ottomanyatirim.com/sitemap.xml
