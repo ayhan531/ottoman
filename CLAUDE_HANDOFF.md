@@ -1213,3 +1213,53 @@ the new JS bundle; `"Bakiye Yönetimi"`, `"Kullanıcı Doğrulama"`, `"Belgeleri
 `dist/index.html` updated to the new hash. Committed as `c21a8ac`.
 
 **Cem still needs to `git push origin main`.**
+
+## 2026-09-23 (yet later) — security fix (`3cf56b5`), ticker full-width verified, live price data verified real, and a critical DB-persistence finding
+
+1. **Hardcoded Render API token — fixed.** The three call sites flagged in §"⚠️ Hardcoded
+   credential in source" (`api_admin_render_status`/`_deploy`/`_domain`) had
+   `os.environ.get("RENDER_API_TOKEN", "rnd_...")` with a real token as the fallback default.
+   Changed all three to `os.environ.get("RENDER_API_TOKEN", "")` / `os.environ.get("RENDER_SERVICE_ID", "")`
+   with an explicit `HttpError(500, ...)` if either is empty — no hardcoded fallback anymore.
+   Committed as `3cf56b5`, `python -m py_compile` clean, `git diff` confirmed only these 3 blocks
+   changed. **Cem still needs to revoke/rotate the old token in Render's dashboard** — removing it
+   from source does not undo its exposure in git history.
+2. **Ticker full-width fix (from `d6a35cd`) verified live.** Took a live screenshot of
+   ottomanyatirim.com post-deploy: the `.auth-ticker` strip now genuinely spans edge-to-edge at
+   the browser viewport width, symbols flush against both screen edges. Confirmed working as
+   intended.
+3. **Live ticker price data verified genuinely real, not fake/simulated.** Cross-checked BURVA
+   and ZGYO (both showing ~+10% on the platform) against doviz.com and mynet.com independently —
+   exact match on both price and %. `ALLOW_PRICE_SIMULATION` defaults to `0` (disabled) in code,
+   and the market feed genuinely sources from the TradingView-based proxy + Frankfurter FX API —
+   no simulated-price code path is active by default. The "many tickers clustered near +10%"
+   appearance Cem was suspicious of is BIST's real daily ±10% circuit-breaker limit — a real market
+   mechanic, not a bug. Re-verified again this pass via the live admin dashboard's "Öne çıkan
+   yükselenler/düşenler" — values are NOT uniform (10.00%, 9.99%, 9.95%, 9.93% etc. all appear),
+   consistent with genuine market data, not a hardcoded/fake jitter.
+4. **⚠️ NEW, higher-priority finding: the production database almost certainly has no persistent
+   disk and is wiped on every deploy.** While checking on a stray test account ("Deneme Kullanici",
+   TC `10000000146`) created for QA in an earlier pass, found the admin panel now shows **only 1
+   user total** — the seeded test account (TC `22222222220`) — with `Kayıt` (created_at) timestamped
+   only ~1.5 hours before this check, i.e. essentially at the moment of the last deploy. `seed_admin`/
+   `seed_test_user` are idempotent (`UPDATE` if the row already exists, and critically the `UPDATE`
+   path does **not** touch `created_at`) — so a freshly-stamped `created_at` on the seed row can only
+   mean the row was freshly `INSERT`ed, i.e. the whole `users` table (and everything else) was empty
+   at boot. `DATA_DIR` defaults to `ROOT/data` (inside the app's own working directory) unless a
+   `DATA_DIR` env var points it elsewhere; the repo has no `render.yaml` for this actual live
+   service (the only `render.yaml` in the codebase is the template the white-label ZIP-export
+   feature generates for *new* clones, which correctly specifies a persistent disk mounted at
+   `/var/data` — this live service was set up manually on Render, and per this evidence it does not
+   have that disk attached). No code-level wipe was found (`grep` for `DROP TABLE`/`rmtree`/reset
+   logic came back empty) — this is an infra/config gap, not a code bug.
+   **Practical effect: every `git push` → Render redeploy likely erases every real registration,
+   KYC approval, balance, position, order and money request**, resetting the live site back to just
+   the two seeded accounts. This needs Cem to, on Render's dashboard for this service: add a
+   persistent Disk (e.g. 1GB, mount path `/var/data`), and set the `DATA_DIR` env var to `/var/data`,
+   then redeploy once to pick it up. This cannot be done by an agent from here — it's Render account/
+   dashboard configuration, not a code or git change, and I don't have (and must never use) Render
+   API credentials. **Flagged to Cem explicitly; not yet fixed.**
+
+Build verified clean (`python -m py_compile tools/backend_server.py` → OK). No frontend changes
+this pass beyond what `d6a35cd` already shipped. `git push origin main` was already done by Cem for
+both `d6a35cd` and `3cf56b5` — confirmed via matching JS/CSS asset hashes on the live site.
