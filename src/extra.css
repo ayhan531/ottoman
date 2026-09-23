@@ -318,7 +318,8 @@
   .portfolio-screen .return-chart{height:118px;margin-top:4px}
   .auth-stage{padding:0;place-items:stretch}
   .auth-phone{width:100vw;height:100vh;height:100dvh;max-width:none;border-radius:0;box-shadow:none}
-  .auth-screen{max-width:960px;margin:0 auto;width:100%}
+  .admin-stage .phone,.admin-phone{width:100vw;height:100vh;height:100dvh;max-width:none;border-radius:0;box-shadow:none}
+  .auth-screen{max-width:none;margin:0 auto;width:100%}
   .auth-card{width:100%}
 }
 @media (max-width:760px){
@@ -713,7 +714,7 @@
 .auth-ticker{position:relative;z-index:2;flex:none;margin:0 calc(-1 * var(--auth-pad)) 16px;overflow:hidden;background:#f4f4f8;border-bottom:1px solid var(--line);padding:9px 0;mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
 .dark-mode .auth-ticker{background:#141823;border-color:#2a3040}
 .auth-ticker-lane{display:flex;flex-wrap:nowrap;gap:22px;width:max-content;animation:tickerRun 38s linear infinite}
-.auth-ticker-lane span{display:inline-flex;gap:6px;align-items:baseline;font-size:12.5px;white-space:nowrap}
+.auth-ticker-lane span{display:inline-flex;gap:6px;align-items:center;font-size:12.5px;white-space:nowrap}.auth-ticker-lane em{font-style:normal;font-weight:600;color:var(--muted)}.auth-ticker-spark{flex:none;display:block}
 .auth-ticker-lane b{font-weight:800;color:var(--ink)}
 .auth-ticker-lane i{font-style:normal;font-weight:700}
 .auth-ticker-lane i.up{color:#13b26b}

@@ -2059,6 +2059,8 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_contact()
         if method == "GET" and path == "/api/market":
             return self.api_market()
+        if method == "GET" and path == "/api/market/sparklines":
+            return self.api_market_sparklines()
         if method == "GET" and path == "/api/news":
             return self.api_news()
         if method == "GET" and path == "/api/market-news":
@@ -2762,6 +2764,30 @@ class AppHandler(BaseHTTPRequestHandler):
         with connect_db() as conn:
             quotes = refresh_market(conn)
             self.json_response({"quotes": quotes, "source": "trrealapi-market", "updated_at": iso_time(), "meta": market_status(conn)})
+
+    def api_market_sparklines(self) -> None:
+        """Auth ekranındaki şerit için: sembol başına son gerçek fiyat örneklerini döndürür
+        (market_history tablosundan, gerçek verilerden — uydurma/simüle veri yok)."""
+        query = parse_qs(urlparse(self.path).query)
+        raw = (query.get("symbols", [""])[0] or "")
+        symbols = []
+        for piece in raw.split(","):
+            sym = clean_symbol(piece)
+            if sym and sym not in symbols:
+                symbols.append(sym)
+        symbols = symbols[:40]
+        if not symbols:
+            raise HttpError(400, "symbols parametresi gerekli")
+        limit = max(2, min(40, env_int("SPARKLINE_POINTS", 20)))
+        series: dict[str, list[float]] = {}
+        with connect_db() as conn:
+            for symbol in symbols:
+                rows = conn.execute(
+                    "SELECT price FROM market_history WHERE symbol=? ORDER BY recorded_at DESC LIMIT ?",
+                    (symbol, limit),
+                ).fetchall()
+                series[symbol] = [row["price"] for row in rows][::-1]
+        self.json_response({"series": series})
 
     def api_public_config(self) -> None:
         with connect_db() as conn:

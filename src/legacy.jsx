@@ -35,8 +35,26 @@ function LiveDataStrip({ marketMeta, newsMeta }) {
   </section>;
 }
 
+function TickerSpark({ series, up }) {
+  if (!series || series.length < 3) return null;
+  const min = Math.min(...series);
+  const max = Math.max(...series);
+  const span = max - min || 1;
+  const w = 34, h = 14;
+  const stepX = w / (series.length - 1);
+  const points = series
+    .map((v, i) => `${(i * stepX).toFixed(1)},${(h - ((v - min) / span) * h).toFixed(1)}`)
+    .join(" ");
+  return (
+    <svg className="auth-ticker-spark" width={w} height={h} viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none">
+      <polyline points={points} fill="none" stroke={up ? "#13b26b" : "#ef4655"} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function AuthTicker() {
   const [rows, setRows] = useState([]);
+  const [series, setSeries] = useState({});
   useEffect(() => {
     let canli = true;
     const cek = () => api("/api/market")
@@ -44,7 +62,14 @@ function AuthTicker() {
         if (!canli) return;
         const hisseler = (veri.quotes || []).filter((q) => q.asset_class === "stock" && Number(q.price) > 0);
         hisseler.sort((a, b) => Number(b.change_pct || 0) - Number(a.change_pct || 0));
-        setRows(hisseler.slice(0, 14));
+        const top = hisseler.slice(0, 14);
+        setRows(top);
+        const semboller = top.map((r) => r.symbol).join(",");
+        if (semboller) {
+          api(`/api/market/sparklines?symbols=${encodeURIComponent(semboller)}`)
+            .then((veri2) => { if (canli) setSeries(veri2.series || {}); })
+            .catch(() => {});
+        }
       })
       .catch(() => {});
     cek();
@@ -56,14 +81,19 @@ function AuthTicker() {
   return (
     <div className="auth-ticker" aria-hidden="true">
       <div className="auth-ticker-lane">
-        {seri.map((row, index) => (
-          <span key={`${row.symbol}-${index}`}>
-            <b>{row.symbol}</b>
-            <i className={Number(row.change_pct) >= 0 ? "up" : "down"}>
-              {Number(row.change_pct) >= 0 ? "+" : "−"}{Math.abs(Number(row.change_pct || 0)).toFixed(2).replace(".", ",")}%
-            </i>
-          </span>
-        ))}
+        {seri.map((row, index) => {
+          const yukseldi = Number(row.change_pct) >= 0;
+          return (
+            <span key={`${row.symbol}-${index}`}>
+              <b>{row.symbol}</b>
+              <em>₺{Number(row.price).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</em>
+              <TickerSpark series={series[row.symbol]} up={yukseldi} />
+              <i className={yukseldi ? "up" : "down"}>
+                {yukseldi ? "+" : "−"}{Math.abs(Number(row.change_pct || 0)).toFixed(2).replace(".", ",")}%
+              </i>
+            </span>
+          );
+        })}
       </div>
     </div>
   );
