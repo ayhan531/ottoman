@@ -11,7 +11,7 @@ import {
   Settings, Security, TwoFactorPage, PasswordPage, Personal, Contact, NotifySettings, ContractsList, DocumentPage,
   SCALE_VALUES, ACCENT_NAMES, LANG_NAMES, NOTIFY_KEYS, PRIVACY,
 } from "./Subpages.jsx";
-import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useHoldings, readPref, writePref } from "./store.js";
+import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useMoneyRequests, useHoldings, readPref, writePref } from "./store.js";
 import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
 import { useGeriTusu } from "./geri.js";
 import { canInstall, onInstallChange, promptInstall, isStandalone, isApple, iosBrowser, iosToolbarAtBottom, uygulamaIciTarayici, tarayicidaAc, kurulumSemasi, adresiKopyala, kurulumAdresi, kurulumIstendi, pushState, enablePush, disablePush, syncPushPrefs } from "./pwa.js";
@@ -163,6 +163,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const newsFeed = useNews(marketTab);
   const portfolio = usePortfolio(true);
   const notifications = useNotifications(true);
+  const moneyRequests = useMoneyRequests(true);
   const holdings = useHoldings(portfolio.data, market.instruments);
 
   const [history, setHistory] = useState([]);
@@ -423,6 +424,14 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             onOpenNotifySettings={() => go(13, 4)}
             onOpenKyc={() => setOverlay({ kind: "kyc" })}
             kycApproved={kycApproved}
+            pendingMoneyRequests={(moneyRequests.items || []).filter((item) => item.status === "pending")}
+            onCancelMoneyRequest={async (item) => {
+              try {
+                await api(`/api/money-requests/${item.id}/cancel`, { method: "POST", body: "{}" });
+                moneyRequests.reload();
+                portfolio.reload();
+              } catch (error) { showNotice(T("Talep iptali"), error.message); }
+            }}
             onTransfer={(deposit) => {
               if (!kycApproved) { showNotice(T("Kimlik Doğrulaması Olmadan İşlem Yapılamaz"), T("Para yatırma ve çekme işlemleri için önce Hesap İşlemleri altındaki Kimlik Doğrulama adımını tamamla.")); return; }
               setOverlay({ kind: "transfer", deposit });
@@ -685,7 +694,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
           bankAccounts={bankAccounts}
           me={me}
           onClose={() => setOverlay(null)}
-          onDone={(message) => { setOverlay(null); portfolio.reload(); showNotice("İşlem tamamlandı", message); }}
+          onDone={(message) => { setOverlay(null); portfolio.reload(); moneyRequests.reload(); showNotice("İşlem tamamlandı", message); }}
         />
       )}
 

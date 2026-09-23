@@ -113,6 +113,20 @@ export function usePortfolio(enabled) {
   return { data, reload: load };
 }
 
+export function useMoneyRequests(enabled) {
+  const [items, setItems] = useState([]);
+  const load = useCallback(async () => {
+    if (!enabled) return;
+    try { setItems((await api("/api/money-requests")).money_requests || []); } catch { /* oturum yok */ }
+  }, [enabled]);
+  useEffect(() => {
+    load();
+    const timer = setInterval(load, 45_000);
+    return () => clearInterval(timer);
+  }, [load]);
+  return { items, reload: load };
+}
+
 export function useNotifications(enabled) {
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);

@@ -15,7 +15,7 @@ const Row = ({ title, subtitle, onClick }) => (
 export default function Account({
   brandBar, me, account, stockValue, monogram, onOpenPersonal, onOpenSecurity, onOpenContracts,
   onOpenNotifySettings, onTransfer, onHistory, onNotice, onPortfolio, onBankAccounts, version, onLogout,
-  onOpenKyc, kycApproved,
+  onOpenKyc, kycApproved, pendingMoneyRequests, onCancelMoneyRequest,
 }) {
   const [hidden, setHidden] = useState(false);
   const cash = Number(account?.cash_balance || 0);
@@ -86,6 +86,28 @@ export default function Account({
           <span>{T("Bakiye Geçmişi")}</span>
         </button>
       </div>
+
+      {!!(pendingMoneyRequests && pendingMoneyRequests.length) && (
+        <>
+          <span className="section-label">{T("Bekleyen talepleriniz")}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
+            {pendingMoneyRequests.map((item) => (
+              <div className="order-card" key={item.id}>
+                <div className="rowline">
+                  <strong style={{ fontSize: "calc(15.5px * var(--s))" }}>{item.type_label}</strong>
+                  <span style={{ fontSize: "calc(12px * var(--s))", fontWeight: 700, color: "var(--ink-blue)" }}>{money(item.amount)}</span>
+                </div>
+                <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--muted)" }}>
+                  {item.created_at_label} &nbsp;{item.status_label || T("Beklemede")}
+                </span>
+                {item.request_type === "withdraw" && (
+                  <button className="btn ghost" onClick={() => onCancelMoneyRequest?.(item)}>{T("Talebi iptal et")}</button>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       {!kycApproved && (
         <div className="card outline kyc-banner" onClick={onOpenKyc} role="button" tabIndex={0}>
