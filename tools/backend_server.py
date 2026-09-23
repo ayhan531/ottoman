@@ -3895,8 +3895,10 @@ class AppHandler(BaseHTTPRequestHandler):
     def api_admin_render_status(self) -> None:
         with connect_db() as conn:
             self.require_admin(conn)
-        token = os.environ.get("RENDER_API_TOKEN", "rnd_dm8o9dIJjm5vxjC2jZR9gwgBZ6Qp")
-        service_id = os.environ.get("RENDER_SERVICE_ID", "srv-da2ftlijnfac73di1cb0")
+        token = os.environ.get("RENDER_API_TOKEN", "")
+        service_id = os.environ.get("RENDER_SERVICE_ID", "")
+        if not token or not service_id:
+            raise HttpError(500, "Render API yapılandırması eksik: RENDER_API_TOKEN / RENDER_SERVICE_ID ortam değişkenlerini ayarlayın.")
         
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
         try:
@@ -3934,8 +3936,10 @@ class AppHandler(BaseHTTPRequestHandler):
             audit(conn, admin["id"], "render_trigger_deploy", "system_settings", None)
             conn.commit()
 
-        token = os.environ.get("RENDER_API_TOKEN", "rnd_dm8o9dIJjm5vxjC2jZR9gwgBZ6Qp")
-        service_id = os.environ.get("RENDER_SERVICE_ID", "srv-da2ftlijnfac73di1cb0")
+        token = os.environ.get("RENDER_API_TOKEN", "")
+        service_id = os.environ.get("RENDER_SERVICE_ID", "")
+        if not token or not service_id:
+            raise HttpError(500, "Render API yapılandırması eksik: RENDER_API_TOKEN / RENDER_SERVICE_ID ortam değişkenlerini ayarlayın.")
         
         payload = json.dumps({"clearCache": "do_not_clear"}).encode("utf-8")
         req = urllib.request.Request(
@@ -3976,8 +3980,10 @@ class AppHandler(BaseHTTPRequestHandler):
         if not domain:
             raise HttpError(400, "Geçerli bir domain giriniz.")
 
-        token = os.environ.get("RENDER_API_TOKEN", "rnd_dm8o9dIJjm5vxjC2jZR9gwgBZ6Qp")
-        service_id = os.environ.get("RENDER_SERVICE_ID", "srv-da2ftlijnfac73di1cb0")
+        token = os.environ.get("RENDER_API_TOKEN", "")
+        service_id = os.environ.get("RENDER_SERVICE_ID", "")
+        if not token or not service_id:
+            raise HttpError(500, "Render API yapılandırması eksik: RENDER_API_TOKEN / RENDER_SERVICE_ID ortam değişkenlerini ayarlayın.")
 
         payload = json.dumps({"name": domain}).encode("utf-8")
         req = urllib.request.Request(
