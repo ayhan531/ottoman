@@ -318,7 +318,7 @@
   .portfolio-screen .return-chart{height:118px;margin-top:4px}
   .auth-stage{padding:0;place-items:stretch}
   .auth-phone{width:100vw;height:100vh;height:100dvh;max-width:none;border-radius:0;box-shadow:none}
-  .auth-screen{max-width:720px;margin:0 auto;width:100%}
+  .auth-screen{max-width:960px;margin:0 auto;width:100%}
   .auth-card{width:100%}
 }
 @media (max-width:760px){
@@ -720,6 +720,11 @@
 .auth-ticker-lane i.down{color:#ef4655}
 @keyframes tickerRun{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 @media (prefers-reduced-motion:reduce){.auth-ticker-lane{animation:none}}
+/* Masaüstünde .auth-screen artık ortalanmış dar bir sütun (bkz. min-width:761px bloğu);
+   şerit yine de tam sayfa genişliğinde akmalı, kartın içine sıkışmamalı. */
+@media (min-width:761px){
+  .auth-ticker{width:100vw;margin-left:calc(50% - 50vw);margin-right:calc(50% - 50vw)}
+}
 
 .auth-v2 .auth-logo{text-align:center;font-size:34px;margin:6px 0 16px}
 .auth-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}

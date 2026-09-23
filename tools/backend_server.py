@@ -4118,8 +4118,29 @@ class AppHandler(BaseHTTPRequestHandler):
             conn.execute("UPDATE documents SET status=?, review_note=? WHERE id=?", (next_status, note, document_id))
             if next_status == "awaiting_back":
                 conn.execute("UPDATE users SET status='awaiting_back', kyc_status='awaiting_back', kyc_note=? WHERE id=?", (note or "Belge tekrar isteniyor", document["user_id"]))
+                create_notification(
+                    conn, int(document["user_id"]),
+                    "Belge tekrar gerekiyor",
+                    note or "Yüklediğiniz kimlik belgesi tekrar isteniyor. Lütfen belgenizi yeniden yükleyin.",
+                    category="hesap",
+                )
             else:
-                sync_user_kyc(conn, int(document["user_id"]))
+                onceki_durum = conn.execute("SELECT status FROM users WHERE id=?", (document["user_id"],)).fetchone()["status"]
+                state = sync_user_kyc(conn, int(document["user_id"]))
+                if state.get("approved") and onceki_durum != "approved":
+                    create_notification(
+                        conn, int(document["user_id"]),
+                        "Hesabınız onaylandı",
+                        "Kimlik doğrulamanız tamamlandı. Artık alım satım, para yatırma ve çekme işlemlerini yapabilirsiniz.",
+                        category="hesap",
+                    )
+                elif action == "reject":
+                    create_notification(
+                        conn, int(document["user_id"]),
+                        "Belgeniz reddedildi",
+                        note or "Yüklediğiniz kimlik belgesi reddedildi. Lütfen tekrar yükleyin.",
+                        category="hesap",
+                    )
             audit(conn, admin["id"], f"{action}_document", "document", document_id, {"note": note})
             conn.commit()
             self.json_response({"ok": True})
@@ -4227,7 +4248,7 @@ class AppHandler(BaseHTTPRequestHandler):
             if entity in {"users", "orders", "money"}:
                 self.require_admin_step_up(conn)
             if entity == "users":
-                self.admin_user_action(conn, admin, entity_id, action)
+                self.admin_user_action(conn, admin, entity_id, action, reason)
             elif entity == "orders":
                 self.admin_order_action(conn, admin, entity_id, action, reason)
             elif entity == "money":
@@ -4235,7 +4256,7 @@ class AppHandler(BaseHTTPRequestHandler):
             conn.commit()
             self.json_response({"ok": True})
 
-    def admin_user_action(self, conn: sqlite3.Connection, admin: dict, user_id: int, action: str) -> None:
+    def admin_user_action(self, conn: sqlite3.Connection, admin: dict, user_id: int, action: str, reason: str = "") -> None:
         user = conn.execute("SELECT * FROM users WHERE id=? AND role='user'", (user_id,)).fetchone()
         if not user:
             raise HttpError(404, "Kullanıcı bulunamadı")
@@ -4244,8 +4265,20 @@ class AppHandler(BaseHTTPRequestHandler):
             if not int(user["is_test_user"] or 0) and not kyc_document_state(conn, user_id)["approved"]:
                 raise HttpError(422, "Tüm kimlik belgeleri onaylanmadan kullanıcı onaylanamaz")
             sync_user_kyc(conn, user_id)
+            create_notification(
+                conn, user_id,
+                "Hesabınız onaylandı",
+                "Kimlik doğrulamanız tamamlandı. Artık alım satım, para yatırma ve çekme işlemlerini yapabilirsiniz.",
+                category="hesap",
+            )
         else:
-            conn.execute("UPDATE users SET status='rejected', kyc_status='rejected', approved_at=NULL WHERE id=?", (user_id,))
+            conn.execute("UPDATE users SET status='rejected', kyc_status='rejected', kyc_note=?, approved_at=NULL WHERE id=?", (reason, user_id))
+            create_notification(
+                conn, user_id,
+                "Hesabınız reddedildi",
+                reason or "Hesap başvurunuz reddedildi. Detaylar için destek ekibiyle iletişime geçin.",
+                category="hesap",
+            )
         audit(conn, admin["id"], f"{action}_user", "user", user_id)
 
     def admin_order_action(self, conn: sqlite3.Connection, admin: dict, order_id: int, action: str, reason: str) -> None:
@@ -4257,6 +4290,12 @@ class AppHandler(BaseHTTPRequestHandler):
                 release_order_reservation(conn, order_id)
             conn.execute("UPDATE orders SET status='rejected', admin_note=?, reviewed_at=? WHERE id=?", (reason, now(), order_id))
             audit(conn, admin["id"], "reject_order", "order", order_id, {"reason": reason})
+            create_notification(
+                conn, order["user_id"],
+                "Emriniz reddedildi",
+                f"{order['symbol']} {'alış' if order['side'] == 'buy' else 'satış'} emriniz reddedildi" + (f": {reason}" if reason else "."),
+                category="islem",
+            )
             return
         quote = find_quote(conn, order["symbol"]) or {"name": order["symbol"]}
         if order["side"] == "buy":
@@ -4295,6 +4334,12 @@ class AppHandler(BaseHTTPRequestHandler):
             notify_referrals_of_sale(conn, order["user_id"], order["symbol"], int(order["quantity"]))
         conn.execute("UPDATE orders SET status='approved', admin_note=?, reviewed_at=? WHERE id=?", (reason, now(), order_id))
         audit(conn, admin["id"], "approve_order", "order", order_id, {"total": order["total"], "reason": reason})
+        create_notification(
+            conn, order["user_id"],
+            "Emriniz gerçekleşti",
+            f"{order['quantity']} lot {order['symbol']} {'alış' if order['side'] == 'buy' else 'satış'} emriniz gerçekleşti.",
+            category="islem",
+        )
 
     def admin_money_action(self, conn: sqlite3.Connection, admin: dict, request_id: int, action: str, reason: str) -> None:
         item = conn.execute("SELECT * FROM money_requests WHERE id=?", (request_id,)).fetchone()
@@ -4303,6 +4348,13 @@ class AppHandler(BaseHTTPRequestHandler):
         if action == "reject":
             conn.execute("UPDATE money_requests SET status='rejected', admin_note=?, reviewed_at=? WHERE id=?", (reason, now(), request_id))
             audit(conn, admin["id"], "reject_money_request", "money_request", request_id, {"reason": reason})
+            turu = {"deposit": "Para yatırma", "withdraw": "Para çekme", "credit": "Kredili yatırma"}.get(item["request_type"], item["request_type"])
+            create_notification(
+                conn, item["user_id"],
+                f"{turu} talebiniz reddedildi",
+                f"₺{float(item['amount']):.2f} tutarındaki {turu.lower()} talebiniz reddedildi" + (f": {reason}" if reason else "."),
+                category="islem",
+            )
             return
         account = account_for(conn, item["user_id"])
         if item["request_type"] == "deposit":
@@ -4321,6 +4373,13 @@ class AppHandler(BaseHTTPRequestHandler):
             conn.execute("UPDATE accounts SET credit_limit=credit_limit+? WHERE user_id=?", (item["amount"], item["user_id"]))
         conn.execute("UPDATE money_requests SET status='approved', admin_note=?, reviewed_at=? WHERE id=?", (reason, now(), request_id))
         audit(conn, admin["id"], "approve_money_request", "money_request", request_id, {"amount": item["amount"], "reason": reason})
+        turu = {"deposit": "Para yatırma", "withdraw": "Para çekme", "credit": "Kredili yatırma"}.get(item["request_type"], item["request_type"])
+        create_notification(
+            conn, item["user_id"],
+            f"{turu} talebiniz onaylandı",
+            f"₺{float(item['amount']):.2f} tutarındaki {turu.lower()} talebiniz onaylandı.",
+            category="islem",
+        )
 
     def serve_upload(self, path: str) -> None:
         with connect_db() as conn:

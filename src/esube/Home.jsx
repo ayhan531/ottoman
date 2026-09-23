@@ -146,6 +146,7 @@ const HOME_MARKETS = MARKET_TAB_ORDER.filter((value) => value !== DIVIDEND).map(
 
 export default function Home({
   brandBar, marketTab, setMarketTab, instruments, state, watchlist, openTrade, onNotice, onAllStocks,
+  kycApproved, onOpenKyc,
 }) {
   const [query, setQuery] = useState("");
   const list = useMemo(() => listFor(marketTab, instruments), [marketTab, instruments]);
@@ -248,6 +249,13 @@ export default function Home({
   return (
     <div className="page gap-14">
       {brandBar}
+      {!kycApproved && (
+        <div className="card outline kyc-banner" onClick={onOpenKyc} role="button" tabIndex={0}>
+          <Icon name="lock" size={18} color="var(--red, #e5484d)" />
+          <span>{T("Hesabınız kısıtlı: kimlik doğrulamayı tamamlamadan alım satım, para yatırma ve çekme işlemi yapamazsınız. Kısıtlamayı kaldırmak için dokunun.")}</span>
+          <Icon name="chevron" size={18} color="var(--muted)" />
+        </div>
+      )}
       <SearchBox placeholder={T("Ara")} value={query} onChange={setQuery} />
       <Segments titles={HOME_MARKETS.map((m) => T(m.name))} active={homeActive} onSelect={(index) => setMarketTab(HOME_MARKETS[index].value)} />
       {showStatus && <MarketStatus market={marketTab} list={list} instruments={instruments} state={state} />}

@@ -424,7 +424,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             onOpenNotifySettings={() => go(13, 4)}
             onOpenKyc={() => setOverlay({ kind: "kyc" })}
             kycApproved={kycApproved}
-            pendingMoneyRequests={(moneyRequests.items || []).filter((item) => item.status === "pending")}
+            moneyRequests={moneyRequests.items || []}
             onCancelMoneyRequest={async (item) => {
               try {
                 await api(`/api/money-requests/${item.id}/cancel`, { method: "POST", body: "{}" });
@@ -545,6 +545,8 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             instruments={market.instruments}
             state={market.state}
             watchlist={watchlist}
+            kycApproved={kycApproved}
+            onOpenKyc={() => setOverlay({ kind: "kyc" })}
             openTrade={(item) => {
               if (!TRADABLE_MARKETS.has(marketTab)) {
                 const kind = marketTab === FUNDS ? "fund" : marketTab === IPO ? "ipo" : marketTab === PARTICIPATION ? "participation" : "currency";
@@ -723,6 +725,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             watchlist={watchlist}
             tradeKind={tradeKind}
             setTradeKind={setTradeKind}
+            kycApproved={kycApproved}
             onToggleWatch={() => toggleWatch(overlay.stock.code)}
             onPickStock={(item) => openTrade(item, { sheet: overlay.sheet, searchable: overlay.searchable, buying: overlay.buying })}
             onClose={() => setOverlay(null)}
