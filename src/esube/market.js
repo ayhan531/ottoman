@@ -14,6 +14,11 @@ export const MARKET_NAMES = [
 
 export const BIST = 0, BIST100 = 1, BIST30 = 2, PARTICIPATION = 3, DIVIDEND = 4, IPO = 5, FUNDS = 6, CURRENCY = 7, BIST50 = 8;
 
+/** Sekmelerin ekranda gösterilme sırası (dahili numaralarla karışmasın diye ayrı tutulur). */
+export const MARKET_TAB_ORDER = [BIST, BIST100, BIST50, BIST30, PARTICIPATION, IPO, FUNDS, CURRENCY];
+/** Haberler ekranı Temettü'yü de bir filtre olarak gösterir; aynı sırayı korur. */
+export const NEWS_TAB_ORDER = [BIST, BIST100, BIST50, BIST30, PARTICIPATION, DIVIDEND, IPO, FUNDS, CURRENCY];
+
 /** Alım-satımı backend'de desteklenen sekmeler; diğerlerinde "referansınız ile iletişime geçin" çıkar. */
 export const TRADABLE_MARKETS = new Set([BIST, BIST100, BIST30, DIVIDEND, BIST50]);
 

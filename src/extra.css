@@ -782,6 +782,9 @@
 .bk-aciklama dd{color:#e0483f}
 .dark-mode .bk-aciklama dd{color:#ff8a80}
 .bk-kopya{padding:5px 9px;font-size:11.5px;border-radius:8px}
+.ac-kopya{padding:5px 9px;font-size:11.5px;border-radius:8px;flex:none}
+.bk-iban-satir{align-items:center!important}
+.ac-iban-satiri{display:flex!important;align-items:center;gap:8px;flex-wrap:wrap}
 .bk-card>footer{padding:0 14px 12px}
 .bk-modal{width:min(520px,94vw);max-height:88vh;overflow-y:auto}
 .corporate-affiliation{display:block;margin:6px auto 10px;max-width:38ch;font-size:clamp(12.5px,2.6vw,15px);line-height:1.35;color:rgba(255,255,255,.86);font-weight:500;overflow-wrap:break-word}

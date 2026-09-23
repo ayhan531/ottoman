@@ -2,7 +2,7 @@
 import React, { useMemo, useState } from "react";
 import Icon from "./icons.jsx";
 import { SearchBox, Segments, Divided, CenteredHeader } from "./ui.jsx";
-import { MARKET_NAMES, fold } from "./market.js";
+import { MARKET_NAMES, NEWS_TAB_ORDER, fold } from "./market.js";
 import { T, locale } from "./lang.js";
 
 const newsDate = (value) =>
@@ -74,7 +74,10 @@ export function Article({ item, onBack }) {
   );
 }
 
+const NEWS_MARKETS = NEWS_TAB_ORDER.map((value) => ({ name: MARKET_NAMES[value], value }));
+
 export default function News({ brandBar, marketTab, setMarketTab, items, state, onOpen }) {
+  const newsActive = Math.max(0, NEWS_MARKETS.findIndex((m) => m.value === marketTab));
   const [query, setQuery] = useState("");
 
   // Akış zaten sekmenin kendi sorgusuyla geliyor; burada yalnızca başlık araması süzer.
@@ -88,7 +91,7 @@ export default function News({ brandBar, marketTab, setMarketTab, items, state, 
     <div className="page gap-14">
       {brandBar}
       <SearchBox placeholder={T("Haber ara")} value={query} onChange={setQuery} />
-      <Segments titles={MARKET_NAMES.map(T)} active={marketTab} onSelect={setMarketTab} />
+      <Segments titles={NEWS_MARKETS.map((m) => T(m.name))} active={newsActive} onSelect={(index) => setMarketTab(NEWS_MARKETS[index].value)} />
       <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
         <div className="h-title">{T(MARKET_NAMES[marketTab])}</div>
         {shown.length ? (

@@ -3,7 +3,7 @@ import React, { useMemo, useState } from "react";
 import Icon from "./icons.jsx";
 import { Symbol, SearchBox, Segments, Divided, Sheet, LazyList } from "./ui.jsx";
 import {
-  MARKET_NAMES, BIST, BIST100, BIST30, PARTICIPATION, CURRENCY, DIVIDEND, IPO, FUNDS,
+  MARKET_NAMES, MARKET_TAB_ORDER, BIST, BIST100, BIST30, BIST50, PARTICIPATION, CURRENCY, DIVIDEND, IPO, FUNDS,
   MARKET_CONTACT_TEXT,
   listFor, indexFor, breadth, turnover, movers, search, money, amount, move, percent,
   volumeText, isMarketOpen, parseAmount,
@@ -142,7 +142,7 @@ function Converter({ rates, onNotice }) {
 
 // Ana sayfada Al/Sat sekmeleri: BIST Temettü burada gösterilmez, yalnızca
 // Haberler'de bir filtre olarak kalır (patron talebi).
-const HOME_MARKETS = MARKET_NAMES.map((name, value) => ({ name, value })).filter((m) => m.value !== DIVIDEND);
+const HOME_MARKETS = MARKET_TAB_ORDER.filter((value) => value !== DIVIDEND).map((value) => ({ name: MARKET_NAMES[value], value }));
 
 export default function Home({
   brandBar, marketTab, setMarketTab, instruments, state, watchlist, openTrade, onNotice, onAllStocks,
@@ -158,9 +158,10 @@ export default function Home({
     [watchlist, list]
   );
 
-  const showStatus = marketTab === BIST100 || marketTab === BIST30 || marketTab === PARTICIPATION;
-  const rising = useMemo(() => (marketTab === BIST ? movers(list, true) : []), [marketTab, list]);
-  const falling = useMemo(() => (marketTab === BIST ? movers(list, false) : []), [marketTab, list]);
+  const showStatus = marketTab === BIST100 || marketTab === BIST30 || marketTab === BIST50 || marketTab === PARTICIPATION;
+  const showMovers = marketTab === BIST || marketTab === BIST100 || marketTab === BIST30 || marketTab === BIST50;
+  const rising = useMemo(() => (showMovers ? movers(list, true) : []), [showMovers, list]);
+  const falling = useMemo(() => (showMovers ? movers(list, false) : []), [showMovers, list]);
 
   let heading = T("Takip listem");
   let body = null;
@@ -199,6 +200,31 @@ export default function Home({
           </>
         )}
       </>
+    );
+  } else if (marketTab === BIST100 || marketTab === BIST30 || marketTab === BIST50) {
+    heading = T(MARKET_NAMES[marketTab]);
+    body = state === "live" ? (
+      <>
+        <div>
+          <div className="h-title">{T("Öne çıkan yükselenler")}</div>
+          <Divided>{rising.map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}</Divided>
+        </div>
+        <div style={{ paddingTop: 16 }}>
+          <div className="h-title">{T("Öne çıkan düşenler")}</div>
+          <Divided>{falling.map((item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />)}</Divided>
+        </div>
+        <div style={{ paddingTop: 16 }}>
+          <div className="h-title">{T("Tüm hisseler")} <em className="h-count">{list.length}</em></div>
+          <LazyList
+            items={list}
+            render={(item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />}
+          />
+        </div>
+      </>
+    ) : list.length ? (
+      <LazyList items={list} render={(item) => <InstrumentRow key={item.code} item={item} onClick={() => openTrade(item)} />} />
+    ) : (
+      <div className="notice-box">{T(state === "failed" ? "Fiyatlar alınamadı. Bağlantını kontrol et." : "Fiyatlar yükleniyor…")}</div>
     );
   } else if (marketTab === IPO || marketTab === FUNDS) {
     heading = T(MARKET_NAMES[marketTab]);

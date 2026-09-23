@@ -312,6 +312,27 @@ const kopyala = async (metin) => {
   try { await navigator.clipboard.writeText(metin); return true; } catch { return false; }
 };
 
+/** IBAN gibi kısa değerleri tek tıkla panoya kopyalar; kısa bir "Kopyalandı" geri bildirimi gösterir. */
+function KopyaBtn({ metin, label = "Kopyala" }) {
+  const [tamam, setTamam] = useState(false);
+  if (!metin) return null;
+  return (
+    <button
+      type="button"
+      className="ac-ghost ac-kopya"
+      onClick={async (e) => {
+        e.stopPropagation();
+        if (await kopyala(metin)) {
+          setTamam(true);
+          setTimeout(() => setTamam(false), 1400);
+        }
+      }}
+    >
+      {tamam ? "Kopyalandı" : label}
+    </button>
+  );
+}
+
 function BankaKarti({ hesap, ilk, son, onDuzenle, onIslem, onTasi }) {
   return (
     <article className="bk-card">
@@ -325,7 +346,7 @@ function BankaKarti({ hesap, ilk, son, onDuzenle, onIslem, onTasi }) {
         </div>
       </header>
       <dl>
-        <div><dt>IBAN:</dt><dd>{hesap.iban}</dd></div>
+        <div className="bk-iban-satir"><dt>IBAN:</dt><dd>{hesap.iban}</dd><KopyaBtn metin={hesap.iban} /></div>
         <div><dt>Hesap Sahibi:</dt><dd>{hesap.account_holder}</dd></div>
         {hesap.branch_name && <div><dt>Şube:</dt><dd>{hesap.branch_name}</dd></div>}
         {hesap.description && (
@@ -456,6 +477,7 @@ function BankPanel({ onNotice, ensure }) {
           {(veri.user_bank_accounts || []).map((hesap) => (
             <div className="ac-line" key={hesap.id}>
               <span><strong>{hesap.full_name || hesap.account_holder}</strong><small>{hesap.bank_name} · {hesap.iban}</small></span>
+              <KopyaBtn metin={hesap.iban} />
             </div>
           ))}
           {!(veri.user_bank_accounts || []).length && <div className="ac-line"><span><strong>Kayıt yok</strong><small>Müşteriler henüz IBAN eklememiş</small></span></div>}
@@ -1293,7 +1315,7 @@ function MoneyPanel({ moneyReqs, tur, baslik, not, ensure, onNotice, refresh }) 
               <li>Telefon: {m.phone || "—"}</li>
               <li className="miktar">Miktar: <b>{money(m.amount)}</b></li>
               <li>Tarih: {m.created_at_label || "—"}</li>
-              {m.iban && <li>IBAN: {m.iban}</li>}
+              {m.iban && <li className="ac-iban-satiri">IBAN: {m.iban} <KopyaBtn metin={m.iban} /></li>}
               {m.note && <li className="not">Not: {m.note}</li>}
               {m.admin_note && <li className="not">Not: {m.admin_note}</li>}
             </ul>

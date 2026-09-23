@@ -103,8 +103,17 @@ export default function Account({
             subtitle={kycApproved ? T("Onaylandı") : T("Hesabını onaylatmak için belgelerini yükle")}
             onClick={onOpenKyc}
           />
-          <Row title={T("Banka hesaplarım")} subtitle={T("Para yatırma ve çekme işlemleri için hesaplarınız")} onClick={onBankAccounts} />
           <Row title={T("Sözleşmeler")} subtitle={T("Çerçeve sözleşme, risk bildirimi ve bilgilendirme metinleri")} onClick={onOpenContracts} />
+        </Divided>
+      </div>
+
+      <span className="section-label">{T("Bakiye İşlemleri")}</span>
+      <div className="card outline list-card">
+        <Divided>
+          <Row title={T("Para yatır")} subtitle={T("Hesabınıza bakiye ekleyin")} onClick={() => onTransfer(true)} />
+          <Row title={T("Para çek")} subtitle={T("Bakiyenizi banka hesabınıza aktarın")} onClick={() => onTransfer(false)} />
+          <Row title={T("Banka hesaplarım")} subtitle={T("Para yatırma ve çekme işlemleri için hesaplarınız")} onClick={onBankAccounts} />
+          <Row title={T("Bakiye Geçmişi")} subtitle={T("Onaylanan para yatırma ve çekme işlemleriniz")} onClick={onHistory} />
         </Divided>
       </div>
 
