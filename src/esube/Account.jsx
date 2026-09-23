@@ -19,8 +19,9 @@ export default function Account({
 }) {
   const [hidden, setHidden] = useState(false);
   const cash = Number(account?.cash_balance || 0);
-  const blocked = Number(account?.blocked_balance || 0);
-  const available = Math.max(0, cash - blocked);
+  const legacyBlocked = Number(account?.blocked_balance || 0);
+  const blocked = Number(account?.orders_reserved || 0);
+  const available = Math.max(0, cash - legacyBlocked);
   const total = cash + stockValue;
   const mask = (text) => (hidden ? "••••••" : text);
 

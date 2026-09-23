@@ -1054,7 +1054,24 @@ def account_for(conn: sqlite3.Connection, user_id: int) -> dict:
     if not row:
         conn.execute("INSERT INTO accounts (user_id) VALUES (?)", (user_id,))
         row = conn.execute("SELECT * FROM accounts WHERE user_id=?", (user_id,)).fetchone()
-    return dict(row)
+    account = dict(row)
+    account["orders_reserved"] = orders_reserved_for(conn, user_id)
+    return account
+
+
+def orders_reserved_for(conn: sqlite3.Connection, user_id: int) -> float:
+    """Bekleyen (henüz gerçekleşmemiş) emirler için ayrılmış/kilitlenmiş tutar.
+
+    reserve_buying_power() emir verilirken bu tutarı cash_balance'tan zaten
+    düşüyor (Kullanılabilir bakiye doğru); ama bu fonksiyon olmadan emrin
+    kilitlediği tutar hiçbir yerde görünmüyordu (Emirlerdeki bakiye / Bloke
+    hep 0 gösteriyordu), sanki para hesaptan silinmiş gibi duruyordu.
+    """
+    row = conn.execute(
+        "SELECT COALESCE(SUM(cash_reserved + pending_reserved), 0) AS toplam FROM orders WHERE user_id=? AND status='pending'",
+        (user_id,),
+    ).fetchone()
+    return round(float(row["toplam"] or 0), 2)
 
 
 def apply_manual_prices(conn: sqlite3.Connection) -> None:
@@ -3229,6 +3246,7 @@ class AppHandler(BaseHTTPRequestHandler):
             rows = conn.execute(
                 """
                 SELECT u.*, a.cash_balance, a.blocked_balance, a.pending_balance, a.credit_limit,
+                  (SELECT COALESCE(SUM(o2.cash_reserved + o2.pending_reserved), 0) FROM orders o2 WHERE o2.user_id=u.id AND o2.status='pending') AS orders_reserved,
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id) AS document_count,
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='identity_front') AS has_front,
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='identity_back') AS has_back,
@@ -3388,7 +3406,8 @@ class AppHandler(BaseHTTPRequestHandler):
             self.require_admin(conn)
             rows = conn.execute(
                 """
-                SELECT u.id, u.account_no, u.full_name, u.email, u.city, u.district, u.status, a.cash_balance, a.blocked_balance, a.pending_balance, a.credit_limit
+                SELECT u.id, u.account_no, u.full_name, u.email, u.city, u.district, u.status, a.cash_balance, a.blocked_balance, a.pending_balance, a.credit_limit,
+                  (SELECT COALESCE(SUM(o2.cash_reserved + o2.pending_reserved), 0) FROM orders o2 WHERE o2.user_id=u.id AND o2.status='pending') AS orders_reserved
                 FROM users u
                 LEFT JOIN accounts a ON a.user_id=u.id
                 WHERE u.role='user'
@@ -5012,6 +5031,7 @@ def public_user(user: dict, include_sensitive: bool = False) -> dict:
         data["tc_valid"] = identity_number_is_real(str(user["tc"]))
         data["cash_balance"] = user.get("cash_balance", 0)
         data["blocked_balance"] = user.get("blocked_balance", 0)
+        data["orders_reserved"] = user.get("orders_reserved", 0)
         data["pending_balance"] = user.get("pending_balance", 0)
         data["credit_limit"] = user.get("credit_limit", 0)
         data["document_count"] = user.get("document_count", 0)

@@ -338,8 +338,8 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const kycApproved = Boolean(me?.is_test_user) || me?.status === "approved";
   const stockValue = holdings.reduce((sum, item) => sum + item.value, 0);
   const cash = Number(account?.cash_balance || 0);
-  const blocked = Number(account?.blocked_balance || 0);
-  const available = Math.max(0, cash - blocked);
+  const legacyBlocked = Number(account?.blocked_balance || 0);
+  const available = Math.max(0, cash - legacyBlocked);
   const monogram = monogramOf(me?.full_name || "İsim Soyisim");
 
   const toggleWatch = (code) =>

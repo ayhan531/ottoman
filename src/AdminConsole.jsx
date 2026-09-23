@@ -193,7 +193,7 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
   };
 
   const nakit = Number(hesap?.cash_balance ?? user.cash_balance ?? 0);
-  const bloke = Number(hesap?.blocked_balance ?? 0);
+  const bloke = Number(hesap?.orders_reserved ?? 0);
   const kredi = Number(hesap?.credit_limit ?? 0);
 
   return (
@@ -1282,7 +1282,7 @@ function BalancePanel({ onSec, ensure, onNotice }) {
 
       <div className="ac-cards iki">
         <StatKart renk="yesil" etiket="Toplam Nakit" deger={money(topla("cash_balance"))} />
-        <StatKart renk="sari" etiket="Bloke" deger={money(topla("blocked_balance"))} />
+        <StatKart renk="sari" etiket="Bloke" deger={money(topla("orders_reserved"))} />
         <StatKart renk="mavi" etiket="T+2 Bekleyen" deger={money(topla("pending_balance"))} />
         <StatKart renk="mor" etiket="Kredi Limiti" deger={money(topla("credit_limit"))} />
       </div>
@@ -1305,7 +1305,7 @@ function BalancePanel({ onSec, ensure, onNotice }) {
               <div className="alt">
                 <div className="ac-poz-alt">
                   <span><small>Nakit</small><strong>{money(b.cash_balance)}</strong></span>
-                  <span><small>Bloke</small><strong>{money(b.blocked_balance)}</strong></span>
+                  <span><small>Bloke</small><strong>{money(b.orders_reserved)}</strong></span>
                   <span><small>T+2 bekleyen</small><strong>{money(b.pending_balance)}</strong></span>
                   <span><small>Kredi limiti</small><strong>{money(b.credit_limit)}</strong></span>
                 </div>
