@@ -2489,9 +2489,12 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def api_upload_documents(self) -> None:
         form = self.read_multipart()
+        sent_types = [doc_type for doc_type in ("identity_front", "identity_back", "selfie") if doc_type in form]
+        if not sent_types:
+            raise HttpError(400, "En az bir belge seçmelisin")
         with connect_db() as conn:
             user = self.require_user(conn)
-            for doc_type in ("identity_front", "identity_back", "selfie"):
+            for doc_type in sent_types:
                 save_document(conn, form, user["id"], doc_type)
             if user["role"] != "admin":
                 conn.execute(
@@ -3227,6 +3230,9 @@ class AppHandler(BaseHTTPRequestHandler):
                 """
                 SELECT u.*, a.cash_balance, a.blocked_balance, a.pending_balance, a.credit_limit,
                   (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id) AS document_count,
+                  (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='identity_front') AS has_front,
+                  (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='identity_back') AS has_back,
+                  (SELECT COUNT(*) FROM documents d WHERE d.user_id=u.id AND d.doc_type='selfie') AS has_selfie,
                   (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id) AS order_count,
                   (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id AND o.side='buy') AS buy_count,
                   (SELECT COUNT(*) FROM orders o WHERE o.user_id=u.id AND o.side='sell') AS sell_count,
@@ -5014,6 +5020,14 @@ def public_user(user: dict, include_sensitive: bool = False) -> dict:
         data["pending_balance"] = user.get("pending_balance", 0)
         data["credit_limit"] = user.get("credit_limit", 0)
         data["document_count"] = user.get("document_count", 0)
+        if user["status"] not in ("approved", "rejected"):
+            eksik = []
+            if not user.get("has_front"): eksik.append("Ön Yüz")
+            if not user.get("has_back"): eksik.append("Arka Yüz")
+            if not user.get("has_selfie"): eksik.append("Selfie")
+            data["kyc_missing_label"] = f"{', '.join(eksik)} Bekleniyor" if eksik and len(eksik) < 3 else None
+        else:
+            data["kyc_missing_label"] = None
         data["order_count"] = user.get("order_count", 0)
         data["buy_count"] = user.get("buy_count", 0)
         data["sell_count"] = user.get("sell_count", 0)

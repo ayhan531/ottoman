@@ -70,7 +70,7 @@ def latest_news():
                 _cache.update(items=items, updated=current, error=None)
             except (OSError, ValueError, ET.ParseError) as error:
                 _cache['error'] = type(error).__name__
-        items = [item for item in _cache['items'] if item['published_ts'] >= current - 7 * 86400]
+        items = [item for item in _cache['items'] if item['published_ts'] >= current - 7 * 86400][:30]
         return items, {'ok': bool(items) and not _cache['error'],
                        'degraded': bool(_cache['error']), 'count': len(items),
                        'updated_at_label': datetime.fromtimestamp(_cache['updated'], timezone.utc).isoformat() if _cache['updated'] else None,

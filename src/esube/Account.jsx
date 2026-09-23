@@ -67,23 +67,31 @@ export default function Account({
       </div>
 
       <div className="quick-grid">
-        <button className="tile-btn" onClick={() => onTransfer(true)}>
+        <button className={`tile-btn${kycApproved ? "" : " tile-passive"}`} onClick={() => onTransfer(true)}>
           <span className="tile" style={{ background: "var(--tint-green)", color: "var(--ink-green)" }}><Icon name="arrow-down" size={19} /></span>
           <span>{T("Para yatır")}</span>
         </button>
-        <button className="tile-btn" onClick={() => onTransfer(false)}>
+        <button className={`tile-btn${kycApproved ? "" : " tile-passive"}`} onClick={() => onTransfer(false)}>
           <span className="tile" style={{ background: "var(--tint-blue)", color: "var(--ink-blue)" }}><Icon name="arrow-up" size={19} /></span>
           <span>{T("Para çek")}</span>
         </button>
-        <button className="tile-btn" onClick={onBankAccounts}>
+        <button className={`tile-btn${kycApproved ? "" : " tile-passive"}`} onClick={onBankAccounts}>
           <span className="tile" style={{ background: "var(--lavender)", color: "var(--purple)" }}><Icon name="card" size={19} /></span>
           <span>{T("Banka hesaplarım")}</span>
         </button>
         <button className="tile-btn" onClick={onHistory}>
           <span className="tile" style={{ background: "var(--soft)", color: "var(--muted)" }}><Icon name="orders" size={19} /></span>
-          <span>{T("İşlem geçmişi")}</span>
+          <span>{T("Bakiye Geçmişi")}</span>
         </button>
       </div>
+
+      {!kycApproved && (
+        <div className="card outline kyc-banner" onClick={onOpenKyc} role="button" tabIndex={0}>
+          <Icon name="lock" size={18} color="var(--red, #e5484d)" />
+          <span>{T("Hesabınızı onaylamak için kimlik doğrulama yapmanız gerekmektedir.")}</span>
+          <Icon name="chevron" size={18} color="var(--muted)" />
+        </div>
+      )}
 
       <span className="section-label">{T("Hesap İşlemleri")}</span>
       <div className="card outline list-card">

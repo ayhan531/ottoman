@@ -764,6 +764,8 @@
 .bk-card h4{font-size:15px;font-weight:800;margin:0;display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
 .bk-pasif{font-style:normal;font-size:11px;font-weight:700;color:#b26a00;background:#fff1dc;border-radius:999px;padding:3px 8px}
 .dark-mode .bk-pasif{background:#33260f;color:#f0b96b}
+.bk-aktif{font-style:normal;font-size:11px;font-weight:700;color:#0a7d3a;background:#e2f7ea;border-radius:999px;padding:3px 8px}
+.dark-mode .bk-aktif{background:#0f3322;color:#6bdba0}
 .bk-araclar{display:flex;gap:6px;flex:none}
 .bk-araclar button{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
 .bk-ok{background:#f0ecff;color:var(--purple)}
@@ -856,8 +858,10 @@
 .ac-rozet{font-style:normal;font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:8px;margin-left:6px;white-space:nowrap}
 .ac-rozet.kirmizi{background:#ffe8ea;color:#c93343}
 .ac-rozet.mor{background:#efeaff;color:#6544e0}
+.ac-rozet.sari{background:#fff1dc;color:#b26a00}
 .dark-mode .ac-rozet.kirmizi{background:#3a1f24;color:#ff8f9a}
 .dark-mode .ac-rozet.mor{background:#272040;color:#b9a8ff}
+.dark-mode .ac-rozet.sari{background:#33260f;color:#f0b96b}
 .ac-kod{font-style:normal;font-weight:800;letter-spacing:.02em;margin-right:8px}
 .ac-line em.ac-al,.ac-line em.ac-sat{font-style:normal;font-weight:800;font-size:13px;white-space:nowrap}
 .ac-line em.ac-al{color:#13b26b}
@@ -1111,3 +1115,5 @@ a.ac-ghost{display:inline-flex;align-items:center;text-decoration:none}
 .dark-mode .sozlesme-body{background:#171b26;border-color:#2a3040}
 .dark-mode .sozlesme-body p,.dark-mode .sozlesme-body .bullet{color:#c6cad6}
 .dark-mode .fake-check{background:#1b1e28;border-color:#3a4152}
+.kyc-uploaded{color:#0a7d3a !important;font-weight:600}
+.dark-mode .kyc-uploaded{color:#6bdba0 !important}

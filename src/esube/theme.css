@@ -622,6 +622,15 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   display: flex; align-items: center; justify-content: center;
 }
 .esube .quick-grid span, .overlay .quick-grid span { font-size: calc(10px * var(--s)); text-align: center; line-height: 1.25; }
+.esube .tile-btn.tile-passive, .overlay .tile-btn.tile-passive { opacity: .45; filter: grayscale(.6); }
+.esube .tile-btn.tile-passive .tile, .overlay .tile-btn.tile-passive .tile { background: var(--soft) !important; color: var(--muted) !important; }
+
+.esube .kyc-banner, .overlay .kyc-banner {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  border-color: var(--red, #e5484d); background: color-mix(in srgb, var(--red, #e5484d) 8%, transparent);
+  cursor: pointer;
+}
+.esube .kyc-banner span, .overlay .kyc-banner span { flex: 1; font-size: calc(12.5px * var(--s)); font-weight: 600; color: var(--red, #e5484d); }
 
 .esube .list-card, .overlay .list-card { padding: 3px 15px; }
 .esube .list-row, .overlay .list-row { display: grid; grid-template-columns: 1fr 18px; gap: 8px; align-items: center; padding: 12px 0; width: 100%; }

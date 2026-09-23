@@ -125,7 +125,6 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
   const [busy, setBusy] = useState("");
   const [history, setHistory] = useState([]);
   const [positions, setPositions] = useState([]);
-  const [balance, setBalance] = useState({ action: "set", amount: "", note: "" });
   const [position, setPosition] = useState({ action: "set", symbol: "", quantity: "", price: "", note: "" });
   const [hesap, setHesap] = useState(null);
   const [yeniSifre, setYeniSifre] = useState("");
@@ -159,26 +158,6 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
 
   const kaydet = () => calistir("profil", () =>
     api(`/api/admin/users/${user.id}`, { method: "POST", body: JSON.stringify(form) }));
-
-  const bakiyeUygula = () => {
-    const tutar = Number(String(balance.amount).replace(",", "."));
-    if (!Number.isFinite(tutar) || tutar < 0) return onNotice("Tutar hatalı", "Sıfır ya da üzeri bir tutar gir.");
-    return calistir("bakiye", () => api("/api/admin/balances", {
-      method: "POST",
-      body: JSON.stringify({ user_id: user.id, action: balance.action, amount: tutar, note: balance.note.trim() }),
-    }));
-  };
-
-  /* "Silme": nakit bakiyeyi sıfıra çeker. Gerekçe alanı boşsa kendi
-     gerekçesini yazar, çünkü sunucu gerekçesiz finansal değişiklik kabul etmiyor. */
-  const bakiyeSifirla = () => {
-    if (!window.confirm(`${user.full_name} hesabının nakit bakiyesi sıfırlanacak. Onaylıyor musun?`)) return undefined;
-    const gerekce = balance.note.trim() || "Bakiye admin tarafından sıfırlandı";
-    return calistir("bakiye", () => api("/api/admin/balances", {
-      method: "POST",
-      body: JSON.stringify({ user_id: user.id, action: "set", amount: 0, note: gerekce }),
-    }));
-  };
 
   const pozisyonUygula = () => {
     const adet = Number(position.quantity);
@@ -248,24 +227,6 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
             <Field label="Uyum notu" wide><Input value={form.kyc_note} onChange={(e) => setForm({ ...form, kyc_note: e.target.value })} /></Field>
           </div>
           <button className="confirm" disabled={busy === "profil"} onClick={kaydet}>{busy === "profil" ? "Kaydediliyor…" : "Bilgileri kaydet"}</button>
-        </Section>
-
-        <Section title="Bakiye" note="Ana bakiyeyi belirle, ekle, düş ya da kredi limiti tanımla">
-          <div className="ac-form">
-            <Field label="İşlem">
-              <Select
-                value={balance.action}
-                onChange={(v) => setBalance({ ...balance, action: v })}
-                options={[["set", "Bakiyeyi şuna eşitle"], ["add", "Bakiyeye ekle"], ["subtract", "Bakiyeden düş"], ["credit", "Kredi limiti ekle"]]}
-              />
-            </Field>
-            <Field label="Tutar (₺)"><Input inputMode="decimal" value={balance.amount} onChange={(e) => setBalance({ ...balance, amount: e.target.value })} /></Field>
-            <Field label="Gerekçe (opsiyonel)" wide><Input value={balance.note} onChange={(e) => setBalance({ ...balance, note: e.target.value })} /></Field>
-          </div>
-          <div className="ac-actions">
-            <button className="ac-danger" disabled={busy === "bakiye"} onClick={bakiyeSifirla}>Bakiyeyi sıfırla</button>
-            <button className="confirm" disabled={busy === "bakiye"} onClick={bakiyeUygula}>{busy === "bakiye" ? "Uygulanıyor…" : "Bakiyeyi uygula"}</button>
-          </div>
         </Section>
 
         <Section title="Portföy" note="Kullanıcının pozisyonlarını doğrudan ayarla">
@@ -355,7 +316,7 @@ function BankaKarti({ hesap, ilk, son, onDuzenle, onIslem, onTasi }) {
   return (
     <article className="bk-card">
       <header>
-        <h4>{hesap.bank_name}{Number(hesap.is_active) ? "" : <em className="bk-pasif">Pasif</em>}</h4>
+        <h4>{hesap.bank_name}{Number(hesap.is_active) ? <em className="bk-aktif">Aktif</em> : <em className="bk-pasif">Pasif</em>}</h4>
         <div className="bk-araclar">
           <button className="bk-ok" disabled={ilk} onClick={() => onTasi(hesap, -1)} aria-label="Yukarı taşı">↑</button>
           <button className="bk-ok" disabled={son} onClick={() => onTasi(hesap, 1)} aria-label="Aşağı taşı">↓</button>
@@ -1571,6 +1532,7 @@ function PendingPanel({ users, orders, moneyReqs, onGit, onSec }) {
                 <li><Icon name="globe" size={13} /> {[u.district, u.city].filter(Boolean).join(", ") || "—"}</li>
                 <li><Icon name="list" size={13} /> {u.document_count || 0} belge</li>
               </ul>
+              {u.kyc_missing_label && <em className="ac-rozet sari">{u.kyc_missing_label}</em>}
               <footer>
                 <button className="ac-ghost" onClick={() => (onSec ? onSec(u) : onGit("Belgeler"))}>
                   <Icon name="eye" size={15} /> Belgeleri İncele

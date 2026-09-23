@@ -42,8 +42,7 @@ function useOnline() {
 const KYC_DOC_LABELS = { identity_front: "Kimlik Ön Yüz", identity_back: "Kimlik Arka Yüz", selfie: "Kimlikli Selfie" };
 
 function KycUpload({ documents, onNotice, onUploaded }) {
-  const [files, setFiles] = useState({ identity_front: null, identity_back: null, selfie: null });
-  const [busy, setBusy] = useState(false);
+  const [busyType, setBusyType] = useState("");
 
   const latest = useMemo(() => {
     const map = {};
@@ -56,50 +55,49 @@ function KycUpload({ documents, onNotice, onUploaded }) {
 
   const allApproved = Object.keys(KYC_DOC_LABELS).every((type) => latest[type]?.status === "approved");
 
-  const submit = async () => {
-    const missing = Object.keys(KYC_DOC_LABELS).filter((type) => !files[type]);
-    if (missing.length) {
-      onNotice?.(T("Kimlik Doğrulama"), T("Devam etmek için üç fotoğrafı da (ön yüz, arka yüz, selfie) seçmelisin."));
-      return;
-    }
-    setBusy(true);
+  // Her belge bağımsız yüklenir: ön yüzü şimdi, arka yüzü daha sonra
+  // gönderebilirsin - Fuzul referansındaki gibi her belgenin kendi durumu olur.
+  const uploadOne = async (type, file) => {
+    if (!file) return;
+    setBusyType(type);
     try {
       const form = new FormData();
-      for (const type of Object.keys(KYC_DOC_LABELS)) form.append(type, files[type]);
+      form.append(type, file);
       await api("/api/profile/documents", { method: "POST", body: form });
-      setFiles({ identity_front: null, identity_back: null, selfie: null });
-      onNotice?.(T("Kimlik Doğrulama"), T("Belgelerin onaya gönderildi. İnceleme tamamlanınca hesabın onaylanacak."));
+      onNotice?.(T("Kimlik Doğrulama"), T("{label} onaya gönderildi.").replace("{label}", T(KYC_DOC_LABELS[type])));
       await onUploaded?.();
     } catch (error) {
-      onNotice?.(T("Kimlik Doğrulama"), error.message || T("Belgeler yüklenemedi."));
+      onNotice?.(T("Kimlik Doğrulama"), error.message || T("Belge yüklenemedi."));
     } finally {
-      setBusy(false);
+      setBusyType("");
     }
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <p style={{ margin: 0, color: "var(--muted)", fontSize: 13, lineHeight: 1.4 }}>
-        {T("Hesabını onaylatmak ve para yatırma/çekme işlemlerini açmak için kimliğinin ön yüzünü, arka yüzünü ve kimliğinle birlikte çekilmiş bir selfie fotoğrafını yükle.")}
+        {T("Hesabını onaylatmak ve para yatırma/çekme işlemlerini açmak için kimliğinin ön yüzünü, arka yüzünü ve kimliğinle birlikte çekilmiş bir selfie fotoğrafını yükle. Her belgeyi ayrı ayrı, istediğin sırayla yükleyebilirsin.")}
       </p>
       <div className="card outline list-card">
         <Divided>
           {Object.entries(KYC_DOC_LABELS).map(([type, label]) => {
             const doc = latest[type];
-            const statusText = doc ? (doc.status_label || doc.status) : (files[type] ? files[type].name : T("Henüz yüklenmedi"));
+            const statusText = doc ? (doc.status_label || doc.status) : (busyType === type ? T("Yükleniyor…") : T("Bekleniyor"));
+            const uploaded = Boolean(doc);
             return (
               <div className="settings-row" key={type}>
                 <span>
                   <strong>{label}</strong>
-                  <small>{statusText}</small>
+                  <small className={uploaded ? "kyc-uploaded" : ""}>{statusText}</small>
                 </span>
                 <label className="ac-ghost" style={{ cursor: "pointer", padding: "8px 14px", borderRadius: 10, border: "1px solid var(--edge)" }}>
-                  {T("Seç")}
+                  {busyType === type ? T("Yükleniyor…") : uploaded ? T("Yeniden yükle") : T("Yükle")}
                   <input
                     type="file"
                     accept="image/*"
+                    disabled={Boolean(busyType)}
                     style={{ display: "none" }}
-                    onChange={(event) => setFiles((current) => ({ ...current, [type]: event.target.files?.[0] || null }))}
+                    onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; uploadOne(type, file); }}
                   />
                 </label>
               </div>
@@ -107,12 +105,10 @@ function KycUpload({ documents, onNotice, onUploaded }) {
           })}
         </Divided>
       </div>
-      {allApproved ? (
+      {allApproved && (
         <div className="warning" style={{ color: "var(--ink-green, #159578)", background: "var(--tint-green, #e1f8ed)" }}>
           {T("Kimlik doğrulaman onaylandı.")}
         </div>
-      ) : (
-        <button className="confirm" disabled={busy} onClick={submit}>{busy ? T("Gönderiliyor…") : T("Belgeleri Gönder")}</button>
       )}
     </div>
   );
