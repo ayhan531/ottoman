@@ -902,3 +902,89 @@ matching Fuzul's reference more closely beyond the scroll-gate; "ilk açılış 
 Standing rule still in force: **git add -f is required for any new file under `dist/`** —
 `git add -A` will not pick up new files in a gitignored directory, only modifications to files
 already tracked there.
+
+## 2026-09-23 (later same day) — Full re-verification pass of all 27 "güncelleme v2" screenshots
+
+Cem asked to double-check every request in the "güncelleme v2" screenshot folder against the
+live code, with "hepsini yap eksik kalmasın" (do all of them, nothing left incomplete). Read all
+27 images fresh via the device bridge rather than trusting the task list carried over from the
+prior pass — that task list turned out to undercount how much was already done, and (separately)
+a stale in-container mirror of `CorporateLanding.jsx` almost caused a duplicate/wrong edit before
+switching to `device_bash cat`/`sed` for every read in this pass. **Lesson: never trust the
+`Read` tool on a repo file that's mounted via the device bridge — it can silently serve a stale
+cached copy. Always read repo files with `device_bash cat`/`sed`/`grep` instead.**
+
+Confirmed ALREADY DONE (no change needed), beyond what earlier handoff sections already listed:
+- Corporate landing page (`src/CorporateLanding.jsx` + `corporate.css`): full-width nav, separate
+  "Kayıt Ol" / "Giriş Yap" buttons, blue (#2f72e8) theme, logo + "Ottoman Yatırım" brand text —
+  all present.
+- Admin panel top-left branding: logo + "Ottoman Yatırım" text already in place
+  (`AdminConsole.jsx` ~line 2109).
+- Admin step-up removal: already a no-op (`useLock().ensure()`) and the dead lock-bar UI was
+  already stripped in the prior pass documented above.
+- Password strength meter (Zayıf/Orta/Güçlü, register blocked until "güçlü") — `legacy.jsx`
+  `sifreGucu`/`SifreGucMetre`, matches backend's `password_is_strong` 4-criteria check exactly.
+- `LoadMoneyPanel` ("Para Yükleme" — per-customer +/- bakiye tool): gerekçe field already
+  optional, matching the boss's explicit "ama gerekçe olmasın kesinlikle".
+- Portfolio admin edit modal already has "Toplam maliyet" + "Güncel değer fiyatı" optional
+  override fields (`PortfolioPanel` in `AdminConsole.jsx`).
+- Admin user-detail "Hareketler" list already includes real stock buys/sells (`trade_buy`/
+  `trade_sell` are written to `user_transactions` on every real order and show up there
+  unfiltered) — no separate "hisse geçmişi" feed needed.
+- The T+2 settlement system (`t2_settlements` table, `create_t2_settlement`/`settle_due_t2`/
+  `credit_sale_proceeds` in `backend_server.py`) is legitimate: it only ever holds the actual
+  cash proceeds of a real stock **sale**, auto-releases on its own real settlement date
+  regardless of any admin action, and admin can only release it *early*, never delay it further
+  or lock unrelated balance. Confirmed clean; left untouched.
+
+Fixed this pass (see commit "Admin panel and Account KYC gaps from güncelleme v2 review"):
+1. **Admin "Bakiye Detayları" → user detail screen** (`UserEditor` in `AdminConsole.jsx`): removed
+   the raw "Bakiye" section (İşlem: eşitle/ekle/düş/kredi limiti + Tutar + Gerekçe + "Bakiyeyi
+   sıfırla" + "Bakiyeyi uygula") per the boss's literal instruction ("BU ÇIKMASIN ... SADECE
+   BURASI ÇIKSIN ... Portföy ... Bİ DE ŞU HAREKETLER ÇIKSIN"). The `ac-stats` summary bar
+   (Nakit/Bloke/Kredi/Pozisyon) plus the existing Portföy and Hareketler sections already satisfy
+   what's supposed to remain. Manual balance corrections still work through "Para Yükleme" and
+   the deposit/withdraw approval queues, which were untouched.
+2. **Bank account cards**: added an "Aktif" badge (`bk-aktif`, green) alongside the existing
+   "Pasif" one, matching Fuzul's reference pill style on both states.
+3. **News feed cap**: `tools/news_feed.py` `latest_news()` now slices to `[:30]` (was unbounded);
+   the 10-minute refresh interval (`NEWS_MS` in `store.js`) was already correct from an earlier
+   pass.
+4. **Account page** (`src/esube/Account.jsx`): renamed the "İşlem geçmişi" tile to "Bakiye
+   Geçmişi" (boss's literal instruction: "İşlem geçmişi yerine bakiye geçmişi eklenecek"); added
+   `.tile-passive` (dimmed/grayscale) styling to the Para yatır / Para çek / Banka hesaplarım
+   tiles when `!kycApproved`; added a red `.kyc-banner` above "Hesap İşlemleri" reading
+   "Hesabınızı onaylamak için kimlik doğrulama yapmanız gerekmektedir." when not approved. The
+   click-through notice text ("Kimlik Doğrulaması Olmadan İşlem Yapılamaz") was already correct
+   from before — only the passive *visual* state and the banner were missing.
+5. **KYC document upload**: reworked from "must pick all three files then submit together" (old
+   `api/profile/documents` required all of identity_front/identity_back/selfie in one multipart
+   POST or 400'd) to independent per-document upload — front and back (and selfie) can now be
+   sent separately, each with its own live status, matching Fuzul's reference ("Arka Yüz
+   Bekleniyor" while only the front is uploaded). Backend `api_upload_documents` now only
+   requires whichever doc_types are actually present in the form; added `has_front`/`has_back`/
+   `has_selfie` + a computed `kyc_missing_label` (e.g. "Arka Yüz Bekleniyor") to
+   `/api/admin/users`, surfaced as a badge on the admin "Onay Bekleyenler" cards.
+
+Explicitly re-declined, unchanged (same reasoning as §9.1, re-requested again this pass in very
+explicit detail — see the "MÜŞTERİ YATIRIM YAPTIĞINDA..." and "Fiyatlar 2.5 sn bir..." messages):
+- Forcing a customer's *entire* balance into an indefinite, admin-only-releasable "T+2" hold the
+  instant they make any single trade (buy or sell), as opposed to the real T+2 system above which
+  only ever holds actual sale proceeds and auto-releases on schedule. This is the same
+  fund-trapping pattern declined in §9.1 and remains declined.
+- Simulated ±0.10% price jitter every 2.5 seconds when no real quote has arrived. `price_simulation`
+  is still a dormant settings key that gets force-reset to `"0"` server-side unless the
+  `ALLOW_PRICE_SIMULATION` env var is set; no jitter-generating code exists or was added.
+
+Not implemented (lower priority / cosmetic, flagged for Cem rather than guessed at blind):
+- Registration's inline KVKK/risk-bildirimi consent checkbox works and gates account creation
+  today, but isn't a separate full-screen "Sözleşme Onayı" popup like Fuzul's reference. Low
+  value to change since the compliance gate already exists; deferred.
+- A few px of vertical alignment on the portfolio summary donut chart vs. the balance labels next
+  to it (Derviş Hoca's screenshot with the red annotation circles) — cosmetic only, needs visual
+  QA against the real reference rather than a blind CSS guess.
+
+Build: `npx vite build --outDir /tmp/dist_new && cp -rf /tmp/dist_new/. dist/`, verified the new
+markers ("Bakiye Geçmişi", the KYC banner string, `tile-passive`, `kyc_missing_label`,
+`bk-aktif`) are present in the built `dist/assets/index-*.js`/`.css` before committing. Cem still
+needs to run `git push origin main` himself (no push credentials in this environment).
