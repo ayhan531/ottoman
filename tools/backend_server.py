@@ -1556,6 +1556,28 @@ def transcode_uploaded_image(raw: bytes) -> tuple[bytes, str]:
     return buf.getvalue(), ".jpg"
 
 
+def status_label(value: str) -> str:
+    return {
+        "pending": "Beklemede",
+        "awaiting_back": "Belge Bekleniyor",
+        "under_review": "İnceleniyor",
+        "approved": "Onaylandı",
+        "test_account": "Test Hesabı",
+        "consumed": "Alımda Kullanıldı",
+        "rejected": "Reddedildi",
+        "cancelled": "İptal",
+    }.get(value, value)
+
+
+def document_status_label(value: str) -> str:
+    """Belge (kimlik) durumu için ayrı etiket: 'pending' burada "yüklendi,
+    incelemede" anlamına gelir (henüz hiç yüklenmemiş durumla karışmasın diye
+    genel status_label'daki "Beklemede" değil "İncelemede" gösterilir)."""
+    return {
+        "pending": "İncelemede",
+    }.get(value, status_label(value))
+
+
 REQUIRED_IDENTITY_DOCUMENTS = {"identity_front", "identity_back"}
 
 
