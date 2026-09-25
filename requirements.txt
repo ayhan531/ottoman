@@ -1,0 +1,6 @@
+# Ottoman backend - tools/backend_server.py stdlib+bu birkaç bağımlılık dışında
+# saf Python stdlib kullanır. Bu dosya sadece görsel yeniden kodlama
+# (HEIC/AVIF dahil her formatı JPEG/PNG'ye çevirme) için gerekli.
+Pillow>=11.1.0
+pillow-heif>=1.8.0
+pillow-avif-plugin>=1.6.0
