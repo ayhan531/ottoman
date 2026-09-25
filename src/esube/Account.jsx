@@ -83,11 +83,11 @@ export default function Account({
         </button>
         <button className="tile-btn" onClick={onHistory}>
           <span className="tile" style={{ background: "var(--soft)", color: "var(--muted)" }}><Icon name="orders" size={19} /></span>
-          <span>{T("Bakiye Geçmişi")}</span>
+          <span>{T("İşlem Geçmişi")}</span>
         </button>
       </div>
 
-      <span className="section-label">{T("Bakiye Geçmişi")}</span>
+      <span className="section-label">{T("İşlem Geçmişi")}</span>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
         {(moneyRequests && moneyRequests.length) ? moneyRequests.map((item) => {
           const renk = item.status === "rejected" ? "var(--red)" : item.status === "approved" ? "var(--green)" : "var(--ink-blue)";

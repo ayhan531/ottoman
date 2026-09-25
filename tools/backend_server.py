@@ -1503,6 +1503,38 @@ def available_position_quantity(conn: sqlite3.Connection, user_id: int, symbol: 
     return max(0, position_quantity(conn, user_id, symbol) - reserved_sell_quantity(conn, user_id, symbol, exclude_order_id))
 
 
+# Gerçek içerik türünden (content-type) doğru dosya uzantısını belirler; bu
+# olmadan tanınmayan bir uzantı ".jpg" olarak zorlanıyor ama dosyanın gerçek
+# baytları değişmiyordu - tarayıcı JPEG olarak açmaya çalışıp bozuk görsel
+# gösteriyordu (ör. bir .png ya da .webp dosyası .heic/.tiff uzantısıyla
+# geldiğinde). HEIC/AVIF gibi formatlar tarayıcıda <img> ile zaten
+# gösterilemediğinden (sunucu tarafı dönüştürme olmadan) burada da eski
+# davranış (".jpg"a zorlama) korunuyor - amaç en azından uzantı/içerik
+# uyuşmazlığından kaynaklanan bozuk görselleri düzeltmek. SVG bilinçli olarak
+# haritalanmıyor (yüklenen SVG'nin script içerebilmesi nedeniyle profil
+# fotoğrafı/kimlik belgesi olarak olduğu gibi sunulmasını istemiyoruz).
+IMAGE_CONTENT_TYPE_EXT = {
+    "image/jpeg": ".jpg",
+    "image/pjpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "image/bmp": ".bmp",
+    "image/x-ms-bmp": ".bmp",
+    "image/avif": ".avif",
+}
+
+
+def image_ext_for(content_type: str, filename: str) -> str:
+    mapped = IMAGE_CONTENT_TYPE_EXT.get((content_type or "").split(";")[0].strip().lower())
+    if mapped:
+        return mapped
+    ext = Path(filename).suffix.lower()
+    if ext in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif"}:
+        return ext
+    return ".jpg"
+
+
 def status_label(value: str) -> str:
     return {
         "pending": "Beklemede",
@@ -1514,6 +1546,15 @@ def status_label(value: str) -> str:
         "rejected": "Reddedildi",
         "cancelled": "İptal",
     }.get(value, value)
+
+
+def document_status_label(value: str) -> str:
+    """Belge (kimlik) durumu için ayrı etiket: 'pending' burada "yüklendi,
+    incelemede" anlamına gelir (henüz hiç yüklenmemiş durumla karışmasın diye
+    genel status_label'daki "Beklemede" değil "İncelemede" gösterilir)."""
+    return {
+        "pending": "İncelemede",
+    }.get(value, status_label(value))
 
 
 REQUIRED_IDENTITY_DOCUMENTS = {"identity_front", "identity_back"}
@@ -2558,9 +2599,7 @@ class AppHandler(BaseHTTPRequestHandler):
             content_type = item.type or "application/octet-stream"
             if not content_type.startswith("image/"):
                 raise HttpError(400, "Profil fotoğrafı görsel olmalı")
-            ext = Path(item.filename).suffix.lower()
-            if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
-                ext = ".jpg"
+            ext = image_ext_for(content_type, item.filename)
             stored_name = f"{user['id']}_avatar_{secrets.token_hex(8)}{ext}"
             target = UPLOAD_DIR / stored_name
             size = 0
@@ -4197,8 +4236,9 @@ class AppHandler(BaseHTTPRequestHandler):
                 conn.execute("UPDATE accounts SET cash_balance=? WHERE user_id=?", (after, user_id))
                 tx_type = "admin_add"
             elif action == "subtract":
-                if before < amount:
-                    raise HttpError(422, "Bakiye yetersiz")
+                # Admin istediği kullanıcıdan istediği tutarı, kaç kez isterse
+                # o kadar çıkarabilir - mevcut bakiyeyle sınırlı değil (bilinçli
+                # düzeltme/iptal işlemleri için negatife de düşebilir).
                 after = round(before - amount, 2)
                 conn.execute("UPDATE accounts SET cash_balance=? WHERE user_id=?", (after, user_id))
                 tx_type = "admin_subtract"
@@ -4489,9 +4529,7 @@ def save_document(conn: sqlite3.Connection, form: MultipartForm, user_id: int, d
     content_type = item.type or "application/octet-stream"
     if not content_type.startswith("image/"):
         raise HttpError(400, "Kimlik dosyaları görsel olmalı")
-    ext = Path(item.filename).suffix.lower()
-    if ext not in {".jpg", ".jpeg", ".png", ".webp"}:
-        ext = ".jpg"
+    ext = image_ext_for(content_type, item.filename)
     stored_name = f"{user_id}_{doc_type}_{secrets.token_hex(8)}{ext}"
     target = UPLOAD_DIR / stored_name
     size = 0
@@ -4953,7 +4991,7 @@ def document_rows(conn: sqlite3.Connection, where: str = "", params: tuple = ())
             "identity_back": "Kimlik Arka Yüz",
             "selfie": "Yüz Doğrulama",
         }.get(item["doc_type"], item["doc_type"])
-        item["status_label"] = status_label(item["status"])
+        item["status_label"] = document_status_label(item["status"])
         items.append(item)
     return items
 

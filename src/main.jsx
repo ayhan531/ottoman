@@ -37,6 +37,15 @@ function Root() {
   // Giriş yapıldıysa ve bildirim izni zaten verilmişse aboneliği tazele.
   useEffect(() => { if (me) refreshPush(); }, [me]);
 
+  // Hesap durumu (onay/KYC) admin tarafından değiştirildiğinde bunu görmek
+  // için sayfayı yeniden açmaya gerek kalmasın: giriş yapılıyken /api/me
+  // periyodik olarak tazelenir.
+  useEffect(() => {
+    if (!me) return;
+    const zaman = setInterval(loadMe, 30_000);
+    return () => clearInterval(zaman);
+  }, [me, loadMe]);
+
   // E-şube açıkken gövde kaydırmasını kapat; kurumsal sayfada serbest bırak.
   useEffect(() => {
     document.body.classList.toggle("esube-open", Boolean(me) && !showAdmin);
