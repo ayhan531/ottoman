@@ -25,6 +25,16 @@ import warnings
 import xml.etree.ElementTree as ET
 import zipfile
 from email.message import EmailMessage
+from PIL import Image, ImageOps
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except Exception:
+    pillow_heif = None
+try:
+    import pillow_avif  # noqa: F401 - import kaydı AVIF desteğini Pillow'a ekler
+except Exception:
+    pass
 from news_feed import latest_news
 from market_news import sekme_haberleri as fotolu_sekme_haberleri, sirketleri_tanit
 import threading
@@ -1503,58 +1513,47 @@ def available_position_quantity(conn: sqlite3.Connection, user_id: int, symbol: 
     return max(0, position_quantity(conn, user_id, symbol) - reserved_sell_quantity(conn, user_id, symbol, exclude_order_id))
 
 
-# Gerçek içerik türünden (content-type) doğru dosya uzantısını belirler; bu
-# olmadan tanınmayan bir uzantı ".jpg" olarak zorlanıyor ama dosyanın gerçek
-# baytları değişmiyordu - tarayıcı JPEG olarak açmaya çalışıp bozuk görsel
-# gösteriyordu (ör. bir .png ya da .webp dosyası .heic/.tiff uzantısıyla
-# geldiğinde). HEIC/AVIF gibi formatlar tarayıcıda <img> ile zaten
-# gösterilemediğinden (sunucu tarafı dönüştürme olmadan) burada da eski
-# davranış (".jpg"a zorlama) korunuyor - amaç en azından uzantı/içerik
-# uyuşmazlığından kaynaklanan bozuk görselleri düzeltmek. SVG bilinçli olarak
-# haritalanmıyor (yüklenen SVG'nin script içerebilmesi nedeniyle profil
-# fotoğrafı/kimlik belgesi olarak olduğu gibi sunulmasını istemiyoruz).
-IMAGE_CONTENT_TYPE_EXT = {
-    "image/jpeg": ".jpg",
-    "image/pjpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp",
-    "image/gif": ".gif",
-    "image/bmp": ".bmp",
-    "image/x-ms-bmp": ".bmp",
-    "image/avif": ".avif",
-}
+MAX_IMAGE_DIMENSION = 2200  # yeniden kodlanan görsellerin en uzun kenarı bu değeri aşmaz
 
 
-def image_ext_for(content_type: str, filename: str) -> str:
-    mapped = IMAGE_CONTENT_TYPE_EXT.get((content_type or "").split(";")[0].strip().lower())
-    if mapped:
-        return mapped
-    ext = Path(filename).suffix.lower()
-    if ext in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif"}:
-        return ext
-    return ".jpg"
+def read_upload_bytes(item, too_large_message: str = "Dosya çok büyük") -> bytes:
+    """Yüklenen dosyanın tüm baytlarını MAX_UPLOAD_BYTES sınırını uygulayarak okur."""
+    chunks: list[bytes] = []
+    size = 0
+    while True:
+        chunk = item.file.read(64 * 1024)
+        if not chunk:
+            break
+        size += len(chunk)
+        if size > MAX_UPLOAD_BYTES:
+            raise HttpError(413, too_large_message)
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
-def status_label(value: str) -> str:
-    return {
-        "pending": "Beklemede",
-        "awaiting_back": "Belge Bekleniyor",
-        "under_review": "İnceleniyor",
-        "approved": "Onaylandı",
-        "test_account": "Test Hesabı",
-        "consumed": "Alımda Kullanıldı",
-        "rejected": "Reddedildi",
-        "cancelled": "İptal",
-    }.get(value, value)
-
-
-def document_status_label(value: str) -> str:
-    """Belge (kimlik) durumu için ayrı etiket: 'pending' burada "yüklendi,
-    incelemede" anlamına gelir (henüz hiç yüklenmemiş durumla karışmasın diye
-    genel status_label'daki "Beklemede" değil "İncelemede" gösterilir)."""
-    return {
-        "pending": "İncelemede",
-    }.get(value, status_label(value))
+def transcode_uploaded_image(raw: bytes) -> tuple[bytes, str]:
+    """Yüklenen görseli - formatı ne olursa olsun (JPEG/PNG/WEBP/GIF/BMP/HEIC/
+    HEIF/AVIF/TIFF/...) - gerçekten açıp JPEG ya da (saydamlık varsa) PNG
+    olarak yeniden kodlar. Böylece diskteki dosyanın uzantısı her zaman
+    gerçek içeriğiyle eşleşir ve her tarayıcıda görüntülenebilir; eskiden
+    tanınmayan bir uzantı sadece ".jpg" yapılıp orijinal baytlar öylece
+    yazılıyordu (bozuk görsel sorununun kaynağı buydu). Telefon fotoğraflarının
+    EXIF döndürme bilgisi uygulanır ve aşırı büyük görseller küçültülür."""
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+    except Exception:
+        raise HttpError(400, "Görsel dosyası okunamadı ya da desteklenmeyen bir format")
+    img = ImageOps.exif_transpose(img) or img
+    if img.width > MAX_IMAGE_DIMENSION or img.height > MAX_IMAGE_DIMENSION:
+        img.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION), Image.LANCZOS)
+    has_alpha = img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info)
+    buf = io.BytesIO()
+    if has_alpha:
+        img.convert("RGBA").save(buf, format="PNG", optimize=True)
+        return buf.getvalue(), ".png"
+    img.convert("RGB").save(buf, format="JPEG", quality=90, optimize=True)
+    return buf.getvalue(), ".jpg"
 
 
 REQUIRED_IDENTITY_DOCUMENTS = {"identity_front", "identity_back"}
@@ -2599,20 +2598,11 @@ class AppHandler(BaseHTTPRequestHandler):
             content_type = item.type or "application/octet-stream"
             if not content_type.startswith("image/"):
                 raise HttpError(400, "Profil fotoğrafı görsel olmalı")
-            ext = image_ext_for(content_type, item.filename)
+            raw = read_upload_bytes(item, "Dosya çok büyük")
+            encoded, ext = transcode_uploaded_image(raw)
             stored_name = f"{user['id']}_avatar_{secrets.token_hex(8)}{ext}"
             target = UPLOAD_DIR / stored_name
-            size = 0
-            with target.open("wb") as out:
-                while True:
-                    chunk = item.file.read(64 * 1024)
-                    if not chunk:
-                        break
-                    size += len(chunk)
-                    if size > MAX_UPLOAD_BYTES:
-                        target.unlink(missing_ok=True)
-                        raise HttpError(413, "Dosya çok büyük")
-                    out.write(chunk)
+            target.write_bytes(encoded)
             avatar_url = f"/uploads/{stored_name}"
             conn.execute("UPDATE users SET avatar_url=? WHERE id=?", (avatar_url, user["id"]))
             audit(conn, user["id"], "upload_avatar", "user", user["id"])
@@ -4529,20 +4519,11 @@ def save_document(conn: sqlite3.Connection, form: MultipartForm, user_id: int, d
     content_type = item.type or "application/octet-stream"
     if not content_type.startswith("image/"):
         raise HttpError(400, "Kimlik dosyaları görsel olmalı")
-    ext = image_ext_for(content_type, item.filename)
+    raw = read_upload_bytes(item, "Tek dosya 100 MB üstünde olamaz")
+    encoded, ext = transcode_uploaded_image(raw)
     stored_name = f"{user_id}_{doc_type}_{secrets.token_hex(8)}{ext}"
     target = UPLOAD_DIR / stored_name
-    size = 0
-    with target.open("wb") as out:
-        while True:
-            chunk = item.file.read(64 * 1024)
-            if not chunk:
-                break
-            size += len(chunk)
-            if size > MAX_UPLOAD_BYTES:
-                target.unlink(missing_ok=True)
-                raise HttpError(413, "Tek dosya 100 MB üstünde olamaz")
-            out.write(chunk)
+    target.write_bytes(encoded)
     conn.execute(
         "INSERT INTO documents (user_id, doc_type, original_name, stored_name, content_type, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', ?)",
         (user_id, doc_type, Path(item.filename).name, stored_name, content_type, now()),
