@@ -134,6 +134,102 @@ MARKET_URLS = [
 ]
 MARKET_TIMEOUT = float(os.environ.get("MARKET_TIMEOUT", "12"))
 MARKET_REFRESH_SECONDS = int(os.environ.get("MARKET_REFRESH_SECONDS", "12"))
+
+# --- Kurumsal site (CorporateLanding) sayfaları için sunucu taraflı SEO
+# meta enjeksiyonu. SPA tek bir index.html döndürdüğü için, arama
+# motorlarının her rotayı kendi başlık/açıklama/canonical/JSON-LD'siyle
+# görmesi için bu bilgiler istek anında ilgili rotaya göre değiştirilir.
+# Kullanıcıya gösterilen React içeriğiyle birebir örtüşür; içerik gizleme
+# (cloaking) değildir, sadece statik <head> meta verisini rotaya göre
+# günceller.
+SEO_SITE_URL = "https://ottomanyatirim.com"
+SEO_PAGES = {
+    "/": {
+        "label": "Ottoman Yatırım",
+        "title": "Ottoman Yatırım | Ottoman, Ottoman E-Şube ve Canlı Borsa Platformu",
+        "description": "Ottoman Yatırım ve Ottoman E-Şube: canlı BIST fiyatları, hisse al-sat, portföy takibi, yatırım haberleri, para yatırma/çekme, sözleşmeler ve kurumsal dijital yatırım deneyimi.",
+    },
+    "/kurumsal": {
+        "label": "Hakkımızda",
+        "title": "Hakkımızda | Ottoman Yatırım",
+        "description": "Ottoman Yatırım hakkında: yatırımcı odaklı yaklaşımımız, dijital e-şube deneyimi ve şeffaf bilgilendirme ilkelerimiz.",
+    },
+    "/hizmetler": {
+        "label": "Hizmetlerimiz",
+        "title": "Yatırım Hizmetlerimiz | Ottoman Yatırım",
+        "description": "Borsa İstanbul hisse al-sat, yatırım fonları, VİOP vadeli işlemler ve portföy yönetimi hizmetlerini Ottoman Yatırım e-şubesinden keşfedin.",
+    },
+    "/ucretler": {
+        "label": "Komisyon & Ücretler",
+        "title": "Komisyon ve Ücretler | Ottoman Yatırım",
+        "description": "Ottoman Yatırım işlem komisyonları, fon yönetim ücretleri ve vadeli işlem masrafları hakkında güncel bilgi alın.",
+    },
+    "/blog": {
+        "label": "Blog",
+        "title": "Yatırımcı Rehberi ve Blog | Ottoman Yatırım",
+        "description": "Ottoman Yatırım blogunda piyasa okuryazarlığı, emir takibi, T+2 bakiye ve yatırımcı rehberleri.",
+    },
+    "/sss": {
+        "label": "SSS",
+        "title": "Sıkça Sorulan Sorular | Ottoman Yatırım",
+        "description": "Hesap açma, para yatırma/çekme, emir takibi ve T+2 bakiye hakkında sıkça sorulan sorular ve yanıtları.",
+    },
+    "/iletisim": {
+        "label": "İletişim",
+        "title": "İletişim | Ottoman Yatırım",
+        "description": "Ottoman Yatırım yatırımcı destek hattı ve müşteri temsilciliği ile iletişime geçin.",
+    },
+    "/sozlesmeler": {
+        "label": "Sözleşmeler",
+        "title": "Sözleşmeler ve Risk Bildirimleri | Ottoman Yatırım",
+        "description": "Ottoman Yatırım e-şube sözleşmeleri, risk bildirimleri ve yasal belgeler hakkında bilgi alın.",
+    },
+}
+
+
+def render_seo_index(route_path: str) -> bytes:
+    info = SEO_PAGES.get(route_path)
+    html = (DIST / "index.html").read_text(encoding="utf-8")
+    if not info:
+        return html.encode("utf-8")
+    full_url = f"{SEO_SITE_URL}{'' if route_path == '/' else route_path}" + ("/" if route_path == "/" else "")
+    title, desc, label = info["title"], info["description"], info["label"]
+
+    def keep(pattern, value, text):
+        return re.sub(pattern, lambda m: m.group(1) + value + m.group(2), text, count=1)
+
+    html = re.sub(r"<title>.*?</title>", lambda m: f"<title>{title}</title>", html, count=1)
+    html = keep(r'(<meta name="description" content=")[^"]*(" />)', desc, html)
+    html = keep(r'(<link rel="canonical" href=")[^"]*(" />)', full_url, html)
+    html = keep(r'(<link rel="alternate" hreflang="tr-TR" href=")[^"]*(" />)', full_url, html)
+    html = keep(r'(<link rel="alternate" hreflang="x-default" href=")[^"]*(" />)', full_url, html)
+    html = keep(r'(<meta property="og:title" content=")[^"]*(" />)', title, html)
+    html = keep(r'(<meta property="og:description" content=")[^"]*(" />)', desc, html)
+    html = keep(r'(<meta property="og:url" content=")[^"]*(" />)', full_url, html)
+    html = keep(r'(<meta name="twitter:title" content=")[^"]*(" />)', title, html)
+    html = keep(r'(<meta name="twitter:description" content=")[^"]*(" />)', desc, html)
+
+    match = re.search(r'(<script type="application/ld\+json">\s*)(\{.*?\})(\s*</script>)', html, flags=re.S)
+    if match:
+        try:
+            data = json.loads(match.group(2))
+            for node in data.get("@graph", []):
+                if node.get("@type") == "WebPage":
+                    node["@id"] = f"{full_url}#webpage"
+                    node["url"] = full_url
+                    node["name"] = title
+                    node["description"] = desc
+                elif node.get("@type") == "BreadcrumbList":
+                    items = [{"@type": "ListItem", "position": 1, "name": "Ottoman Yatırım", "item": f"{SEO_SITE_URL}/"}]
+                    if route_path != "/":
+                        items.append({"@type": "ListItem", "position": 2, "name": label, "item": full_url})
+                    node["itemListElement"] = items
+            new_json = json.dumps(data, ensure_ascii=False, indent=2)
+            html = html[:match.start(2)] + new_json + html[match.end(2):]
+        except Exception:
+            pass
+    return html.encode("utf-8")
+
 COMPANY_META_REFRESH_SECONDS = int(os.environ.get("COMPANY_META_REFRESH_SECONDS", "86400"))
 NEWS_REFRESH_SECONDS = int(os.environ.get("NEWS_REFRESH_SECONDS", "900"))
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
@@ -4478,15 +4574,33 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def serve_static(self, path: str) -> None:
         requested = (DIST / path.lstrip("/")).resolve()
+        used_spa_fallback = False
         if not str(requested).startswith(str(DIST.resolve())) or not requested.exists() or requested.is_dir():
             public_file = (PUBLIC / path.lstrip("/")).resolve()
             if str(public_file).startswith(str(PUBLIC.resolve())) and public_file.exists() and not public_file.is_dir():
                 requested = public_file
             else:
                 requested = DIST / "index.html"
+                used_spa_fallback = True
         if not requested.exists() or requested.is_dir():
             requested = DIST / "index.html"
+            used_spa_fallback = True
+        if used_spa_fallback and path in SEO_PAGES:
+            self.serve_seo_index(path)
+            return
         self.serve_file(requested)
+
+    def serve_seo_index(self, route_path: str) -> None:
+        body = render_seo_index(route_path)
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+        self.send_header("Pragma", "no-cache")
+        self.send_header("Expires", "0")
+        self.security_headers()
+        self.end_headers()
+        self.wfile.write(body)
 
     EXTRA_TYPES = {
         ".webmanifest": "application/manifest+json; charset=utf-8",
