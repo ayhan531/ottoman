@@ -1853,6 +1853,16 @@ NEWS_FOREIGN_TOKENS = frozenset((
 ))
 NON_LATIN_TEXT = re.compile(r"[\u0400-\u04FF\u0590-\u08FF\u3000-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF]")
 
+# "Ekonomi" kategorisinde çıkan ama borsa/yatırımcı ile ilgisi olmayan
+# tüketici haberleri (kira, asgari ücret, memur/emekli maaşı vb.) bazı genel
+# kelimelerle (ör. "enflasyon") yanlışlıkla finans haberi sayılabiliyor; ayrı
+# bir kara liste ile eleniyor.
+NEWS_OFF_TOPIC_WORDS = (
+    "kira", "kiracı", "ev sahibi", "asgari ücret", "memur", "emekli",
+    "eyt", "sgk", "bayram ikramiye", "kyk", "öğrenci burs", "engelli maaş",
+    "yaşlı maaş", "evde bakım", "nafaka",
+)
+
 
 def _fold_tr(value: str) -> str:
     """Türkçe büyük harfleri doğru küçültür: İ→i, I→ı."""
@@ -1871,6 +1881,8 @@ def is_turkish_finance_news(title: str) -> bool:
     if any(word in folded for word in NEWS_TOOL_WORDS) and "haber" not in folded:
         return False
     if not any(word in folded for word in NEWS_FINANCE_WORDS):
+        return False
+    if any(word in folded for word in NEWS_OFF_TOPIC_WORDS):
         return False
     tokens = set(re.split(r"[^0-9a-zçğıöşü]+", folded))
     if len(tokens & NEWS_FOREIGN_TOKENS) >= 2:
@@ -4252,6 +4264,7 @@ class AppHandler(BaseHTTPRequestHandler):
         kyc_note = str(payload.get("kyc_note", "")).strip()[:300]
         status = str(payload.get("status", "")).strip()
         tc_raw = re.sub(r"\D", "", str(payload.get("tc", "")))
+        is_test_user = 1 if payload.get("is_test_user") else 0
         if status not in {"pending", "under_review", "awaiting_back", "approved", "rejected"}:
             raise HttpError(400, "Durum hatalı")
         if not full_name or not phone or not email:
@@ -4264,8 +4277,8 @@ class AppHandler(BaseHTTPRequestHandler):
             target = conn.execute("SELECT * FROM users WHERE id=? AND role='user'", (user_id,)).fetchone()
             if not target:
                 raise HttpError(404, "Kullanıcı bulunamadı")
-            if status == "approved" and not int(target["is_test_user"] or 0) and not kyc_document_state(conn, user_id)["approved"]:
-                raise HttpError(422, "Üç kimlik belgesi ayrı ayrı onaylanmadan hesap onaylanamaz")
+            if status == "approved" and not is_test_user and not kyc_document_state(conn, user_id)["approved"]:
+                raise HttpError(422, "Üç kimlik belgesi ayrı ayrı onaylanmadan hesap onaylanamaz (ya da hesabı Test hesabı olarak işaretle)")
             tc = tc_raw or target["tc"]
             if tc != target["tc"] and conn.execute("SELECT id FROM users WHERE tc=? AND id!=?", (tc, user_id)).fetchone():
                 raise HttpError(409, "Bu T.C. kimlik numarası başka bir kullanıcıda kayıtlı")
@@ -4273,12 +4286,13 @@ class AppHandler(BaseHTTPRequestHandler):
                 """
                 UPDATE users
                 SET full_name=?, phone=?, email=?, city=?, district=?, birth_date=?, address=?, tc=?,
-                    status=?, kyc_status=?, kyc_note=?, approved_at=CASE WHEN ?='approved' THEN COALESCE(approved_at, ?) ELSE approved_at END
+                    status=?, kyc_status=?, kyc_note=?, is_test_user=?,
+                    approved_at=CASE WHEN ?='approved' THEN COALESCE(approved_at, ?) ELSE approved_at END
                 WHERE id=? AND role='user'
                 """,
-                (full_name, phone, email, city, district, birth_date, address, tc, status, status, kyc_note, status, now(), user_id),
+                (full_name, phone, email, city, district, birth_date, address, tc, status, status, kyc_note, is_test_user, status, now(), user_id),
             )
-            audit(conn, admin["id"], "update_user", "user", user_id)
+            audit(conn, admin["id"], "update_user", "user", user_id, {"is_test_user": is_test_user})
             conn.commit()
             self.json_response({"ok": True})
 

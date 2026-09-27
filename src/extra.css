@@ -318,6 +318,8 @@
   .portfolio-screen .chart-card{min-height:188px}
   .portfolio-screen .return-chart{height:118px;margin-top:4px}
   .admin-stage .phone,.admin-phone{width:100vw;height:100vh;height:100dvh;max-width:none;border-radius:0;box-shadow:none}
+  .auth-stage .phone,.auth-phone{width:100vw;height:100vh;height:100dvh;max-width:none;border-radius:0;box-shadow:none}
+  .auth-stage{background:#fff}
 }
 @media (max-width:760px){
   .auth-stage{padding:0;place-items:stretch}
