@@ -10,24 +10,24 @@
 .corporate-login,.corporate-primary{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:#3c7771;color:#fff;border-radius:6px;padding:12px 18px;white-space:normal}
 .corporate-register{display:inline-flex;align-items:center;justify-content:center;gap:9px;background:transparent;border:1px solid #3c7771;color:#3c7771;border-radius:6px;padding:11px 18px;white-space:normal;font-weight:700}
 .corporate-menu{display:none}
-.corporate-hero{min-height:560px;display:grid;place-items:center;text-align:center;padding:70px 24px;background:#171226;color:#fff;position:relative;isolation:isolate;overflow:hidden}
-.corporate-hero:before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(16,12,30,.94) 0%,rgba(30,22,53,.74) 49%,rgba(15,13,27,.76) 100%),url('/news/bist-markets.jpg') center 54%/cover;filter:saturate(.76) sepia(.22) contrast(1.08);opacity:.94;z-index:-1}
+.corporate-hero{min-height:560px;display:grid;place-items:center;text-align:center;padding:70px 24px;background:#0f2422;color:#fff;position:relative;isolation:isolate;overflow:hidden}
+.corporate-hero:before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(10,26,24,.94) 0%,rgba(18,42,39,.74) 49%,rgba(9,23,21,.76) 100%),url('/news/bist-markets.jpg') center 54%/cover;filter:saturate(.76) sepia(.22) contrast(1.08);opacity:.94;z-index:-1}
 .corporate-hero:after{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;opacity:.16;background:linear-gradient(90deg,transparent 0%,rgba(220,187,111,.18) 50%,transparent 100%);border-top:1px solid rgba(225,196,128,.22);border-bottom:1px solid rgba(225,196,128,.16)}
 .corporate-hero>div{max-width:780px;position:relative;z-index:1;animation:corporate-in .5s ease both}
-.corporate-eyebrow{font-size:12px;font-weight:600;color:#cbbdff}
+.corporate-eyebrow{font-size:12px;font-weight:600;color:#7fd4c6}
 .corporate-hero h1{font-size:58px;line-height:1.12;margin:18px 0 12px;font-weight:700}
-.corporate-hero h2{font-size:30px;line-height:1.3;font-weight:500;margin:0 0 20px;color:#ddd2ff}
-.corporate-hero p{font-size:18px;max-width:640px;margin:0 auto;color:#dedbe8}
+.corporate-hero h2{font-size:30px;line-height:1.3;font-weight:500;margin:0 0 20px;color:#d9f2ec}
+.corporate-hero p{font-size:18px;max-width:640px;margin:0 auto;color:#dcded9}
 .corporate-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:28px}
 .corporate-actions button{display:inline-flex;align-items:center;justify-content:center;gap:12px;background:#3c7771;border:1px solid #3c7771;color:white;padding:14px 24px;border-radius:6px}
-.corporate-actions .outline{background:transparent;border-color:#b5a7ce;color:white}
-.corporate-trust{display:flex;justify-content:center;gap:28px;margin-top:28px;font-size:12px;color:#e3deee;flex-wrap:wrap}
+.corporate-actions .outline{background:transparent;border-color:#5fa89c;color:white}
+.corporate-trust{display:flex;justify-content:center;gap:28px;margin-top:28px;font-size:12px;color:#dde4e1;flex-wrap:wrap}
 .corporate-trust span{display:flex;align-items:center;gap:8px}
-/* SPK lisans şeridi: güven satırının hemen altında, markanın moruyla. */
+/* SPK lisans şeridi: güven satırının hemen altında, markanın yeşiliyle. */
 .corporate-licence{display:inline-flex;align-items:center;gap:9px;margin:18px auto 0;padding:10px 18px;border-radius:999px;
-  background:rgba(112,84,246,.18);border:1px solid rgba(160,140,255,.45);color:#efeaff;
+  background:rgba(60,119,113,.22);border:1px solid rgba(70,180,165,.45);color:#e6f5f2;
   font-size:13px;font-weight:700;letter-spacing:.01em;backdrop-filter:blur(6px);white-space:nowrap}
-.corporate-licence svg{flex:none;color:#b9a8ff}
+.corporate-licence svg{flex:none;color:#7fd4c6}
 .corporate-hero .corporate-licence{display:flex;width:max-content}
 @media(max-width:460px){.corporate-licence{font-size:12px;padding:9px 14px;white-space:normal;text-align:center;line-height:1.35}}
 .corporate-section{padding:76px max(24px,calc((100% - 1200px)/2))}
@@ -43,11 +43,11 @@
 .corporate-services button,.text-link{color:#3c7771;display:inline-flex;align-items:center;gap:8px;padding:0;font-size:14px}
 .corporate-services button{margin-top:auto;align-self:flex-start}
 .corporate-center{text-align:center;margin-top:28px}
-.corporate-numbers{background:#654ab8;color:#fff;padding:56px max(24px,calc((100% - 1200px)/2))}
+.corporate-numbers{background:#1f5750;color:#fff;padding:56px max(24px,calc((100% - 1200px)/2))}
 .corporate-numbers .corporate-heading{margin-bottom:30px}
 .corporate-numbers>div:last-child{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));text-align:center;gap:28px}
 .corporate-numbers strong{font-size:42px;line-height:1.2;font-variant-numeric:tabular-nums}
-.corporate-numbers p{margin:10px 0 0;color:#ebe5ff;font-size:14px}
+.corporate-numbers p{margin:10px 0 0;color:#dff2ee;font-size:14px}
 .corporate-why{background:#f6f5f9;display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center}
 .corporate-why .corporate-heading{text-align:left}
 .corporate-why ul{padding:0;margin:0 0 30px;list-style:none;display:grid;gap:14px}
@@ -66,10 +66,10 @@
 .corporate-discover strong,.corporate-discover span{display:block;margin-right:20px}
 .corporate-discover span{color:#6d6a79;font-size:13px;margin-top:8px}
 .corporate-discover svg{position:absolute;right:20px;top:24px;color:#3c7771}
-.corporate-cta{text-align:center;background:#302440;color:#fff;padding:64px 24px}
+.corporate-cta{text-align:center;background:#12302c;color:#fff;padding:64px 24px}
 .corporate-cta h2{font-size:32px;line-height:1.3;max-width:700px;margin:0 auto 18px}
-.corporate-cta p{color:#ded6e8;max-width:650px;margin:auto}
-.corporate-footer{display:grid;grid-template-columns:1.2fr repeat(3,1fr);gap:40px;background:#221d2a;color:#d4cedf;padding:56px max(24px,calc((100% - 1200px)/2)) 28px;font-size:13px}
+.corporate-cta p{color:#dbe6e3;max-width:650px;margin:auto}
+.corporate-footer{display:grid;grid-template-columns:1.2fr repeat(3,1fr);gap:40px;background:#16211f;color:#c9d6d2;padding:56px max(24px,calc((100% - 1200px)/2)) 28px;font-size:13px}
 .corporate-footer .brand{color:#7fd4c6;font-size:30px}
 .corporate-footer h3{color:#fff;font-size:14px;margin:0 0 18px}
 .corporate-footer a:not(.brand),.corporate-footer button{display:block;margin:8px 0;padding:0;font-size:13px;text-align:left;font-weight:400}
