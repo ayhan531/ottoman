@@ -6,7 +6,7 @@ import {
   money, percent, move, signed, parseAmount, group, isMarketOpen, businessDays, search,
   BIST, FUNDS, IPO, listFor,
 } from "./market.js";
-import { api, useFlash } from "./store.js";
+import { api } from "./store.js";
 import { T, locale } from "./lang.js";
 
 const KIND_NAMES = ["Hisse", "Fon", "Halka Arz"];
@@ -23,7 +23,6 @@ const dateTime = (value) =>
 export function TradeHeader({ stock, onClose, watched, onToggleWatch, updatedAt }) {
   const up = stock.change >= 0;
   const stamp = dateTime(updatedAt);
-  const flash = useFlash(stock.price);
   return (
     <div className="thead">
       <div className="logo"><Symbol logo={stock.logo} letter={stock.symbol} size={46} /></div>
@@ -35,7 +34,7 @@ export function TradeHeader({ stock, onClose, watched, onToggleWatch, updatedAt 
       </div>
       <button className="icon-btn soft sm trade-close" onClick={onClose} aria-label={T("Kapat")}><Icon name="close" size={18} /></button>
       <div className="nm">{stock.name}</div>
-      <div className={`price ${flash}`}>{money(stock.price)}</div>
+      <div className="price">{money(stock.price)}</div>
       <div className="src">
         <i className="dot" style={{ background: stamp ? "var(--green)" : "var(--ink-orange)" }} />
         {stamp || T("Veri bekleniyor")}

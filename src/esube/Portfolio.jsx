@@ -3,32 +3,9 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "./icons.jsx";
 import { Symbol, SearchBox, Divided, Donut, Spark, Sheet } from "./ui.jsx";
 import { money, signed, delta, fold, trSayi } from "./market.js";
-import { useFlash } from "./store.js";
 import { T, locale } from "./lang.js";
 
 const MINT = "#7FE3C4", ROSE = "#FF9EB5", MINT_SOFT = "#CFF5E6", ROSE_SOFT = "#FFD6E0", CASH_TONE = "#FFD48A";
-
-function PositionRow({ item, onOpen }) {
-  const itemRatio = item.cost === 0 ? 0 : (item.profit / item.cost) * 100;
-  const flash = useFlash(item.value);
-  return (
-    <button className="inst-row holding" onClick={onOpen}>
-      <Symbol logo={item.logo} letter={item.symbol} size={46} tinted />
-      <span className="inst-copy">
-        <strong>{item.symbol}</strong>
-        <span>{item.name}</span>
-        <small>{item.quantity} {T("lot")} · {T("Ort. maliyet")} {money(item.avgCost)}</small>
-      </span>
-      <span className="inst-tail">
-        <span className="inst-price">
-          <span className="pl" style={{ color: item.profit >= 0 ? "var(--green)" : "var(--red)" }}>{delta(item.profit, itemRatio)}</span>
-          <span className={`val ${flash}`}>{money(item.value)}</span>
-        </span>
-        <Icon name="chevron" size={18} color="var(--muted)" />
-      </span>
-    </button>
-  );
-}
 const FAINT = "rgba(255,255,255,.72)";
 
 /* Kâr/zarar oranı APK'daki gibi yazılır: yüzde işareti rakamın sonunda (+16,14%). */
@@ -509,9 +486,26 @@ export default function Portfolio({
           </div>
           {positions.length ? (
             <Divided>
-              {positions.map((item) => (
-                <PositionRow key={item.symbol} item={item} onOpen={() => openPosition(item)} />
-              ))}
+              {positions.map((item) => {
+                const itemRatio = item.cost === 0 ? 0 : (item.profit / item.cost) * 100;
+                return (
+                  <button key={item.symbol} className="inst-row holding" onClick={() => openPosition(item)}>
+                    <Symbol logo={item.logo} letter={item.symbol} size={46} tinted />
+                    <span className="inst-copy">
+                      <strong>{item.symbol}</strong>
+                      <span>{item.name}</span>
+                      <small>{item.quantity} {T("lot")} · {T("Ort. maliyet")} {money(item.avgCost)}</small>
+                    </span>
+                    <span className="inst-tail">
+                      <span className="inst-price">
+                        <span className="pl" style={{ color: item.profit >= 0 ? "var(--green)" : "var(--red)" }}>{delta(item.profit, itemRatio)}</span>
+                        <span className="val">{money(item.value)}</span>
+                      </span>
+                      <Icon name="chevron" size={18} color="var(--muted)" />
+                    </span>
+                  </button>
+                );
+              })}
             </Divided>
           ) : (
             <div className="notice-box">{query ? `“${query}”${T(" için pozisyon bulunamadı.")}` : T("Portföyünde henüz hisse yok.")}</div>

@@ -1537,16 +1537,3 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
 .esube .sidebar .brandmark, .overlay .sidebar .brandmark { display: flex; align-items: center; gap: 10px; }
 .esube .sidebar .brandmark .brand-logo-icon, .overlay .sidebar .brandmark .brand-logo-icon { width: 34px; height: 34px; border-radius: 9px; }
 .esube .sidebar .brandmark span, .overlay .sidebar .brandmark span { font-family: "Dancing Script", cursive; }
-
-/* Gerçek fiyat değiştiğinde kısa görsel vurgulama (uydurma veri değil,
-   sadece gerçek güncellemeyi göze çarpar hale getirir). */
-.esube .flash-up, .overlay .flash-up { animation: price-flash-up 900ms ease-out; border-radius: 6px; }
-.esube .flash-down, .overlay .flash-down { animation: price-flash-down 900ms ease-out; border-radius: 6px; }
-@keyframes price-flash-up {
-  0% { background: rgba(22, 139, 112, .32); }
-  100% { background: transparent; }
-}
-@keyframes price-flash-down {
-  0% { background: rgba(229, 72, 77, .28); }
-  100% { background: transparent; }
-}
