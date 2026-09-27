@@ -317,8 +317,8 @@ def _bing_oku(sekme: int, simdi: float) -> list[dict]:
             damga = parsedate_to_datetime(dugum.findtext("pubDate") or "").timestamp()
         except (TypeError, ValueError, OverflowError):
             damga = simdi
-        if damga < simdi - 10 * 86400:
-            continue
+        if damga < simdi - 2 * 86400:
+            continue  # 2 gunden eski haber havuza hic girmesin (guncellik icin)
         kaynak = (dugum.findtext("{%s}Source" % ns) or "").strip() if ns else ""
         adaylar.append({
             "id": baglanti,
@@ -430,8 +430,8 @@ def _besleme_oku(ad: str, adres: str, simdi: float, gorsel_sart: bool) -> list[d
             damga = parsedate_to_datetime(dugum.findtext("pubDate") or "").timestamp()
         except (TypeError, ValueError, OverflowError):
             damga = simdi
-        if damga > simdi + 3600 or damga < simdi - 10 * 86400:
-            continue
+        if damga > simdi + 3600 or damga < simdi - 2 * 86400:
+            continue  # 2 gunden eski haber havuza hic girmesin (guncellik icin)
         cikti.append({
             "id": baglanti,
             "title": baslik,
