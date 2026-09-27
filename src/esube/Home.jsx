@@ -1,5 +1,6 @@
 // Ana Sayfa — MainPage.Home.cs birebir karşılığı.
 import React, { useMemo, useState } from "react";
+import { useFlash } from "./store.js";
 import Icon from "./icons.jsx";
 import { Symbol, SearchBox, Segments, Divided, Sheet, LazyList } from "./ui.jsx";
 import {
@@ -12,6 +13,7 @@ import { T } from "./lang.js";
 
 export function InstrumentRow({ item, onClick, extra }) {
   const up = item.change >= 0;
+  const flash = useFlash(item.price);
   return (
     <button className="inst-row" onClick={onClick}>
       <Symbol logo={item.logo} letter={item.symbol} size={34} />
@@ -21,7 +23,7 @@ export function InstrumentRow({ item, onClick, extra }) {
         {extra}
       </span>
       <span className="inst-price">
-        <strong>{amount(item.price, item.currency)}</strong>
+        <strong className={flash}>{amount(item.price, item.currency)}</strong>
         <span className={up ? "up" : "down"}>{move(item.change)}</span>
       </span>
     </button>

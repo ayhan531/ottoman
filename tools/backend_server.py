@@ -133,7 +133,7 @@ MARKET_URLS = [
     "https://trrealapi-market.onrender.com/data",
 ]
 MARKET_TIMEOUT = float(os.environ.get("MARKET_TIMEOUT", "12"))
-MARKET_REFRESH_SECONDS = int(os.environ.get("MARKET_REFRESH_SECONDS", "60"))
+MARKET_REFRESH_SECONDS = int(os.environ.get("MARKET_REFRESH_SECONDS", "12"))
 COMPANY_META_REFRESH_SECONDS = int(os.environ.get("COMPANY_META_REFRESH_SECONDS", "86400"))
 NEWS_REFRESH_SECONDS = int(os.environ.get("NEWS_REFRESH_SECONDS", "900"))
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))

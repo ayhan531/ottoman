@@ -43,8 +43,28 @@ export const api = async (path, options = {}) => {
   return data;
 };
 
-const MARKET_MS = 30_000;
+const MARKET_MS = 10_000;
 const NEWS_MS = 10 * 60_000;
+
+/** Bir değer gerçekten değiştiğinde kısa süreliğine "flash-up"/"flash-down"
+ * class'ı döner (fiyat güncellemesini görsel olarak vurgulamak için).
+ * Sahte/uydurma bir değer üretmez; sadece gerçek değişimi işaretler. */
+export function useFlash(value, ms = 900) {
+  const prev = useRef(value);
+  const [flash, setFlash] = useState("");
+  const timer = useRef(null);
+  useEffect(() => {
+    const before = prev.current;
+    if (typeof value === "number" && typeof before === "number" && value !== before) {
+      setFlash(value > before ? "flash-up" : "flash-down");
+      clearTimeout(timer.current);
+      timer.current = setTimeout(() => setFlash(""), ms);
+    }
+    prev.current = value;
+    return () => clearTimeout(timer.current);
+  }, [value, ms]);
+  return flash;
+}
 
 export function useMarket() {
   const [instruments, setInstruments] = useState([]);
