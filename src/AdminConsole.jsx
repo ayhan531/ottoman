@@ -120,7 +120,7 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
     full_name: user.full_name || "", phone: user.phone || "", email: user.email || "",
     city: user.city || "", district: user.district || "", birth_date: user.birth_date || "",
     address: user.address || "", kyc_note: user.kyc_note || "", status: user.status || "pending",
-    tc: user.tc || "", is_test_user: !!user.is_test_user,
+    tc: user.tc || "",
   });
   const [busy, setBusy] = useState("");
   const [history, setHistory] = useState([]);
@@ -224,12 +224,6 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
             <Field label="İlçe"><Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} /></Field>
             <Field label="Adres" wide><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
             <Field label="Hesap durumu"><Select value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={STATUS} /></Field>
-            <Field label="Test hesabı">
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="checkbox" checked={!!form.is_test_user} onChange={(e) => setForm({ ...form, is_test_user: e.target.checked })} />
-                <small>Belge yüklenmeden onaylanabilir</small>
-              </label>
-            </Field>
             <Field label="Uyum notu" wide><Input value={form.kyc_note} onChange={(e) => setForm({ ...form, kyc_note: e.target.value })} /></Field>
           </div>
           <button className="confirm" disabled={busy === "profil"} onClick={kaydet}>{busy === "profil" ? "Kaydediliyor…" : "Bilgileri kaydet"}</button>

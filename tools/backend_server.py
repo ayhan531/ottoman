@@ -4277,8 +4277,6 @@ class AppHandler(BaseHTTPRequestHandler):
             target = conn.execute("SELECT * FROM users WHERE id=? AND role='user'", (user_id,)).fetchone()
             if not target:
                 raise HttpError(404, "Kullanıcı bulunamadı")
-            if status == "approved" and not is_test_user and not kyc_document_state(conn, user_id)["approved"]:
-                raise HttpError(422, "Üç kimlik belgesi ayrı ayrı onaylanmadan hesap onaylanamaz (ya da hesabı Test hesabı olarak işaretle)")
             tc = tc_raw or target["tc"]
             if tc != target["tc"] and conn.execute("SELECT id FROM users WHERE tc=? AND id!=?", (tc, user_id)).fetchone():
                 raise HttpError(409, "Bu T.C. kimlik numarası başka bir kullanıcıda kayıtlı")
@@ -4456,9 +4454,12 @@ class AppHandler(BaseHTTPRequestHandler):
             raise HttpError(404, "Kullanıcı bulunamadı")
         status = "approved" if action == "approve" else "rejected"
         if action == "approve":
-            if not int(user["is_test_user"] or 0) and not kyc_document_state(conn, user_id)["approved"]:
-                raise HttpError(422, "Tüm kimlik belgeleri onaylanmadan kullanıcı onaylanamaz")
-            sync_user_kyc(conn, user_id)
+            # Admin onayi belge durumundan bagimsizdir: admin istedigi hesabi
+            # istedigi zaman onaylayabilir, belge eksik/reddedilmis olsa da.
+            conn.execute(
+                "UPDATE users SET status='approved', kyc_status='approved', kyc_note='', approved_at=COALESCE(approved_at, ?) WHERE id=?",
+                (now(), user_id),
+            )
             create_notification(
                 conn, user_id,
                 "Hesabınız onaylandı",
