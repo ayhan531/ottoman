@@ -36,7 +36,7 @@
 .corporate-heading p{margin:0;color:#666877;font-size:16px}
 .corporate-services{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}
 .corporate-services article{border:1px solid #e9e7f0;border-radius:8px;padding:28px 24px;display:flex;flex-direction:column;transition:transform .2s,box-shadow .2s}
-.corporate-services article:hover{transform:translateY(-4px);box-shadow:0 12px 24px #251e4010}
+.corporate-services article:hover{transform:translateY(-4px);box-shadow:0 12px 24px #1a302c10}
 .corporate-services article>svg{color:#3c7771;margin-bottom:14px}
 .corporate-services h3{font-size:18px;line-height:1.4;margin:0 0 10px}
 .corporate-services p{font-size:14px;line-height:1.7;color:#666877;margin:0 0 22px}
