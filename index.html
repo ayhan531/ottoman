@@ -108,10 +108,33 @@
         ]
       }
     </script>
+    <style>
+      /* İlk yükleme "boot" ekranı: JS/CSS paketi ve /api/me çağrısı
+         tamamlanana kadar #app içindeki SEO metni ekranda çıplak
+         (stilsiz) görünmesin diye görsel olarak gizlenir; arama
+         motorları için DOM'da kalır. Yerine marka işaretli, gerçek
+         yükleme süresini gizleyen sade bir başlangıç ekranı gösterilir. */
+      #app .boot-seo {
+        position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+        overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+      }
+      #app .boot-visual {
+        min-height: 100vh; min-height: 100dvh;
+        display: flex; align-items: center; justify-content: center;
+        background: #fff;
+      }
+      #app .boot-visual b {
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 30px; font-weight: 600; letter-spacing: .2px;
+        color: #3c7771; opacity: 0; animation: boot-fade .5s ease .15s forwards;
+      }
+      @keyframes boot-fade { to { opacity: .92; } }
+    </style>
   </head>
   <body>
     <div id="app">
-      <main>
+      <div class="boot-visual" aria-hidden="true"><b>Ottoman Yatırım</b></div>
+      <main class="boot-seo">
         <h1>Ottoman Yatırım</h1>
         <p>Ottoman, Ottoman Yatırım ve Ottoman E-Şube; canlı BIST fiyatları, hisse al-sat, portföy takibi, yatırım haberleri, para yatırma/çekme, sözleşmeler ve kurumsal dijital yatırım deneyimi için geliştirilmiş e-şube platformudur.</p>
         <section>
