@@ -337,6 +337,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const bankAccounts = portfolio.data?.system_bank_accounts || [];
   const kycDocuments = portfolio.data?.documents || [];
   const kycApproved = Boolean(me?.is_test_user) || me?.status === "approved";
+  const kycUnderReview = !kycApproved && me?.kyc_status === "under_review";
   const stockValue = holdings.reduce((sum, item) => sum + item.value, 0);
   const cash = Number(account?.cash_balance || 0);
   const legacyBlocked = Number(account?.blocked_balance || 0);
@@ -546,6 +547,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             state={market.state}
             watchlist={watchlist}
             kycApproved={kycApproved}
+            kycUnderReview={kycUnderReview}
             onOpenKyc={() => setOverlay({ kind: "kyc" })}
             openTrade={(item) => {
               if (!TRADABLE_MARKETS.has(marketTab)) {
@@ -582,7 +584,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
         </div>
       )}
       <nav className="sidebar">
-        <div className="brandmark"><span>Ottoman Yatırım</span></div>
+        <div className="brandmark"><img className="brand-logo-icon" src="/logo-icon.png" alt="" /><span>Ottoman Yatırım</span></div>
         {NAV.map((item, index) => (
           <button key={item.title} className={index === 2 ? "trade-cta" : navActive(index) ? "active" : ""} onClick={() => navigate(index)}>
             <Icon name={item.icon} size={20} />
@@ -978,7 +980,7 @@ function TransferSheet({ deposit, available, bankAccounts, me, onClose, onDone }
               {!aktifHesaplar.length && (
                 <div className="referral-note">
                   <Icon name="info" size={22} color="var(--muted)" />
-                  <span>{T("Şu anda tanımlı bir yatırım hesabı yok. Referansınız ile iletişime geçiniz.")}</span>
+                  <span>{T("Hesabınız referanslı kayıt ile oluşturulduğundan banka hesabı tanımlı değildir. Para yatırma talebiniz için lütfen referansınızla iletişime geçiniz.")}</span>
                 </div>
               )}
             </div>

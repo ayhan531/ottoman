@@ -261,12 +261,12 @@
 .dark-mode .phone,.dark-mode .screen{background:#0f121a;color:#f7f8ff}
 .dark-mode .brand-header,.dark-mode .bottom-nav{background:rgba(15,18,26,.96);border-color:#292f3d}
 .dark-mode .header-actions{color:#f7f8ff}
-.dark-mode .brand{color:#8f75ff}
+.dark-mode .brand{color:#46b9ad}
 .dark-mode .stock-copy span,.dark-mode .stock-copy small,.dark-mode .subtle-count,.dark-mode .muted-heading,.dark-mode .settings-row small,.dark-mode .news-head p{color:#c2c8d6}
 .dark-mode .search,.dark-mode .stock-row,.dark-mode .position-row,.dark-mode .profile-card,.dark-mode .summary-card,.dark-mode .settings-card,.dark-mode .auth-card,.dark-mode .input-like,.dark-mode .select-pill,.dark-mode .empty-state,.dark-mode .featured-news,.dark-mode .news-row,.dark-mode .admin-row,.dark-mode .quick-actions button,.dark-mode .trade-modal,.dark-mode .profile-menu-sheet{background:#171c27;color:#f7f8ff;border-color:#303747}
 .dark-mode .featured-news h2,.dark-mode .news-row h3,.dark-mode .page-title,.dark-mode .solo-title,.dark-mode .section-title h2{color:#f7f8ff}
 .dark-mode .bottom-nav button{color:#b7bfce}
-.dark-mode .bottom-nav .active{color:#8f75ff}
+.dark-mode .bottom-nav .active{color:#46b9ad}
 .dark-mode .market-status-card{background:#191c26;border-color:#282d3b}
 .dark-mode .market-status-card p strong,.dark-mode .market-mini strong{color:#f6f7fb}
 .dark-mode .market-mini{border-color:#282d3b}

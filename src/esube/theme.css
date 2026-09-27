@@ -21,8 +21,8 @@
   --s: 1;
 
   /* Vurgu rengi (Design.Accents[0] = Mor) */
-  --purple: #2f72e8;
-  --lavender: #f0ecff;
+  --purple: #3c7771;
+  --lavender: #e5f5f4;
 
   --ink: #101321;
   --muted: #848793;
@@ -70,8 +70,8 @@
 }
 
 /* Design.Accents — açık / gece / soluk açık / soluk gece */
-[data-accent="0"] { --purple: #2f72e8; --lavender: #f0ecff; }
-[data-accent="1"] { --purple: #2f72e8; --lavender: #e8f1fe; }
+[data-accent="0"] { --purple: #3c7771; --lavender: #e5f5f4; }
+[data-accent="1"] { --purple: #3c7771; --lavender: #e5f5f4; }
 [data-accent="2"] { --purple: #0e9aa7; --lavender: #e3f6f8; }
 [data-accent="3"] { --purple: #1e9e6a; --lavender: #e7f6ee; }
 [data-accent="4"] { --purple: #e3922f; --lavender: #fef1e3; }
@@ -80,8 +80,8 @@
 [data-accent="7"] { --purple: #2b3a8c; --lavender: #e9ecfa; }
 [data-accent="8"] { --purple: #4b5563; --lavender: #eef0f3; }
 
-[data-theme="dark"][data-accent="0"] { --purple: #7b69de; --lavender: #2b2647; }
-[data-theme="dark"][data-accent="1"] { --purple: #5187db; --lavender: #1c2b3e; }
+[data-theme="dark"][data-accent="0"] { --purple: #46b9ad; --lavender: #1b3734; }
+[data-theme="dark"][data-accent="1"] { --purple: #46b9ad; --lavender: #1b3734; }
 [data-theme="dark"][data-accent="2"] { --purple: #30a7b2; --lavender: #173338; }
 [data-theme="dark"][data-accent="3"] { --purple: #37af82; --lavender: #1b372c; }
 [data-theme="dark"][data-accent="4"] { --purple: #d49447; --lavender: #3a2c20; }
@@ -314,9 +314,11 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   gap: 8px;
   align-items: center;
   background: var(--soft);
+  border: 0;
   border-radius: 14px;
   padding: 0 12px;
   color: var(--muted);
+  box-shadow: none;
 }
 
 .esube .searchbox input, .overlay .searchbox input {
@@ -325,6 +327,26 @@ html:has(body.esube-open), body.esube-open { height: 100%; overscroll-behavior: 
   color: var(--ink);
   width: 100%;
   min-width: 0;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.esube .searchbox input:focus, .overlay .searchbox input:focus,
+.esube .searchbox:focus-within, .overlay .searchbox:focus-within {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.esube .searchbox input::-webkit-search-decoration,
+.esube .searchbox input::-webkit-search-cancel-button,
+.esube .searchbox input::-webkit-search-results-button,
+.esube .searchbox input::-webkit-search-results-decoration {
+  display: none;
 }
 
 .esube .searchbox .clear, .overlay .searchbox .clear { color: var(--muted); display: flex; }

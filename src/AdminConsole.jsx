@@ -2289,6 +2289,7 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
     <nav className="ac-drawer" onClick={(e) => e.stopPropagation()}>
       <header>
         <div className="ac-drawer-brand">
+          <img className="brand-logo-icon" src="/logo-icon.png" alt="" />
           <span className="brand">Ottoman Yatırım</span>
           <div><strong>Admin Panel</strong><small>Yönetim</small></div>
         </div>

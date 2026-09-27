@@ -146,7 +146,7 @@ const HOME_MARKETS = MARKET_TAB_ORDER.filter((value) => value !== DIVIDEND).map(
 
 export default function Home({
   brandBar, marketTab, setMarketTab, instruments, state, watchlist, openTrade, onNotice, onAllStocks,
-  kycApproved, onOpenKyc,
+  kycApproved, kycUnderReview, onOpenKyc,
 }) {
   const [query, setQuery] = useState("");
   const list = useMemo(() => listFor(marketTab, instruments), [marketTab, instruments]);
@@ -251,8 +251,17 @@ export default function Home({
       {brandBar}
       {!kycApproved && (
         <div className="card outline kyc-banner" onClick={onOpenKyc} role="button" tabIndex={0}>
-          <Icon name="lock" size={18} color="var(--red, #e5484d)" />
-          <span>{T("Hesabınız kısıtlı: kimlik doğrulamayı tamamlamadan alım satım, para yatırma ve çekme işlemi yapamazsınız. Kısıtlamayı kaldırmak için dokunun.")}</span>
+          {kycUnderReview ? (
+            <>
+              <Icon name="info" size={18} color="var(--ink-blue)" />
+              <span>{T("Hesabınız incelemede: kimlik belgeleriniz onay sürecindedir. Onaylandığında bilgilendirileceksiniz.")}</span>
+            </>
+          ) : (
+            <>
+              <Icon name="lock" size={18} color="var(--red, #e5484d)" />
+              <span>{T("Hesabınız kısıtlı: kimlik doğrulamayı tamamlamadan alım satım, para yatırma ve çekme işlemi yapamazsınız. Kısıtlamayı kaldırmak için dokunun.")}</span>
+            </>
+          )}
           <Icon name="chevron" size={18} color="var(--muted)" />
         </div>
       )}

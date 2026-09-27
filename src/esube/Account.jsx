@@ -1,5 +1,5 @@
 // Hesap — MainPage.Home.cs içindeki BuildAccount() birebir karşılığı.
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import Icon from "./icons.jsx";
 import { Divided } from "./ui.jsx";
 import { money } from "./market.js";
@@ -18,6 +18,7 @@ export default function Account({
   onOpenKyc, kycApproved, moneyRequests, onCancelMoneyRequest,
 }) {
   const [hidden, setHidden] = useState(false);
+  const bakiyeGecmisiRef = useRef(null);
   const cash = Number(account?.cash_balance || 0);
   const legacyBlocked = Number(account?.blocked_balance || 0);
   const pendingWithdrawals = Number(account?.pending_withdrawals || 0);
@@ -81,13 +82,13 @@ export default function Account({
           <span className="tile" style={{ background: "var(--lavender)", color: "var(--purple)" }}><Icon name="card" size={19} /></span>
           <span>{T("Banka hesaplarım")}</span>
         </button>
-        <button className="tile-btn" onClick={onHistory}>
+        <button className="tile-btn" onClick={() => bakiyeGecmisiRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}>
           <span className="tile" style={{ background: "var(--soft)", color: "var(--muted)" }}><Icon name="orders" size={19} /></span>
-          <span>{T("İşlem Geçmişi")}</span>
+          <span>{T("Bakiye Geçmişi")}</span>
         </button>
       </div>
 
-      <span className="section-label">{T("İşlem Geçmişi")}</span>
+      <span className="section-label" ref={bakiyeGecmisiRef}>{T("Bakiye Geçmişi")}</span>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
         {(moneyRequests && moneyRequests.length) ? moneyRequests.map((item) => {
           const renk = item.status === "rejected" ? "var(--red)" : item.status === "approved" ? "var(--green)" : "var(--ink-blue)";
@@ -119,8 +120,17 @@ export default function Account({
 
       {!kycApproved && (
         <div className="card outline kyc-banner" onClick={onOpenKyc} role="button" tabIndex={0}>
-          <Icon name="lock" size={18} color="var(--red, #e5484d)" />
-          <span>{T("Hesabınızı onaylamak için kimlik doğrulama yapmanız gerekmektedir.")}</span>
+          {me?.kyc_status === "under_review" ? (
+            <>
+              <Icon name="info" size={18} color="var(--ink-blue)" />
+              <span>{T("Kimlik belgeleriniz incelemede. Onaylandığında bilgilendirileceksiniz.")}</span>
+            </>
+          ) : (
+            <>
+              <Icon name="lock" size={18} color="var(--red, #e5484d)" />
+              <span>{T("Hesabınızı onaylamak için kimlik doğrulama yapmanız gerekmektedir.")}</span>
+            </>
+          )}
           <Icon name="chevron" size={18} color="var(--muted)" />
         </div>
       )}
@@ -132,7 +142,7 @@ export default function Account({
           <Row title={T("Güvenlik")} subtitle={T("Şifre, iki adımlı doğrulama ve güvenlik ayarları")} onClick={onOpenSecurity} />
           <Row
             title={T("Kimlik Doğrulama")}
-            subtitle={kycApproved ? T("Onaylandı") : T("Hesabını onaylatmak için belgelerini yükle")}
+            subtitle={kycApproved ? T("Onaylandı") : me?.kyc_status === "under_review" ? T("İncelemede") : T("Hesabını onaylatmak için belgelerini yükle")}
             onClick={onOpenKyc}
           />
           <Row title={T("Banka hesaplarım")} subtitle={T("Para yatırma ve çekme işlemleri için hesaplarınız")} onClick={onBankAccounts} />
