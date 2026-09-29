@@ -1,6 +1,6 @@
 // Tercihler (APK'daki Preferences), API çağrıları ve canlı veri akışı.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toInstrument, applyPriceDeviations } from "./market.js";
+import { toInstrument, applyPriceDeviations, isMarketOpen } from "./market.js";
 
 const KEY = "ottoman.";
 
@@ -71,10 +71,18 @@ export function useMarket() {
 
   const startRandomTicks = useCallback(() => {
     stopRandomTicks();
+    // Borsa kapalıyken (hafta sonu, resmi/dini tatil veya seans dışı) fiyat sapması yapılmaz:
+    if (!isMarketOpen()) return;
+
     // Gerçek fiyat çekildiğinde random fiyat yapılmasın;
     // gerçek fiyat çekildikten 2 sn sonra random sapmalar başlasın (üst üste binmesin).
     randomDelayTimeoutRef.current = setTimeout(() => {
       const tick = () => {
+        // Seans saati kapandıysa sapmayı hemen durdur:
+        if (!isMarketOpen()) {
+          stopRandomTicks();
+          return;
+        }
         if (!baseInstrumentsRef.current || !baseInstrumentsRef.current.length) return;
         setInstruments(applyPriceDeviations(baseInstrumentsRef.current, deviationStateRef.current));
       };

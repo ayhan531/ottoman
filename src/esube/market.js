@@ -122,13 +122,96 @@ export const volumeText = (turnover) =>
     ? tr(turnover / 1_000_000_000) + " Mr ₺"
     : Number(turnover / 1_000_000).toLocaleString("tr-TR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " Mn ₺";
 
-/** Borsa saatleri: hafta içi 10:00-18:00 İstanbul (MarketData.IsOpen). */
+// Sabit resmi tatiller (Ay-Gün)
+const FIXED_HOLIDAYS = new Set([
+  "01-01", // Yılbaşı
+  "04-23", // Ulusal Egemenlik ve Çocuk Bayramı
+  "05-01", // Emek ve Dayanışma Günü
+  "05-19", // Atatürk'ü Anma, Gençlik ve Spor Bayramı
+  "07-15", // Demokrasi ve Milli Birlik Günü
+  "08-30", // Zafer Bayramı
+  "10-29", // Cumhuriyet Bayramı
+]);
+
+// Dini bayramlar (Yıl-Ay-Gün tam gün tatiller)
+const RELIGIOUS_HOLIDAYS = new Set([
+  // 2025
+  "2025-03-30", "2025-03-31", "2025-04-01",
+  "2025-06-06", "2025-06-07", "2025-06-08", "2025-06-09",
+  // 2026
+  "2026-03-20", "2026-03-21", "2026-03-22",
+  "2026-05-27", "2026-05-28", "2026-05-29", "2026-05-30",
+  // 2027
+  "2027-03-10", "2027-03-11", "2027-03-12",
+  "2027-05-17", "2027-05-18", "2027-05-19", "2027-05-20",
+  // 2028
+  "2028-02-27", "2028-02-28", "2028-02-29",
+  "2028-05-05", "2028-05-06", "2028-05-07", "2028-05-08",
+]);
+
+// Yarım gün resmi tatiller (Arife günleri ve 28 Ekim)
+// 28 Ekim her yıl yarım gündür.
+const HALF_DAY_HOLIDAYS = new Set([
+  // 2025
+  "2025-03-29", "2025-06-05",
+  // 2026
+  "2026-03-19", "2026-05-26",
+  // 2027
+  "2027-03-09", "2027-05-16",
+  // 2028
+  "2028-02-26", "2028-05-04",
+]);
+
+/** İstanbul saat dilimine göre tarih ve saat bileşenlerini ayrıştırır. */
+export const getIstanbulTime = (date = new Date()) => {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const partMap = {};
+  for (const p of parts) partMap[p.type] = p.value;
+  const year = partMap.year;
+  const month = partMap.month;
+  const day = partMap.day;
+  const hour = Number(partMap.hour);
+  const minute = Number(partMap.minute);
+  const yyyy_mm_dd = `${year}-${month}-${day}`;
+  const mm_dd = `${month}-${day}`;
+  const minutes = hour * 60 + minute;
+  const dayOfWeekFormatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Europe/Istanbul",
+    weekday: "short",
+  });
+  const dayOfWeekStr = dayOfWeekFormatter.format(date);
+  const isWeekend = dayOfWeekStr === "Sat" || dayOfWeekStr === "Sun";
+  return { year, month, day, hour, minute, minutes, yyyy_mm_dd, mm_dd, dayOfWeekStr, isWeekend };
+};
+
+/**
+ * Borsa İstanbul seans durumu:
+ * - Hafta sonları kapalı (Cumartesi / Pazar)
+ * - Resmi ve dini tatillerde kapalı
+ * - Yarım günlerde (Arife ve 28 Ekim): 10:00 - 12:40 (kapanış 13:00)
+ * - Normal günlerde: 10:00 - 18:05 (sürekli işlem ve kapanış seansı)
+ */
 export const isMarketOpen = (date = new Date()) => {
-  const istanbul = new Date(date.toLocaleString("en-US", { timeZone: "Europe/Istanbul" }));
-  const day = istanbul.getDay();
-  if (day === 0 || day === 6) return false;
-  const minutes = istanbul.getHours() * 60 + istanbul.getMinutes();
-  return minutes >= 600 && minutes < 1080;
+  const ist = getIstanbulTime(date);
+  if (ist.isWeekend) return false;
+  if (FIXED_HOLIDAYS.has(ist.mm_dd) || RELIGIOUS_HOLIDAYS.has(ist.yyyy_mm_dd)) {
+    return false;
+  }
+  const isHalfDay = ist.mm_dd === "10-28" || HALF_DAY_HOLIDAYS.has(ist.yyyy_mm_dd);
+  if (isHalfDay) {
+    return ist.minutes >= 600 && ist.minutes < 780; // 10:00 - 13:00
+  }
+  return ist.minutes >= 600 && ist.minutes < 1085; // 10:00 - 18:05
 };
 
 /** İleriye doğru N iş günü (MarketData.BusinessDays). */
@@ -138,7 +221,9 @@ export const businessDays = (count) => {
   while (added < count) {
     date.setDate(date.getDate() + 1);
     const day = date.getDay();
-    if (day !== 0 && day !== 6) added += 1;
+    if (day !== 0 && day !== 6 && isMarketOpen(new Date(date.setHours(12, 0, 0, 0)))) {
+      added += 1;
+    }
   }
   return date;
 };
