@@ -377,6 +377,7 @@ export function ReviewOrder({ order, onCancel, onConfirmed }) {
           order_type: market ? "market" : "limit",
           quantity,
           limit_price: price,
+          price: price,
           amount_mode: "quantity",
           client_order_id: `w${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
         }),
