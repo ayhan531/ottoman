@@ -4,3 +4,7 @@
 
 /* Tarayıcının kendi şifre göster/temizle ikonlarını gizle: uygulamanın kendi göz ikonuyla çakışıp iki ikon gibi görünmesin (Edge/IE ::-ms-reveal). */
 input[type="password"]::-ms-reveal,input[type="password"]::-ms-clear{display:none}
+
+/* Pinch/çift-tıklama ile sayfa yaklaştırma kapalı: mobilde native uygulama hissi,
+   düzenin bozulmaması için. Kaydırma (scroll) etkilenmez. */
+html,body{touch-action:pan-x pan-y;-ms-touch-action:pan-x pan-y;}
