@@ -4716,6 +4716,8 @@ def save_money_receipt(form: MultipartForm | None, user_id: int) -> dict:
 def can_view_upload(conn: sqlite3.Connection, user: dict, filename: str) -> bool:
     if user["role"] == "admin":
         return True
+    if user.get("avatar_url") == f"/uploads/{filename}":
+        return True
     document = conn.execute("SELECT id FROM documents WHERE user_id=? AND stored_name=?", (user["id"], filename)).fetchone()
     if document:
         return True
