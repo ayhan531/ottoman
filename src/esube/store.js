@@ -1,6 +1,6 @@
 // Tercihler (APK'daki Preferences), API çağrıları ve canlı veri akışı.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toInstrument } from "./market.js";
+import { toInstrument, applyPriceDeviations } from "./market.js";
 
 const KEY = "ottoman.";
 
@@ -43,31 +43,71 @@ export const api = async (path, options = {}) => {
   return data;
 };
 
-const MARKET_MS = 10_000;
+const MARKET_MS = 30_000;
+const RANDOM_TICK_MS = 2_000;
 const NEWS_MS = 10 * 60_000;
 
 export function useMarket() {
   const [instruments, setInstruments] = useState([]);
   const [meta, setMeta] = useState(null);
   const [state, setState] = useState("loading");
-  const timer = useRef(null);
+
+  const baseInstrumentsRef = useRef([]);
+  const deviationStateRef = useRef({});
+  const fetchTimerRef = useRef(null);
+  const randomDelayTimeoutRef = useRef(null);
+  const randomIntervalRef = useRef(null);
+
+  const stopRandomTicks = useCallback(() => {
+    if (randomDelayTimeoutRef.current) {
+      clearTimeout(randomDelayTimeoutRef.current);
+      randomDelayTimeoutRef.current = null;
+    }
+    if (randomIntervalRef.current) {
+      clearInterval(randomIntervalRef.current);
+      randomIntervalRef.current = null;
+    }
+  }, []);
+
+  const startRandomTicks = useCallback(() => {
+    stopRandomTicks();
+    // Gerçek fiyat çekildiğinde random fiyat yapılmasın;
+    // gerçek fiyat çekildikten 2 sn sonra random sapmalar başlasın (üst üste binmesin).
+    randomDelayTimeoutRef.current = setTimeout(() => {
+      const tick = () => {
+        if (!baseInstrumentsRef.current || !baseInstrumentsRef.current.length) return;
+        setInstruments(applyPriceDeviations(baseInstrumentsRef.current, deviationStateRef.current));
+      };
+      tick();
+      randomIntervalRef.current = setInterval(tick, RANDOM_TICK_MS);
+    }, RANDOM_TICK_MS);
+  }, [stopRandomTicks]);
 
   const load = useCallback(async () => {
     try {
       const data = await api("/api/market");
-      setInstruments((data.quotes || []).map(toInstrument));
+      const realInstruments = (data.quotes || []).map(toInstrument);
+      baseInstrumentsRef.current = realInstruments;
+      deviationStateRef.current = {};
+      // Gerçek fiyat çekildiğinde doğrudan gerçek fiyat gösterilir:
+      setInstruments(realInstruments);
       setMeta(data.meta || null);
       setState("live");
+      // Gerçek fiyat çekildikten 2 sn sonra random sapmalar devreye girer:
+      startRandomTicks();
     } catch {
       setState((current) => (current === "live" ? "live" : "failed"));
     }
-  }, []);
+  }, [startRandomTicks]);
 
   useEffect(() => {
     load();
-    timer.current = setInterval(load, MARKET_MS);
-    return () => clearInterval(timer.current);
-  }, [load]);
+    fetchTimerRef.current = setInterval(load, MARKET_MS);
+    return () => {
+      if (fetchTimerRef.current) clearInterval(fetchTimerRef.current);
+      stopRandomTicks();
+    };
+  }, [load, stopRandomTicks]);
 
   return { instruments, meta, state, reload: load };
 }

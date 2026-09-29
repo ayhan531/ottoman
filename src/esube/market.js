@@ -172,6 +172,8 @@ export const toInstrument = (quote) => {
     price,
     change: changePct,
     dayDelta: price - previous,
+    previousClose: previous,
+    rawPrice: price,
     volume: Number(quote.volume || 0),
     logo: quote.logo_url || "",
     assetClass: quote.asset_class || "stock",
@@ -179,6 +181,99 @@ export const toInstrument = (quote) => {
     kind: quote.asset_class === "fund" ? "fund" : quote.asset_class === "fx" ? "currency" : "stock",
   };
 };
+
+/** Hisse fiyat aralığına göre izin verilen maksimum sapma (+/-). */
+export function getMaxDeviation(price) {
+  const p = Number(price) || 0;
+  if (p <= 50.0) return 0.09;
+  if (p <= 200.0) return 0.10;
+  return 0.20;
+}
+
+/** Sapma büyüklüğüne göre tek bir 2 saniyelik adımda yapılabilecek makul adım boyutları. */
+export function getDeviationSteps(maxDev) {
+  if (maxDev <= 0.09) return [0.01, 0.02, 0.03];
+  if (maxDev <= 0.10) return [0.01, 0.02, 0.03, 0.04];
+  return [0.02, 0.03, 0.04, 0.05];
+}
+
+/**
+ * 2 saniyede bir hisse fiyatlarına kontrollü rastgele sapma uygular:
+ * - 0 - 50 TL: [-0.09, +0.09]
+ * - 50 - 200 TL: [-0.10, +0.10]
+ * - 200+ TL: [-0.20, +0.20]
+ * - Yön: Tamamen rastgele, sırayla (+, -) değil.
+ * - Çok fazla üst üste aynı yönde gitmeyi önler (maksimum 3 ardışık hareket).
+ * - Belirlenen sınırları ASLA aşmaz.
+ * - Gerçek fiyata olan kümülatif sapma kesinlikle [-maxDev, +maxDev] arasındadır.
+ */
+export function applyPriceDeviations(baseList, deviationState) {
+  return baseList.map((item) => {
+    if (item.assetClass !== "stock" || !(item.price > 0)) {
+      return item;
+    }
+
+    const basePrice = item.rawPrice ?? item.price;
+    const maxDev = getMaxDeviation(basePrice);
+    const steps = getDeviationSteps(maxDev);
+    const state = deviationState[item.code] || { delta: 0, streak: 0, dir: 0 };
+    let { delta, streak, dir: lastDir } = state;
+
+    let dir = 0;
+    // Sınır koruması: maksimum sapmayı aşmamak için zorunlu yön dönüşü
+    if (delta >= maxDev - 0.005) {
+      dir = -1;
+    } else if (delta <= -maxDev + 0.005) {
+      dir = 1;
+    } else if (streak >= 3) {
+      // 3 veya daha fazla kez üst üste aynı yönde gittiyse ters yöne dön
+      dir = -lastDir;
+    } else if (streak === 2) {
+      // 2 kez üst üste gittiyse %75 ters yöne dön, %25 devam et
+      dir = Math.random() < 0.75 ? -lastDir : lastDir;
+    } else if (streak === 1) {
+      // Ortalama dönüş eğilimi: sapma belirgin derecede arttıysa merkeze doğru meyil ver
+      const probUp = delta > maxDev * 0.4 ? 0.35 : delta < -maxDev * 0.4 ? 0.65 : 0.5;
+      dir = Math.random() < probUp ? 1 : -1;
+    } else {
+      dir = Math.random() < 0.5 ? 1 : -1;
+    }
+
+    const step = steps[Math.floor(Math.random() * steps.length)];
+    let nextDelta = Math.round((delta + dir * step) * 100) / 100;
+    if (nextDelta > maxDev) nextDelta = maxDev;
+    if (nextDelta < -maxDev) nextDelta = -maxDev;
+
+    // Sınıra çarptığı için değişim olmadıysa ters yöne adım at
+    if (nextDelta === delta) {
+      dir = -dir;
+      nextDelta = Math.round((delta + dir * step) * 100) / 100;
+      if (nextDelta > maxDev) nextDelta = maxDev;
+      if (nextDelta < -maxDev) nextDelta = -maxDev;
+    }
+
+    if (dir === lastDir) {
+      streak += 1;
+    } else {
+      streak = 1;
+      lastDir = dir;
+    }
+
+    deviationState[item.code] = { delta: nextDelta, streak, dir: lastDir };
+
+    const newPrice = Math.max(0.01, Math.round((basePrice + nextDelta) * 100) / 100);
+    const previous = item.previousClose ?? (1 + item.change / 100 === 0 ? basePrice : basePrice / (1 + item.change / 100));
+    const dayDelta = Math.round((newPrice - previous) * 100) / 100;
+    const change = previous > 0 ? Math.round(((newPrice - previous) / previous) * 10000) / 100 : item.change;
+
+    return {
+      ...item,
+      price: newPrice,
+      dayDelta,
+      change,
+    };
+  });
+}
 
 /** Bir sekmenin listesini üretir. */
 export function listFor(market, instruments) {
