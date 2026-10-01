@@ -407,7 +407,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
               try { await api(`/api/orders/${order.id}/cancel`, { method: "POST", body: "{}" }); } catch (error) { showNotice("Emir iptali", error.message); }
               portfolio.reload();
             }}
-            onCreateOrder={() => openTrade(lastStock || listFor(BIST, market.instruments)[0], { searchable: true })}
+            onCreateOrder={() => setOverlay({ kind: "picker" })}
           />
         );
       case 4:
@@ -569,7 +569,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
 
   const navigate = (index) => {
     if (index === 2) {
-      openTrade(lastStock || listFor(BIST, market.instruments)[0], { searchable: true });
+      setOverlay({ kind: "picker" });
       return;
     }
     go(index);
