@@ -712,6 +712,13 @@ def init_db() -> None:
               updated_at INTEGER NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS participation_index (
+              symbol TEXT PRIMARY KEY,
+              compliant INTEGER NOT NULL DEFAULT 0,
+              note TEXT NOT NULL DEFAULT '',
+              updated_at INTEGER NOT NULL DEFAULT 0
+            );
+
             CREATE TABLE IF NOT EXISTS market_status (
               id INTEGER PRIMARY KEY CHECK (id=1),
               source TEXT NOT NULL DEFAULT 'fallback',
@@ -759,6 +766,7 @@ def init_db() -> None:
         seed_market(conn)
         seed_system_bank_accounts(conn)
         seed_system_settings(conn)
+        seed_participation_index(conn)
 
 
 def migrate_db(conn: sqlite3.Connection) -> None:
@@ -1138,6 +1146,39 @@ def seed_market(conn: sqlite3.Connection) -> None:
     )
 
 
+# Katilim Endeksi (BIST Katilim / sharia uygunluk taramasi) uyeligi: bu, resmi
+# endeks saglayicisinin donemsel yeniden dengelemeleri ve sirket bazli KAP
+# duyurulariyla degisebilen, ucretsiz/genel bir API'den canli cekilemeyen bir
+# veridir. Bu yuzden statik/derlenmis bir listeye gommek yerine admin panelinden
+# yonetilen, "son guncelleme" tarihi tasiyan ayri bir tabloda tutulur - ekip KAP
+# duyurusunu gordugu an deploy beklemeden guncelleyebilsin diye.
+PARTICIPATION_SEED_SYMBOLS = (
+    "ASELS", "ASTOR", "AKSEN", "ALARK", "BIMAS", "BRSAN", "CIMSA", "EGEEN", "EKGYO",
+    "ENJSA", "ENKAI", "EREGL", "EUPWR", "FROTO", "GESAN", "GUBRF", "HEKTS", "ISDMR",
+    "KARSN", "KCAER", "KCHOL", "KONTR", "KONYA", "KORDS", "KOZAA", "KOZAL", "KRDMD",
+    "MGROS", "MIATK", "OTKAR", "OYAKC", "PETKM", "PGSUS", "SASA", "SISE", "SMRTG",
+    "SOKM", "TAVHL", "TCELL", "THYAO", "TKFEN", "TMSN", "TOASO", "TTKOM", "TTRAK",
+    "TUKAS", "TUPRS", "ULKER", "VESBE", "VESTL", "YEOTK", "ZOREN", "AHGAZ", "AKFYE",
+    "ALFAS", "BOBET", "BTCIM", "CANTE", "CWENE", "ESEN", "EUREN", "GOLTS", "GWIND",
+    "IZENR", "KAYSE", "PAPIL", "REEDR", "SDTTR", "TUREX", "ALTNY", "BINHO", "OBAMS",
+)
+
+
+def seed_participation_index(conn: sqlite3.Connection) -> None:
+    """Tablo bombos ise (ilk kurulum), onceki statik listeyle baslangic
+    verisi yukler. Tablo zaten doluysa HICBIR SEYE dokunmaz - admin'in
+    panelden yaptigi guncellemeler/kaldirmalar (orn. KAP duyurusuyla
+    endeksten cikan bir hisse) her sunucu yeniden baslatmasinda ezilmesin."""
+    count = conn.execute("SELECT COUNT(*) c FROM participation_index").fetchone()["c"]
+    if count:
+        return
+    ts = now()
+    conn.executemany(
+        "INSERT OR IGNORE INTO participation_index (symbol, compliant, note, updated_at) VALUES (?, 1, ?, ?)",
+        [(symbol, "Baslangic listesi - admin panelinden dogrulayin/guncelleyin", ts) for symbol in PARTICIPATION_SEED_SYMBOLS],
+    )
+
+
 def audit(
     conn: sqlite3.Connection,
     actor_id: int | None,
@@ -1215,16 +1256,20 @@ def market_feed_enabled(conn: sqlite3.Connection) -> bool:
 def market_from_cache(conn: sqlite3.Connection) -> list[dict]:
     rows = conn.execute(
         """
-        SELECT *
-        FROM market_cache
+        SELECT m.*,
+          COALESCE(p.compliant, 0) AS participation_compliant,
+          p.updated_at AS participation_updated_at,
+          COALESCE(p.note, '') AS participation_note
+        FROM market_cache m
+        LEFT JOIN participation_index p ON p.symbol = m.symbol
         ORDER BY
-          CASE symbol
+          CASE m.symbol
             WHEN 'XU100' THEN 0 WHEN 'XU030' THEN 1 WHEN 'XBANK' THEN 2
             WHEN 'USDTRY' THEN 3 WHEN 'EURTRY' THEN 4 WHEN 'GBPTRY' THEN 5
             WHEN 'XAUTRY' THEN 6 WHEN 'XAGTRY' THEN 7 WHEN 'BRENT' THEN 8 WHEN 'BTCUSD' THEN 9
             ELSE 20
           END,
-          symbol ASC
+          m.symbol ASC
         LIMIT 1000
         """
     ).fetchall()
@@ -2321,6 +2366,10 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_admin_stock_names()
         if method == "POST" and path == "/api/admin/stock-names":
             return self.api_admin_save_stock_name()
+        if method == "GET" and path == "/api/admin/participation":
+            return self.api_admin_participation_list()
+        if method == "POST" and path == "/api/admin/participation":
+            return self.api_admin_save_participation()
         if method == "GET" and path == "/api/admin/audit":
             return self.api_admin_audit()
         if method == "POST" and path == "/api/admin/create-user":
@@ -3880,6 +3929,61 @@ class AppHandler(BaseHTTPRequestHandler):
             conn.commit()
             self.json_response({"ok": True, "symbol": symbol, "name": name})
 
+    # ---------------- katilim endeksi uygunlugu ----------------
+
+    def api_admin_participation_list(self) -> None:
+        """Katilim Endeksi (sharia uygunluk) listesi: sadece admin panelinden
+        elle guncellenir - BIST'in resmi, ucretsiz/canli cekilebilen bir API'si
+        olmadigi icin bu veri ekibin KAP duyurularini takip ederek girdigi,
+        'son guncelleme' tarihi tasiyan bir kayittir, otomatik/tahmini degil."""
+        with connect_db() as conn:
+            self.require_admin(conn)
+            query = parse_qs(urlparse(self.path).query)
+            arama = (query.get("q") or [""])[0].strip().upper()
+            kosul, parametreler = "", []
+            if arama:
+                kosul = " AND (m.symbol LIKE ? OR UPPER(m.name) LIKE ?)"
+                parametreler = [f"%{arama}%", f"%{arama}%"]
+            rows = conn.execute(
+                "SELECT m.symbol, m.name, m.asset_class,"
+                " COALESCE(p.compliant, 0) AS compliant, p.note AS note, p.updated_at AS updated_at"
+                " FROM market_cache m LEFT JOIN participation_index p ON p.symbol = m.symbol"
+                " WHERE m.asset_class='stock'" + kosul +
+                " ORDER BY compliant DESC, m.symbol ASC",
+                parametreler,
+            ).fetchall()
+            toplam = conn.execute("SELECT COUNT(*) c FROM participation_index WHERE compliant=1").fetchone()["c"]
+            self.json_response({
+                "compliant_total": toplam,
+                "items": [{
+                    "symbol": row["symbol"],
+                    "name": row["name"] or row["symbol"],
+                    "compliant": bool(row["compliant"]),
+                    "note": row["note"] or "",
+                    "updated_at": iso_time(row["updated_at"]) if row["updated_at"] else "",
+                } for row in rows],
+            })
+
+    def api_admin_save_participation(self) -> None:
+        payload = self.read_json()
+        symbol = re.sub(r"[^A-Z0-9]", "", str(payload.get("symbol", "")).upper())
+        compliant = 1 if payload.get("compliant") else 0
+        note = str(payload.get("note", "")).strip()[:300]
+        if not symbol:
+            raise HttpError(400, "Hisse kodu gerekli")
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+            if not conn.execute("SELECT 1 FROM market_cache WHERE symbol=?", (symbol,)).fetchone():
+                raise HttpError(404, "Bu kodla bir enstrüman yok")
+            conn.execute(
+                "INSERT INTO participation_index (symbol, compliant, note, updated_at) VALUES (?, ?, ?, ?)"
+                " ON CONFLICT(symbol) DO UPDATE SET compliant=excluded.compliant, note=excluded.note, updated_at=excluded.updated_at",
+                (symbol, compliant, note, now()),
+            )
+            audit(conn, admin["id"], "save_participation", "instrument", None, {"symbol": symbol, "compliant": compliant})
+            conn.commit()
+            self.json_response({"ok": True, "symbol": symbol, "compliant": bool(compliant)})
+
     # ---------------- piyasa kontrolü ----------------
 
     def api_admin_prices(self) -> None:
@@ -4444,7 +4548,11 @@ class AppHandler(BaseHTTPRequestHandler):
             self.json_response({"ok": True})
 
     def api_admin_action(self, entity: str, entity_id: int, action: str) -> None:
-        if action not in {"approve", "reject"}:
+        if entity == "users":
+            allowed = {"approve", "reject", "make_admin"}
+        else:
+            allowed = {"approve", "reject"}
+        if action not in allowed:
             raise HttpError(404, "İşlem bulunamadı")
         payload = self.read_json()
         reason = str(payload.get("reason", "")).strip()[:300]
@@ -4465,6 +4573,19 @@ class AppHandler(BaseHTTPRequestHandler):
         user = conn.execute("SELECT * FROM users WHERE id=? AND role='user'", (user_id,)).fetchone()
         if not user:
             raise HttpError(404, "Kullanıcı bulunamadı")
+        if action == "make_admin":
+            # Admin yetkisi tek hesapla sinirli degil - panelden istenen her
+            # hesaba admin rolu verilebilir. role kolonunda essizlik kisiti
+            # yok, bu yuzden ayni anda birden fazla admin desteklenir.
+            conn.execute("UPDATE users SET role='admin' WHERE id=?", (user_id,))
+            create_notification(
+                conn, user_id,
+                "Admin yetkisi verildi",
+                "Hesabınıza yönetici (admin) yetkisi tanımlandı.",
+                category="hesap",
+            )
+            audit(conn, admin["id"], "make_admin", "user", user_id)
+            return
         status = "approved" if action == "approve" else "rejected"
         if action == "approve":
             # Admin onayi belge durumundan bagimsizdir: admin istedigi hesabi

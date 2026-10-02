@@ -23,6 +23,12 @@ const dateTime = (value) =>
 export function TradeHeader({ stock, onClose, watched, onToggleWatch, updatedAt }) {
   const up = stock.change >= 0;
   const stamp = dateTime(updatedAt);
+  // Katilim Endeksi rozeti: sadece gercek hisseler icin anlamli (fon, doviz,
+  // halka arz vb. icin gosterilmez). Veri admin panelinden elle yonetiliyor -
+  // bkz. market.js toInstrument / backend participation_index tablosu.
+  const katilimTarihi = stock.participationUpdatedAt
+    ? new Date(stock.participationUpdatedAt).toLocaleDateString(locale(), { day: "2-digit", month: "2-digit", year: "numeric" })
+    : null;
   return (
     <div className="thead">
       <div className="logo"><Symbol logo={stock.logo} letter={stock.symbol} size={46} /></div>
@@ -34,6 +40,13 @@ export function TradeHeader({ stock, onClose, watched, onToggleWatch, updatedAt 
       </div>
       <button className="icon-btn soft sm trade-close" onClick={onClose} aria-label={T("Kapat")}><Icon name="close" size={18} /></button>
       <div className="nm">{stock.name}</div>
+      {stock.assetClass === "stock" && (
+        <div className={`katilim-rozet ${stock.participationCompliant ? "uygun" : "uygun-degil"}`}>
+          <Icon name={stock.participationCompliant ? "check" : "close"} size={13} />
+          {T("Katılım endeksine uygun mu?")} <b>{stock.participationCompliant ? T("Evet") : T("Hayır")}</b>
+          {katilimTarihi && <span>{T("Son güncelleme")}: {katilimTarihi}</span>}
+        </div>
+      )}
       <div className="price">{money(stock.price)}</div>
       <div className="src">
         <i className="dot" style={{ background: stamp ? "var(--green)" : "var(--ink-orange)" }} />

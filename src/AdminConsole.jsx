@@ -1019,6 +1019,19 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
     }
   };
 
+  const adminYap = async (user) => {
+    const cevap = window.confirm(`${user.full_name} (#${user.account_no}) hesabına yönetici (admin) yetkisi verilecek. Bu hesap artık admin paneline girebilecek. Onaylıyor musun?`);
+    if (!cevap) return;
+    if (!(await ensure())) return;
+    try {
+      await api(`/api/admin/users/${user.id}/make_admin`, { method: "POST", body: JSON.stringify({}) });
+      await refresh();
+      onNotice("Tamam", `${user.full_name} artık admin.`);
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Admin yetkisi verilemedi");
+    }
+  };
+
   return (
     <>
       <Section
@@ -1055,6 +1068,9 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
                 <button className="ac-ghost" onClick={() => onSec(user)}>Düzenle</button>
                 <button className="ac-ghost kare" aria-label="Şifre değiştir" title="Şifre değiştir" onClick={() => { setSifreKutusu(user); setYeniSifre(""); }}>
                   <Icon name="lock" size={16} />
+                </button>
+                <button className="ac-ghost kare" aria-label="Admin yap" title="Admin yetkisi ver" onClick={() => adminYap(user)}>
+                  <Icon name="shield" size={16} />
                 </button>
                 <button className="ac-danger kare" aria-label="Sil" title="Hesabı sil" onClick={() => sil(user)}>
                   <Icon name="trash" size={16} />
@@ -1807,6 +1823,110 @@ function StockNamesPanel({ onNotice, ensure }) {
   );
 }
 
+/* ---------- 10b. Katılım Endeksi uygunluğu ---------- */
+
+function ParticipationPanel({ onNotice, ensure }) {
+  const [kayitlar, setKayitlar] = useState([]);
+  const [toplam, setToplam] = useState(0);
+  const [query, setQuery] = useState("");
+  const [duzenlenen, setDuzenlenen] = useState(null);
+  const [uygun, setUygun] = useState(true);
+  const [notAlani, setNotAlani] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [adet, setAdet] = useState(60);
+
+  const yukle = useCallback(async (q) => {
+    try {
+      const qs = q ? `?q=${encodeURIComponent(q)}` : "";
+      const veri = await api(`/api/admin/participation${qs}`);
+      setKayitlar(veri.items || []);
+      setToplam(veri.compliant_total || 0);
+    } catch {
+      setKayitlar([]);
+    }
+  }, []);
+  useEffect(() => { yukle(query); }, [yukle, query]);
+  useEffect(() => { setAdet(60); }, [query]);
+
+  const kaydet = async () => {
+    if (!(await ensure())) return;
+    setBusy(true);
+    try {
+      await api("/api/admin/participation", {
+        method: "POST",
+        body: JSON.stringify({ symbol: duzenlenen.symbol, compliant: uygun, note: notAlani.trim() }),
+      });
+      await yukle(query);
+      onNotice("Kaydedildi", `${duzenlenen.symbol} artık "${uygun ? "uygun" : "uygun değil"}" olarak işaretli.`);
+      setDuzenlenen(null);
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Kaydedilemedi");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Section
+      title="Katılım Endeksi Uygunluğu"
+      note={`${toplam} hisse uygun işaretli · bu liste sadece burada elle güncellenir, otomatik çekilmez`}
+      action={<button className="ac-ghost" onClick={() => yukle(query)}>Yenile</button>}
+    >
+      <p className="subtle-count" style={{ marginTop: 0 }}>
+        BIST'in canlı/ücretsiz bir katılım endeksi API'si yok — bu yüzden bu liste yalnızca burada,
+        KAP duyurusunu gördüğünüzde elle güncellediğiniz bir kayıttır. Bir hisse endeksten çıkarılırsa
+        ya da eklenirse, deploy beklemeden direkt buradan işaretleyin; müşteri ekranındaki rozet ve
+        tarih anında güncellenir.
+      </p>
+      <AraSatiri value={query} onChange={setQuery} placeholder="Hisse ara…" />
+      <div className="ac-list scroll tall">
+        {kayitlar.slice(0, adet).map((k) => (
+          <div className="ac-hisse" key={k.symbol}>
+            <span className="kod">{k.symbol}</span>
+            <span className="ad">
+              {k.name}
+              <em className={`ac-rozet ${k.compliant ? "yesil" : "kirmizi"}`}>{k.compliant ? "uygun" : "uygun değil"}</em>
+              {k.updated_at && <small style={{ display: "block", color: "var(--muted)" }}>Son güncelleme: {k.updated_at}</small>}
+            </span>
+            <button className="ac-ghost kare" aria-label="Düzenle" title="Durumu düzenle"
+              onClick={() => { setDuzenlenen(k); setUygun(k.compliant); setNotAlani(k.note || ""); }}>
+              <Icon name="sliders" size={15} />
+            </button>
+          </div>
+        ))}
+        {kayitlar.length > adet && (
+          <button className="ac-line ac-more" onClick={() => setAdet((x) => x + 120)}>
+            <span><strong>Daha fazla göster</strong><small>{kayitlar.length - adet} hisse daha</small></span>
+          </button>
+        )}
+        {!kayitlar.length && <Bos metin="Hisse bulunamadı" />}
+      </div>
+
+      {duzenlenen && (
+        <div className="modal-layer" onClick={() => setDuzenlenen(null)}>
+          <section className="trade-modal readable-modal ac-notice" onClick={(e) => e.stopPropagation()}>
+            <h2>{duzenlenen.symbol}</h2>
+            <p className="subtle-count">{duzenlenen.name}</p>
+            <Field label="Katılım endeksine uygun mu?">
+              <div className="ac-sekme">
+                <button className={uygun ? "on" : ""} onClick={() => setUygun(true)}>Evet</button>
+                <button className={!uygun ? "on" : ""} onClick={() => setUygun(false)}>Hayır</button>
+              </div>
+            </Field>
+            <Field label="Not (ör. KAP duyurusu tarihi/kaynağı)" wide>
+              <Input value={notAlani} onChange={(e) => setNotAlani(e.target.value)} placeholder="Örn: 02.10.2026 KAP duyurusuyla endeksten çıkarıldı" />
+            </Field>
+            <div className="ac-actions">
+              <button className="ac-ghost" onClick={() => setDuzenlenen(null)}>Vazgeç</button>
+              <button className="confirm" disabled={busy} onClick={kaydet}>{busy ? "Kaydediliyor…" : "Kaydet"}</button>
+            </div>
+          </section>
+        </div>
+      )}
+    </Section>
+  );
+}
+
 /* ---------- 11. Hisse açıklamaları ---------- */
 
 function StockDescPanel({ onNotice, ensure }) {
@@ -2216,6 +2336,7 @@ const EK_MENU = [
   ["Piyasa Kontrolü", "trend"],
   ["Emirler", "swap"],
   ["Kullanıcı Doğrulama", "history"],
+  ["Katılım Endeksi", "check"],
   ["Denetim Kaydı", "shield"],
 ];
 
@@ -2238,6 +2359,7 @@ const ALT_BASLIKLAR = {
   "Piyasa Kontrolü": "Fiyat akışını durdurun, fiyatları elle belirleyin",
   "Emirler": "Emirleri onaylayın ya da reddedin",
   "Kullanıcı Doğrulama": "Kimlik belgesi inceleme ve onay işlemleri",
+  "Katılım Endeksi": "Hangi hisselerin katılım endeksine uygun olduğunu buradan elle işaretleyin — KAP duyurusunu gördüğünüzde hemen güncelleyin",
   "Denetim Kaydı": "Tüm yönetici işlemlerinin kaydı",
 };
 
@@ -2347,6 +2469,7 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
         {sayfa === "Bakiye Yönetimi" && <LoadMoneyPanel users={users} ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
         {sayfa === "Para Çekme" && <MoneyPanel moneyReqs={moneyReqs} tur="withdraw" baslik="Para Çekme Talepleri" not="IBAN kontrol edilir" ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
         {sayfa === "Hisse Açıklamaları" && <StockNamesPanel onNotice={onNotice} ensure={lock.ensure} />}
+        {sayfa === "Katılım Endeksi" && <ParticipationPanel onNotice={onNotice} ensure={lock.ensure} />}
         {sayfa === "Sistem Ayarları" && <SettingsPanel settings={settings} onNotice={onNotice} ensure={lock.ensure} refresh={refresh} />}
         {sayfa === "Piyasa Kontrolü" && <MarketPanel ensure={lock.ensure} onNotice={onNotice} />}
         {sayfa === "Emirler" && <OrdersPanel orders={orders} ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}

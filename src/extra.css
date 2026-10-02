@@ -886,9 +886,11 @@
 .ac-rozet.kirmizi{background:#ffe8ea;color:#c93343}
 .ac-rozet.mor{background:#efeaff;color:#6544e0}
 .ac-rozet.sari{background:#fff1dc;color:#b26a00}
+.ac-rozet.yesil{background:#e3f8ee;color:#128a5e}
 .dark-mode .ac-rozet.kirmizi{background:#3a1f24;color:#ff8f9a}
 .dark-mode .ac-rozet.mor{background:#272040;color:#b9a8ff}
 .dark-mode .ac-rozet.sari{background:#33260f;color:#f0b96b}
+.dark-mode .ac-rozet.yesil{background:#113326;color:#6fe3b4}
 .ac-kod{font-style:normal;font-weight:800;letter-spacing:.02em;margin-right:8px}
 .ac-line em.ac-al,.ac-line em.ac-sat{font-style:normal;font-weight:800;font-size:13px;white-space:nowrap}
 .ac-line em.ac-al{color:#13b26b}

@@ -37,8 +37,6 @@ const XU050 = ["AEFES","AKBNK","AKSEN","ALARK","ASELS","ASTOR","BIMAS","BRSAN","
 
 const XU100_EXTRA = ["AEFES","AGHOL","AHGAZ","AKFGY","AKFYE","AKSA","ALFAS","ALTNY","ANSGR","ARCLK","ARDYZ","AVPGY","BERA","BFREN","BINHO","BOBET","BRYAT","BSOKE","BTCIM","CANTE","CCOLA","CIMSA","CVKMD","CWENE","DOAS","DOHOL","ECILC","EGEEN","ENERY","ENJSA","ESEN","EUPWR","EUREN","FENER","GESAN","GOLTS","GSDHO","GWIND","HTTBT","IPEKE","ISDMR","ISMEN","IZENR","KARSN","KAYSE","KCAER","KONTR","KONYA","KORDS","KOZAA","KTLEV","MAVI","MIATK","MPARK","OBAMS","OTKAR","PAPIL","PENTA","PSGYO","REEDR","SDTTR","SKBNK","SMRTG","SOKM","TAVHL","TKFEN","TMSN","TSKB","TTKOM","TTRAK","TUKAS","TURSG","ULKER","VAKBN","VESBE","VESTL","YEOTK","YKBNK","YYLGD","ZOREN"];
 
-const XKTUM = ["ASELS","ASTOR","AKSEN","ALARK","BIMAS","BRSAN","CIMSA","EGEEN","EKGYO","ENJSA","ENKAI","EREGL","EUPWR","FROTO","GESAN","GUBRF","HEKTS","ISDMR","KARSN","KCAER","KCHOL","KONTR","KONYA","KORDS","KOZAA","KOZAL","KRDMD","MGROS","MIATK","OTKAR","OYAKC","PETKM","PGSUS","SASA","SISE","SMRTG","SOKM","TAVHL","TCELL","THYAO","TKFEN","TMSN","TOASO","TTKOM","TTRAK","TUKAS","TUPRS","ULKER","VESBE","VESTL","YEOTK","ZOREN","AHGAZ","AKFYE","ALFAS","BOBET","BTCIM","CANTE","CWENE","ESEN","EUREN","GOLTS","GWIND","IZENR","KAYSE","PAPIL","REEDR","SDTTR","TUREX","ALTNY","BINHO","OBAMS"];
-
 const XTMTU = ["AEFES","AKBNK","AKSA","ANSGR","ARCLK","ASELS","AYGAZ","BIMAS","BRISA","CCOLA","CIMSA","DOAS","ECILC","EGEEN","EKGYO","ENJSA","ENKAI","EREGL","FROTO","GARAN","GUBRF","ISCTR","ISDMR","KCHOL","KONYA","KORDS","MGROS","OTKAR","OYAKC","PETKM","PGSUS","SAHOL","SISE","SOKM","TAVHL","TCELL","TKFEN","TOASO","TRGYO","TSKB","TTKOM","TTRAK","TUPRS","TURSG","ULKER","VAKBN","VESBE","YKBNK","AGHOL","ALARK","BAGFS","BANVT","BUCIM","CEMTS","DEVA","GOLTS","HEKTS","INDES","ISMEN","KLMSN","LOGO","MPARK","NUHCM","PRKME","SARKY","SELEC","TATGD","TUKAS","VESTL","YATAS","ZOREN"];
 
 const XHARZ = ["ALTNY","BINHO","OBAMS","REEDR","PAPIL","SDTTR","MIATK","KCAER","EUPWR","CVKMD","ALFAS","AHGAZ","AKFYE","BOBET","CANTE","CWENE","ENERY","ESEN","EUREN","GESAN","GOLTS","GWIND","HTTBT","IZENR","KAYSE","KONTR","KTLEV","PENTA","SMRTG","YEOTK","YYLGD","ARDYZ","AVPGY","BFREN","BSOKE","TUKAS","AAGYO","AKFIS","ALKLC","ARTMS","BIGCH","BORLS","BULGS","CGCAM","DCTTR","DOFER","EFORC","ENTRA","FORTE","GRTHO","HRKET","INTEM","KOCMT","LMKDC","MAGEN","MEGMT","MHRGY","MOGAN","OFSYM","ONRYT","PASEU","PCILT","PEKGY","PKENT","RGYAS","SAMAT","SEGYO","SURGY","TABGD","TNZTP","YIGIT"];
@@ -47,7 +45,6 @@ const setOf = (list) => new Set(list);
 const S_XU030 = setOf(XU030);
 const S_XU050 = setOf(XU050);
 const S_XU100 = setOf([...XU030, ...XU100_EXTRA]);
-const S_XKTUM = setOf(XKTUM);
 const S_XTMTU = setOf(XTMTU);
 const S_XHARZ = setOf(XHARZ);
 
@@ -264,6 +261,13 @@ export const toInstrument = (quote) => {
     assetClass: quote.asset_class || "stock",
     currency: isFx ? "TRY" : quote.asset_class === "index" ? "" : "TRY",
     kind: quote.asset_class === "fund" ? "fund" : quote.asset_class === "fx" ? "currency" : "stock",
+    // Katilim Endeksi uygunlugu: admin panelinden elle yonetilen, "son
+    // guncelleme" tarihi tasiyan tek dogruluk kaynagi (bkz. backend
+    // participation_index tablosu) - statik/derlenmis bir listeye
+    // gomulmedi ki KAP duyurusu geldiginde deploy beklemeden guncellensin.
+    participationCompliant: Boolean(quote.participation_compliant),
+    participationUpdatedAt: quote.participation_updated_at || null,
+    participationNote: quote.participation_note || "",
   };
 };
 
@@ -373,7 +377,9 @@ export function listFor(market, instruments) {
     case BIST50:
       return stocks.filter((item) => S_XU050.has(item.code));
     case PARTICIPATION:
-      return stocks.filter((item) => S_XKTUM.has(item.code)).map((item) => ({ ...item, kind: "participation" }));
+      // Not: liste artik statik degil, backend'deki participation_index
+      // tablosundan (admin paneli > Katilim Endeksi) geliyor - bkz. toInstrument.
+      return stocks.filter((item) => item.participationCompliant).map((item) => ({ ...item, kind: "participation" }));
     case DIVIDEND:
       return stocks.filter((item) => S_XTMTU.has(item.code));
     case IPO:
