@@ -482,14 +482,9 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             onTwoFactor={() => go(10, 8)}
             twoFactor={twoFactor}
             twoFactorMethod={twoFactorMethod}
-            sessions={security.sessions || []}
             passwordChangedAt={security.password_changed_at}
             confirmOn={confirmOn}
             setConfirmOn={setConfirmOn}
-            onRevoke={async (id) => {
-              try { await api("/api/profile/sessions/revoke", { method: "POST", body: JSON.stringify({ session_id: id }) }); loadSecurity(); }
-              catch (error) { showNotice("Oturum", error.message); }
-            }}
           />
         );
       case 9:

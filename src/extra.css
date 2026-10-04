@@ -701,6 +701,12 @@
 .ac-actions{display:flex;gap:10px}
 .ac-actions>*{flex:1}
 .ac-notice{width:min(420px,92vw);display:flex;flex-direction:column;gap:10px}
+.ac-oturum-liste{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;max-height:300px;overflow:auto}
+.ac-oturum-liste li{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px}
+.ac-oturum-liste .copy{display:flex;flex-direction:column;gap:2px;flex:1;min-width:0}
+.ac-oturum-liste .copy strong{font-size:13.5px}
+.ac-oturum-liste .copy small{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dark-mode .ac-oturum-liste li{border-color:#303747}
 @media (max-width:560px){.ac-form{grid-template-columns:1fr}.ac-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .dark-mode .ac-section h3,.dark-mode .ac-line strong,.dark-mode .ac-stats strong{color:#f7f8ff}
 .dark-mode .ac-section small,.dark-mode .ac-line small,.dark-mode .ac-field>span{color:#aeb6c7}

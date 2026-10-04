@@ -2388,8 +2388,14 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_admin_reset_account()
         if method == "POST" and path == "/api/my/reset":
             return self.api_my_reset_account()
+        if method == "GET":
+            parts = path.strip("/").split("/")
+            if len(parts) == 5 and parts[:3] == ["api", "admin", "users"] and parts[3].isdigit() and parts[4] == "sessions":
+                return self.api_admin_user_sessions(int(parts[3]))
         if method == "POST":
             parts = path.strip("/").split("/")
+            if len(parts) == 6 and parts[:3] == ["api", "admin", "users"] and parts[3].isdigit() and parts[4:] == ["sessions", "revoke"]:
+                return self.api_admin_revoke_user_session(int(parts[3]))
             if len(parts) == 4 and parts[:2] == ["api", "orders"] and parts[3] == "cancel":
                 return self.api_cancel_order(int(parts[2]))
             if len(parts) == 4 and parts[:2] == ["api", "orders"] and parts[3] == "edit":
@@ -4155,6 +4161,43 @@ class AppHandler(BaseHTTPRequestHandler):
             )
             conn.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))   # açık oturumlar kapansın
             audit(conn, admin["id"], "reset_password", "user", user_id)
+            conn.commit()
+            self.json_response({"ok": True})
+
+    def api_admin_user_sessions(self, user_id: int) -> None:
+        """Musteri tarafindaki 'Guvenilir Cihazlar/Aktif Oturumlar' ekrani
+        kafa karistirdigi icin kaldirildi (bkz. istek); ayni bilgi artik
+        sadece admin panelinden, musteri destegi/supheli giris incelemesi
+        icin gorulebiliyor."""
+        with connect_db() as conn:
+            self.require_admin(conn)
+            if not conn.execute("SELECT 1 FROM users WHERE id=? AND role='user'", (user_id,)).fetchone():
+                raise HttpError(404, "Kullanıcı bulunamadı")
+            rows = conn.execute(
+                "SELECT sid, created_at, last_seen_at, ip_address, user_agent FROM sessions WHERE user_id=? AND expires_at>? ORDER BY last_seen_at DESC",
+                (user_id, now()),
+            ).fetchall()
+            self.json_response({
+                "sessions": [{
+                    "id": row["sid"],
+                    "created_at": iso_time(row["created_at"]),
+                    "last_seen_at": iso_time(row["last_seen_at"]),
+                    "ip_address": row["ip_address"],
+                    "device": (row["user_agent"] or "")[:120] or "Bilinmeyen cihaz",
+                } for row in rows],
+            })
+
+    def api_admin_revoke_user_session(self, user_id: int) -> None:
+        payload = self.read_json()
+        session_id = str(payload.get("session_id", ""))
+        if not session_id:
+            raise HttpError(400, "Oturum kimliği gerekli")
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+            if not conn.execute("SELECT 1 FROM users WHERE id=? AND role='user'", (user_id,)).fetchone():
+                raise HttpError(404, "Kullanıcı bulunamadı")
+            conn.execute("DELETE FROM sessions WHERE sid=? AND user_id=?", (session_id, user_id))
+            audit(conn, admin["id"], "revoke_session", "user", user_id)
             conn.commit()
             self.json_response({"ok": True})
 

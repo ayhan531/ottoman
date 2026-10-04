@@ -200,9 +200,7 @@ export function Settings({
 
 /* ---------- Güvenlik ---------- */
 
-export function Security({ onBack, onPassword, onTwoFactor, sessions, onRevoke, confirmOn, setConfirmOn, passwordChangedAt, twoFactor, twoFactorMethod }) {
-  const [devices, setDevices] = useState(false);
-  const [openSessions, setOpenSessions] = useState(false);
+export function Security({ onBack, onPassword, onTwoFactor, confirmOn, setConfirmOn, passwordChangedAt, twoFactor, twoFactorMethod }) {
   const changed = passwordChangedAt ? new Date(passwordChangedAt) : null;
 
   return (
@@ -224,6 +222,9 @@ export function Security({ onBack, onPassword, onTwoFactor, sessions, onRevoke, 
           onClick={onTwoFactor}
         />
       </Section>
+      {/* Guvenilir Cihazlar / Aktif Oturumlar musteriler icin kafa karistirdigi
+          icin buradan kaldirildi; ayni bilgi artik admin panelinde (Kullanicilar >
+          Cihazlar/Oturumlar) goruntulenebiliyor. */}
       <Section heading={T("GİRİŞ VE CİHAZLAR")}>
         <SecRow
           icon="phone"
@@ -231,32 +232,7 @@ export function Security({ onBack, onPassword, onTwoFactor, sessions, onRevoke, 
           note={T("Para çekme ve kritik işlemlerde doğrulama")}
           tail={<Toggle on={confirmOn} onChange={setConfirmOn} />}
         />
-        <SecRow icon="laptop" label={T("Güvenilir Cihazlar")} note={`${sessions.length} ${T("kayıtlı cihaz")}`} chevron onClick={() => setDevices(true)} />
-        <SecRow icon="clock" label={T("Aktif Oturumlar")} note={`${sessions.length} ${T("aktif oturum")}`} chevron onClick={() => setOpenSessions(true)} />
       </Section>
-
-      {(devices || openSessions) && (
-        <Sheet title={T(devices ? "Güvenilir Cihazlar" : "Aktif Oturumlar")} onClose={() => { setDevices(false); setOpenSessions(false); }}>
-          <Divided>
-            {sessions.map((session) => {
-              const mobile = /Mobile|Android|iPhone/i.test(session.device || "");
-              return (
-                <div className="sec-row" key={session.id}>
-                  <span className="disc"><Icon name={mobile ? "phone" : "laptop"} size={20} /></span>
-                  <span className="copy">
-                    <strong>{(session.device || "").split(")")[0].split("(").pop() || "Cihaz"}</strong>
-                    <span>{session.ip_address} · {T("Son giriş")} {session.last_seen_at}</span>
-                  </span>
-                  {session.current
-                    ? <span className="badge-sm buy" style={{ padding: "3px 8px", fontSize: "calc(11px * var(--s))" }}>{T("Bu cihaz")}</span>
-                    : <button className="link-all" onClick={() => onRevoke(session.id)}>{T("Kapat")}</button>}
-                  <span />
-                </div>
-              );
-            })}
-          </Divided>
-        </Sheet>
-      )}
     </div>
   );
 }

@@ -979,6 +979,9 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
   const [sifreKutusu, setSifreKutusu] = useState(null);
   const [yeniSifre, setYeniSifre] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cihazKutusu, setCihazKutusu] = useState(null);
+  const [cihazlar, setCihazlar] = useState(null);
+  const [cihazYukleniyor, setCihazYukleniyor] = useState(false);
 
   const liste = useMemo(() => {
     const needle = fold(query);
@@ -1003,6 +1006,31 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
       onNotice("Olmadı", hata?.message || "Şifre değiştirilemedi");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const cihazlariAc = async (user) => {
+    setCihazKutusu(user);
+    setCihazlar(null);
+    setCihazYukleniyor(true);
+    try {
+      const veri = await api(`/api/admin/users/${user.id}/sessions`);
+      setCihazlar(veri.sessions || []);
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Oturumlar alınamadı");
+      setCihazlar([]);
+    } finally {
+      setCihazYukleniyor(false);
+    }
+  };
+
+  const oturumKapat = async (sessionId) => {
+    if (!cihazKutusu) return;
+    try {
+      await api(`/api/admin/users/${cihazKutusu.id}/sessions/revoke`, { method: "POST", body: JSON.stringify({ session_id: sessionId }) });
+      setCihazlar((eski) => (eski || []).filter((s) => s.id !== sessionId));
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Oturum kapatılamadı");
     }
   };
 
@@ -1081,6 +1109,9 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
                 <button className="ac-ghost kare" aria-label="Şifre değiştir" title="Şifre değiştir" onClick={() => { setSifreKutusu(user); setYeniSifre(""); }}>
                   <Icon name="lock" size={16} />
                 </button>
+                <button className="ac-ghost kare" aria-label="Cihazlar ve oturumlar" title="Cihazlar ve oturumlar" onClick={() => cihazlariAc(user)}>
+                  <Icon name="laptop" size={16} />
+                </button>
                 <button className="ac-ghost kare" aria-label="Admin yap" title="Admin yetkisi ver" onClick={() => adminYap(user)}>
                   <Icon name="shield" size={16} />
                 </button>
@@ -1112,6 +1143,33 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
             <div className="ac-actions">
               <button className="ac-ghost" onClick={() => setSifreKutusu(null)}>Vazgeç</button>
               <button className="confirm" disabled={busy} onClick={sifreKaydet}>{busy ? "Kaydediliyor…" : "Kaydet"}</button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {cihazKutusu && (
+        <div className="modal-layer" onClick={() => setCihazKutusu(null)}>
+          <section className="trade-modal readable-modal ac-notice" onClick={(e) => e.stopPropagation()}>
+            <h2>Cihazlar ve Oturumlar</h2>
+            <p className="subtle-count">{cihazKutusu.full_name} · {cihazKutusu.account_no}</p>
+            {cihazYukleniyor && <Bos metin="Yükleniyor…" />}
+            {!cihazYukleniyor && cihazlar && cihazlar.length === 0 && <Bos metin="Aktif oturum yok" />}
+            {!cihazYukleniyor && cihazlar && cihazlar.length > 0 && (
+              <ul className="ac-oturum-liste">
+                {cihazlar.map((oturum) => (
+                  <li key={oturum.id}>
+                    <span className="copy">
+                      <strong>{(oturum.device || "").split(")")[0].split("(").pop() || "Bilinmeyen cihaz"}</strong>
+                      <small>{oturum.ip_address || "—"} · Son görülme: {oturum.last_seen_at || "—"}</small>
+                    </span>
+                    <button className="ac-ghost" onClick={() => oturumKapat(oturum.id)}>Kapat</button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="ac-actions">
+              <button className="ac-ghost" onClick={() => setCihazKutusu(null)}>Kapat</button>
             </div>
           </section>
         </div>
