@@ -4145,7 +4145,14 @@ class AppHandler(BaseHTTPRequestHandler):
             if not conn.execute("SELECT 1 FROM users WHERE id=? AND role='user'", (user_id,)).fetchone():
                 raise HttpError(404, "Kullanıcı bulunamadı")
             salt, digest = hash_password(password)
-            conn.execute("UPDATE users SET password_salt=?, password_hash=? WHERE id=?", (salt, digest, user_id))
+            # failed_login_count/locked_until temizlenmezse, admin sifreyi
+            # dogru sekilde sifirlasa bile kullanici onceki hatali denemelerden
+            # kalma kilitle karsilasmaya devam eder ("sifre yenilendi ama
+            # hala giremiyorum" sikayetinin kaynagi).
+            conn.execute(
+                "UPDATE users SET password_salt=?, password_hash=?, failed_login_count=0, locked_until=0 WHERE id=?",
+                (salt, digest, user_id),
+            )
             conn.execute("DELETE FROM sessions WHERE user_id=?", (user_id,))   # açık oturumlar kapansın
             audit(conn, admin["id"], "reset_password", "user", user_id)
             conn.commit()
@@ -4397,17 +4404,23 @@ class AppHandler(BaseHTTPRequestHandler):
             tc = tc_raw or target["tc"]
             if tc != target["tc"] and conn.execute("SELECT id FROM users WHERE tc=? AND id!=?", (tc, user_id)).fetchone():
                 raise HttpError(409, "Bu T.C. kimlik numarası başka bir kullanıcıda kayıtlı")
+            # T.C. duzeltildiyse (yanlis girilmis/kayitta bozulmus bir numara
+            # admin tarafindan onarildiysa) onceki hatali giris denemelerinden
+            # kalma kilit de temizlenir - yoksa dogru bilgiyle bile giremez.
+            tc_degisti = tc != target["tc"]
             conn.execute(
                 """
                 UPDATE users
                 SET full_name=?, phone=?, email=?, city=?, district=?, birth_date=?, address=?, tc=?,
                     status=?, kyc_status=?, kyc_note=?, is_test_user=?,
-                    approved_at=CASE WHEN ?='approved' THEN COALESCE(approved_at, ?) ELSE approved_at END
+                    approved_at=CASE WHEN ?='approved' THEN COALESCE(approved_at, ?) ELSE approved_at END,
+                    failed_login_count=CASE WHEN ? THEN 0 ELSE failed_login_count END,
+                    locked_until=CASE WHEN ? THEN 0 ELSE locked_until END
                 WHERE id=? AND role='user'
                 """,
-                (full_name, phone, email, city, district, birth_date, address, tc, status, status, kyc_note, is_test_user, status, now(), user_id),
+                (full_name, phone, email, city, district, birth_date, address, tc, status, status, kyc_note, is_test_user, status, now(), tc_degisti, tc_degisti, user_id),
             )
-            audit(conn, admin["id"], "update_user", "user", user_id, {"is_test_user": is_test_user})
+            audit(conn, admin["id"], "update_user", "user", user_id, {"is_test_user": is_test_user, "tc_changed": tc_degisti})
             conn.commit()
             self.json_response({"ok": True})
 
@@ -4549,7 +4562,7 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def api_admin_action(self, entity: str, entity_id: int, action: str) -> None:
         if entity == "users":
-            allowed = {"approve", "reject", "make_admin"}
+            allowed = {"approve", "reject", "make_admin", "unlock"}
         else:
             allowed = {"approve", "reject"}
         if action not in allowed:
@@ -4573,6 +4586,12 @@ class AppHandler(BaseHTTPRequestHandler):
         user = conn.execute("SELECT * FROM users WHERE id=? AND role='user'", (user_id,)).fetchone()
         if not user:
             raise HttpError(404, "Kullanıcı bulunamadı")
+        if action == "unlock":
+            # 5 hatali giris denemesinden sonra hesap 15 dk kilitleniyor
+            # (bkz. api_login) - admin burada bu bekleyisi atlayabilir.
+            conn.execute("UPDATE users SET failed_login_count=0, locked_until=0 WHERE id=?", (user_id,))
+            audit(conn, admin["id"], "unlock_user", "user", user_id)
+            return
         if action == "make_admin":
             # Admin yetkisi tek hesapla sinirli degil - panelden istenen her
             # hesaba admin rolu verilebilir. role kolonunda essizlik kisiti
@@ -5465,6 +5484,13 @@ def public_user(user: dict, include_sensitive: bool = False) -> dict:
         data["buy_count"] = user.get("buy_count", 0)
         data["sell_count"] = user.get("sell_count", 0)
         data["transaction_count"] = user.get("transaction_count", 0)
+        # Giris kilidi: 5 hatali denemeden sonra 15 dk kilitlenir (bkz.
+        # api_login). Admin panelinde gorunur olmazsa "sifre/TC duzelttim
+        # ama hala giremiyor" sikayetleri bosu bosuna debug edilir.
+        kilit_kalan = int(user.get("locked_until") or 0) - now()
+        data["login_locked"] = kilit_kalan > 0
+        data["login_locked_minutes"] = max(1, (kilit_kalan + 59) // 60) if kilit_kalan > 0 else 0
+        data["failed_login_count"] = int(user.get("failed_login_count") or 0)
     return data
 
 

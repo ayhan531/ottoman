@@ -1032,6 +1032,17 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
     }
   };
 
+  const kilidiKaldir = async (user) => {
+    if (!(await ensure())) return;
+    try {
+      await api(`/api/admin/users/${user.id}/unlock`, { method: "POST", body: JSON.stringify({}) });
+      await refresh();
+      onNotice("Tamam", `${user.full_name} hesabının giriş kilidi kaldırıldı.`);
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Kilit kaldırılamadı");
+    }
+  };
+
   return (
     <>
       <Section
@@ -1056,6 +1067,7 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
                   <small># {user.account_no}</small>
                 </span>
                 <em className={`ac-durum ${DURUM_SINIFI[user.status] || "bekle"}`}>{user.status_label || user.status}</em>
+                {user.login_locked && <em className="ac-rozet kirmizi">kilitli ({user.login_locked_minutes} dk)</em>}
               </header>
               <ul>
                 <li><Icon name="fingerprint" size={13} /> TC: {user.tc || user.tc_masked || "—"}{user.tc_valid === false && <em className="ac-rozet kirmizi">şüpheli</em>}</li>
@@ -1072,6 +1084,11 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
                 <button className="ac-ghost kare" aria-label="Admin yap" title="Admin yetkisi ver" onClick={() => adminYap(user)}>
                   <Icon name="shield" size={16} />
                 </button>
+                {user.login_locked && (
+                  <button className="ac-ghost kare" aria-label="Kilidi kaldır" title={`Giriş kilidini kaldır (${user.login_locked_minutes} dk kaldı)`} onClick={() => kilidiKaldir(user)}>
+                    <Icon name="check" size={16} />
+                  </button>
+                )}
                 <button className="ac-danger kare" aria-label="Sil" title="Hesabı sil" onClick={() => sil(user)}>
                   <Icon name="trash" size={16} />
                 </button>
