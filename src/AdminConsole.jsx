@@ -1909,6 +1909,8 @@ function ParticipationPanel({ onNotice, ensure }) {
   const [notAlani, setNotAlani] = useState("");
   const [busy, setBusy] = useState(false);
   const [adet, setAdet] = useState(60);
+  const [sync, setSync] = useState(null);
+  const [esitleniyor, setEsitleniyor] = useState(false);
 
   const yukle = useCallback(async (q) => {
     try {
@@ -1916,6 +1918,7 @@ function ParticipationPanel({ onNotice, ensure }) {
       const veri = await api(`/api/admin/participation${qs}`);
       setKayitlar(veri.items || []);
       setToplam(veri.compliant_total || 0);
+      setSync(veri.sync || null);
     } catch {
       setKayitlar([]);
     }
@@ -1941,17 +1944,71 @@ function ParticipationPanel({ onNotice, ensure }) {
     }
   };
 
+  const simdiKontrolEt = async () => {
+    if (!(await ensure())) return;
+    setEsitleniyor(true);
+    try {
+      const sonuc = await api("/api/admin/participation/sync", { method: "POST", body: JSON.stringify({}) });
+      await yukle(query);
+      if (sonuc.ok) onNotice("Liste güncel", `Resmi liste (${sonuc.total} hisse) uygulandı. Eklenen: ${sonuc.added.length}, çıkan: ${sonuc.removed.length}.`);
+      else onNotice("Sunucu Borsa İstanbul'a ulaşamadı", `${sonuc.error || "Bilinmeyen hata"} — mevcut liste korundu. Dosyayı aşağıdan elle yükleyebilirsiniz.`);
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Kontrol edilemedi");
+    } finally {
+      setEsitleniyor(false);
+    }
+  };
+
+  const dosyaYukle = async (e) => {
+    const dosya = e.target.files?.[0];
+    e.target.value = "";
+    if (!dosya) return;
+    if (!(await ensure())) return;
+    setEsitleniyor(true);
+    try {
+      const text = await dosya.text();
+      const sonuc = await api("/api/admin/participation/import", { method: "POST", body: JSON.stringify({ text }) });
+      await yukle(query);
+      onNotice("Liste güncellendi", `${sonuc.total} hisse uygulandı. Eklenen: ${sonuc.added.length}, çıkan: ${sonuc.removed.length}.`);
+    } catch (hata) {
+      onNotice("Dosya uygulanmadı", hata?.message || "Dosya okunamadı");
+    } finally {
+      setEsitleniyor(false);
+    }
+  };
+
   return (
     <Section
       title="Katılım Endeksi Uygunluğu"
-      note={`${toplam} hisse uygun işaretli · bu liste sadece burada elle güncellenir, otomatik çekilmez`}
+      note={`${toplam} hisse uygun işaretli · Borsa İstanbul resmi listesinden otomatik güncellenir`}
       action={<button className="ac-ghost" onClick={() => yukle(query)}>Yenile</button>}
     >
+      <div className="ac-line" style={{ display: "block", marginBottom: 10 }}>
+        <strong style={{ color: sync?.stale ? "var(--red, #c0392b)" : "inherit" }}>
+          {!sync ? "Durum okunuyor…" : sync.stale
+            ? "Dikkat: liste henüz canlı doğrulanmadı / güncel değil"
+            : `Liste güncel — resmi liste tarihi ${sync.list_date_label}`}
+        </strong>
+        <small style={{ display: "block", color: "var(--muted)" }}>
+          {sync ? `Kaynak: ${sync.source || "—"} · ${sync.total || 0} hisse · son başarılı kontrol: ${sync.last_ok_label || "yok"}` : ""}
+          {sync?.last_attempt_label ? ` · son deneme: ${sync.last_attempt_label}` : ""}
+        </small>
+        {sync && !sync.ok && sync.error && (
+          <small style={{ display: "block", color: "var(--muted)" }}>Son hata: {sync.error} (mevcut liste korundu)</small>
+        )}
+        <div className="ac-actions" style={{ marginTop: 8, justifyContent: "flex-start", gap: 8, flexWrap: "wrap" }}>
+          <button className="ac-ghost" disabled={esitleniyor} onClick={simdiKontrolEt}>{esitleniyor ? "Kontrol ediliyor…" : "Şimdi kontrol et"}</button>
+          <label className="ac-ghost" style={{ cursor: "pointer" }}>
+            Resmi dosyayı yükle (hisse_endeks_ds.csv)
+            <input type="file" accept=".csv,.txt,text/csv,text/plain" onChange={dosyaYukle} style={{ display: "none" }} />
+          </label>
+        </div>
+      </div>
       <p className="subtle-count" style={{ marginTop: 0 }}>
-        BIST'in canlı/ücretsiz bir katılım endeksi API'si yok — bu yüzden bu liste yalnızca burada,
-        KAP duyurusunu gördüğünüzde elle güncellediğiniz bir kayıttır. Bir hisse endeksten çıkarılırsa
-        ya da eklenirse, deploy beklemeden direkt buradan işaretleyin; müşteri ekranındaki rozet ve
-        tarih anında güncellenir.
+        Liste Borsa İstanbul'un resmi hisse-endeks dosyasından (BIST Katılım Tüm) 6 saatte bir otomatik çekilir;
+        dönem değişimlerinde (Nisan/Ekim) kendiliğinden güncellenir. Sunucu dosyaya ulaşamazsa mevcut liste korunur
+        ve burada uyarı çıkar — o zaman dosyayı borsaistanbul.com'dan indirip yukarıdan yükleyebilirsiniz.
+        Bir hisseyi elle işaretlerseniz (not yazarak), otomatik güncelleme o hisseye dokunmaz.
       </p>
       <AraSatiri value={query} onChange={setQuery} placeholder="Hisse ara…" />
       <div className="ac-list scroll tall">

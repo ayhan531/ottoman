@@ -38,6 +38,7 @@ except Exception:
 from news_feed import latest_news
 from market_news import sekme_haberleri as fotolu_sekme_haberleri, sirketleri_tanit
 import threading
+import katilim_feed
 
 def generate_account_no(conn: "sqlite3.Connection") -> str:
     """Rastgele 5 haneli, benzersiz müşteri numarası: OT + 5 rakam."""
@@ -1152,10 +1153,17 @@ def seed_market(conn: sqlite3.Connection) -> None:
 # veridir. Bu yuzden statik/derlenmis bir listeye gommek yerine admin panelinden
 # yonetilen, "son guncelleme" tarihi tasiyan ayri bir tabloda tutulur - ekip KAP
 # duyurusunu gordugu an deploy beklemeden guncelleyebilsin diye.
-PARTICIPATION_OLD_NOTE = "Baslangic listesi - admin panelinden dogrulayin/guncelleyin"
-PARTICIPATION_SOURCE_NOTE = "BIST Katilim Tum, 1 Ekim 2026 - 30 Nisan 2027 donemi (capraz dogrulanmis kaynak listesi)"
-PARTICIPATION_REMOVED_NOTE = "BIST Katilim Tum listesinde yok (1 Ekim 2026 donemi)"
-PARTICIPATION_LIST_TS = 1790812800  # donemin gecerlilik baslangici: 01.10.2026
+# Katilim Endeksi (BIST Katilim Tum) uyeligi: Borsa Istanbul'un RESMI
+# hisse-endeks dagilimi dosyasindan (hisse_endeks_ds.csv, endeks kodu XKTUM)
+# otomatik cekilir ve katilim endeksi tablosuna uygulanir (bkz. katilim_feed.py).
+# Dosya erisilemez/bozuk ise eski liste korunur ve admin panelinde uyari cikar;
+# admin ayni dosyayi panelden elle de yukleyebilir. Admin'in notla elle
+# isaretledigi hisselere otomatik esitleme dokunmaz.
+PARTICIPATION_FEED_URL = os.environ.get("PARTICIPATION_FEED_URL", "https://www.borsaistanbul.com/datum/hisse_endeks_ds.csv")
+PARTICIPATION_SYNC_SECONDS = int(os.environ.get("PARTICIPATION_SYNC_SECONDS", "21600"))   # 6 saatte bir
+PARTICIPATION_STALE_SECONDS = 4 * 86400                                                     # 4 gunden eski basari = uyari
+# Gomulu yedek: resmi dosyadan 06.10.2026 tarihli (ilk kurulumda, ag yokken kullanilir).
+PARTICIPATION_BUILTIN_TS = 1791244800
 PARTICIPATION_SEED_SYMBOLS = (
     "ACSEL", "AHGAZ", "AKCNS", "AKFIS", "AKFYE", "AKHAN", "AKYHO", "ALBRK", "ALBTN", "ALCTL",
     "ALKA", "ALKIM", "ALTNY", "ANGEN", "ARASE", "ARDYZ", "ARENA", "ASELS", "ATAKP", "ATATP",
@@ -1164,49 +1172,112 @@ PARTICIPATION_SEED_SYMBOLS = (
     "BRKSN", "BRLSM", "BUCIM", "BURCE", "BURVA", "BYDNR", "CATES", "CELHA", "CEMTS", "CIMSA",
     "CITAS", "CMBTN", "COSMO", "CVKMD", "CWENE", "DAPGM", "DARDL", "DCTTR", "DESPC", "DGATE",
     "DITAS", "DMSAS", "DNISI", "DOFER", "DOFRB", "DYOBY", "EBEBK", "EDATA", "EDIP", "EFOR",
-    "EGEGY", "EGGUB", "EGPRO", "EKGYO", "EKOS", "EKSUN", "ELITE", "EMPAE", "ENERY", "ENJSA",
-    "EREGL", "ESCOM", "ESEN", "EUPWR", "EYGYO", "FADE", "FONET", "FORMT", "FORTE", "FRIGO",
-    "FRMPL", "FZLGY", "GEDZA", "GENIL", "GEREL", "GESAN", "GLRMK", "GMTAS", "GOKNR", "GOLDA",
-    "GOLTS", "GOODY", "GRSEL", "GUBRF", "HATSN", "HKTM", "HOROZ", "HRKET", "IHEVA", "IHLAS",
-    "IHLGM", "IHYAY", "IMASM", "INGRM", "INTEM", "INTET", "ISDMR", "ISSEN", "IZFAS", "IZINV",
-    "JANTS", "KARSN", "KATMR", "KBORU", "KCAER", "KFEIN", "KGYO", "KIMMR", "KLSER", "KMPUR",
-    "KNFRT", "KOCMT", "KONKA", "KONYA", "KOTON", "KPEKS", "KRDMA", "KRDMB", "KRDMD", "KRGYO",
-    "KRONT", "KRPLS", "KRSTL", "KRVGD", "KTLEV", "KUTPO", "KZBGY", "LINK", "LKMNH", "LMKDC",
-    "LOGO", "LXGYO", "MAGEN", "MAKIM", "MARBL", "MAVI", "MCARD", "MEGMT", "MEKAG", "MEYSU",
-    "MOGAN", "MOPAS", "MPARK", "NATEN", "NETAS", "NETCD", "NETGL", "NTGAZ", "OBAMS", "ONCSM",
-    "ORGE", "OSTIM", "OZRDN", "OZYSR", "PAGYO", "PARSN", "PASEU", "PENGD", "PENTA", "PETKM",
-    "PKART", "PNLSN", "PNSUT", "POLHO", "QUAGR", "REEDR", "RODRG", "SAFKR", "SAMAT", "SANKO",
-    "SARKY", "SAYAS", "SDTTR", "SEGMN", "SEKUR", "SELEC", "SILVR", "SMART", "SMRTG", "SNGYO",
-    "SOHOE", "SOKE", "SRVGY", "SSAAT", "SURGY", "TARKM", "TCKRC", "TEZOL", "TGSAS", "TKFEN",
+    "EGEGY", "EGEPO", "EGGUB", "EGPRO", "EKGYO", "EKOS", "EKSUN", "ELITE", "EMPAE", "ENERY",
+    "ENJSA", "EREGL", "ESCOM", "ESEN", "EUPWR", "EYGYO", "FADE", "FONET", "FORMT", "FORTE",
+    "FRIGO", "FRMPL", "FZLGY", "GEDZA", "GENIL", "GEREL", "GESAN", "GLRMK", "GMTAS", "GOKNR",
+    "GOLDA", "GOLTS", "GOODY", "GRSEL", "GUBRF", "HATSN", "HKTM", "HOROZ", "HRKET", "IHEVA",
+    "IHLAS", "IHLGM", "IHYAY", "IMASM", "INGRM", "INTEM", "INTET", "ISDMR", "ISSEN", "IZFAS",
+    "IZINV", "JANTS", "KARSN", "KATMR", "KBORU", "KCAER", "KFEIN", "KGYO", "KIMMR", "KLSER",
+    "KMPUR", "KNFRT", "KOCMT", "KONKA", "KONYA", "KOTON", "KPEKS", "KRDMA", "KRDMB", "KRDMD",
+    "KRGYO", "KRONT", "KRPLS", "KRSTL", "KRVGD", "KTLEV", "KUTPO", "KZBGY", "LINK", "LKMNH",
+    "LMKDC", "LOGO", "LXGYO", "MAGEN", "MAKIM", "MARBL", "MAVI", "MCARD", "MEDTR", "MEGMT",
+    "MEKAG", "MERCN", "MEYSU", "MNDTR", "MOGAN", "MOPAS", "MPARK", "NATEN", "NETAS", "NETCD",
+    "NETGL", "NTGAZ", "OBAMS", "OBASE", "ONCSM", "ORGE", "OSTIM", "OZRDN", "OZYSR", "PAGYO",
+    "PARSN", "PASEU", "PENGD", "PENTA", "PETKM", "PKART", "PLTUR", "PNLSN", "PNSUT", "POLHO",
+    "QUAGR", "REEDR", "RODRG", "RUBNS", "SAFKR", "SAMAT", "SANKO", "SARKY", "SAYAS", "SDTTR",
+    "SEGMN", "SEKUR", "SELEC", "SELVA", "SILVR", "SMART", "SMRTG", "SNGYO", "SNICA", "SOHOE",
+    "SOKE", "SRVGY", "SSAAT", "SURGY", "SUWEN", "TARKM", "TCKRC", "TEZOL", "TGSAS", "TKFEN",
     "TKNKA", "TKNSA", "TMPOL", "TUCLK", "TUPRS", "TUREX", "TURGG", "UCAYM", "ULUSE", "VAKKO",
-    "VANGD", "VBTYZ", "YATAS", "YEOTK", "YIGIT", "YKSLN", "YUNSA",
+    "VANGD", "VBTYZ", "YATAS", "YEOTK", "YIGIT", "YKSLN", "YUNSA", "ZEDUR",
 )
 
 
-def seed_participation_index(conn: sqlite3.Connection) -> None:
-    """Katilim Endeksi baslangic verisi + eski/dogrulanmamis seed'in duzeltilmesi.
-
-    Admin'in panelden yaptigi hicbir kayda DOKUNMAZ: sadece notu hala eski
-    baslangic notu olan (yani kimse elle onaylamamis) satirlar duzeltilir.
-    Idempotent: her acilista calisir, ikinci calismada degisecek satir kalmaz."""
-    yeni = set(PARTICIPATION_SEED_SYMBOLS)
-    conn.executemany(
-        "INSERT OR IGNORE INTO participation_index (symbol, compliant, note, updated_at) VALUES (?, 1, ?, ?)",
-        [(sembol, PARTICIPATION_SOURCE_NOTE, PARTICIPATION_LIST_TS) for sembol in PARTICIPATION_SEED_SYMBOLS],
+def set_system_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
+    conn.execute(
+        "INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)"
+        " ON CONFLICT(setting_key) DO UPDATE SET setting_value=excluded.setting_value, updated_at=excluded.updated_at",
+        (key, value, now()),
     )
-    for sembol, uygun, not_, zaman in conn.execute(
-        "SELECT symbol, compliant, note, updated_at FROM participation_index WHERE note = ?", (PARTICIPATION_OLD_NOTE,)
-    ).fetchall():
-        if sembol in yeni:
-            conn.execute(
-                "UPDATE participation_index SET compliant=1, note=?, updated_at=? WHERE symbol=?",
-                (PARTICIPATION_SOURCE_NOTE, PARTICIPATION_LIST_TS, sembol),
-            )
-        else:
-            conn.execute(
-                "UPDATE participation_index SET compliant=0, note=?, updated_at=? WHERE symbol=?",
-                (PARTICIPATION_REMOVED_NOTE, PARTICIPATION_LIST_TS, sembol),
-            )
+
+
+def participation_sync_status(conn: sqlite3.Connection) -> dict:
+    row = conn.execute("SELECT setting_value FROM system_settings WHERE setting_key='participation_sync'").fetchone()
+    try:
+        status = json.loads(row["setting_value"]) if row else {}
+    except (TypeError, ValueError):
+        status = {}
+    last_ok = int(status.get("last_ok_at") or 0)
+    status["stale"] = (not last_ok) or (now() - last_ok > PARTICIPATION_STALE_SECONDS)
+    status["last_ok_label"] = iso_time(last_ok) if last_ok else ""
+    status["last_attempt_label"] = iso_time(int(status["last_attempt_at"])) if status.get("last_attempt_at") else ""
+    status["list_date_label"] = time.strftime("%d.%m.%Y", time.gmtime(int(status["list_ts"]))) if status.get("list_ts") else ""
+    return status
+
+
+def _save_participation_status(conn: sqlite3.Connection, ok: bool, source: str, result: dict | None, error: str, list_ts: int | None, trusted: bool = True) -> None:
+    row = conn.execute("SELECT setting_value FROM system_settings WHERE setting_key='participation_sync'").fetchone()
+    try:
+        old = json.loads(row["setting_value"]) if row else {}
+    except (TypeError, ValueError):
+        old = {}
+    status = {
+        "last_attempt_at": now(),
+        "last_ok_at": (now() if trusted else 0) if ok else old.get("last_ok_at", 0),
+        "ok": ok, "source": source if ok else old.get("source", source),
+        "error": "" if ok else error[:300],
+        "list_ts": list_ts if ok else old.get("list_ts"),
+        "total": result["total"] if ok and result else old.get("total"),
+        "added": result["added"][:60] if ok and result else old.get("added", []),
+        "removed": result["removed"][:60] if ok and result else old.get("removed", []),
+    }
+    set_system_setting(conn, "participation_sync", json.dumps(status, ensure_ascii=False))
+
+
+def sync_participation_index(text: str | None = None, source: str = "otomatik") -> dict:
+    """Resmi dosyayi indirir (ya da verilen metni kullanir), dogrular, uygular.
+    Her durumda durum kaydi tutar; hata halinde mevcut liste degismez."""
+    try:
+        if text is None:
+            request = urllib.request.Request(PARTICIPATION_FEED_URL, headers={"User-Agent": "Mozilla/5.0 (compatible; OttomanYatirim/1.0)"})
+            with urllib.request.urlopen(request, timeout=40) as response:
+                raw = response.read(8_000_000)
+            text = raw.decode("utf-8", errors="replace")
+        symbols, list_ts = katilim_feed.parse_csv(text)
+        with connect_db() as conn:
+            result = katilim_feed.apply_list(conn, symbols, list_ts)
+            _save_participation_status(conn, True, source, result, "", list_ts)
+            conn.commit()
+        return {"ok": True, **result, "list_ts": list_ts}
+    except Exception as error:                      # ag, bicim ya da supheli-liste hatasi: liste korunur
+        message = f"{type(error).__name__}: {error}"
+        try:
+            with connect_db() as conn:
+                _save_participation_status(conn, False, source, None, message, None)
+                conn.commit()
+        except Exception:
+            pass
+        return {"ok": False, "error": message}
+
+
+def seed_participation_index(conn: sqlite3.Connection) -> None:
+    """Ilk kurulumda (hic esitleme kaydi yokken) gomulu resmi listeyi yukler;
+    sonrasinda liste sadece canli esitleme / admin ile degisir. Gomulu liste
+    'canli dogrulanmis' sayilmaz (last_ok_at=0): canli esitleme basarana kadar
+    admin panelinde uyari gorunur."""
+    if conn.execute("SELECT 1 FROM system_settings WHERE setting_key='participation_sync'").fetchone():
+        return
+    result = katilim_feed.apply_list(conn, set(PARTICIPATION_SEED_SYMBOLS), PARTICIPATION_BUILTIN_TS)
+    _save_participation_status(conn, True, "gomulu liste (06.10.2026)", result, "", PARTICIPATION_BUILTIN_TS, trusted=False)
+
+
+def katilimi_esitle() -> None:
+    """Arka planda 6 saatte bir resmi listeyi kontrol eder."""
+    def calis():
+        time.sleep(15)
+        while True:
+            sync_participation_index()
+            time.sleep(max(600, PARTICIPATION_SYNC_SECONDS))
+    threading.Thread(target=calis, name="katilim-esitleyici", daemon=True).start()
 
 
 def audit(
@@ -2400,6 +2471,10 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_admin_participation_list()
         if method == "POST" and path == "/api/admin/participation":
             return self.api_admin_save_participation()
+        if method == "POST" and path == "/api/admin/participation/sync":
+            return self.api_admin_participation_sync()
+        if method == "POST" and path == "/api/admin/participation/import":
+            return self.api_admin_participation_import()
         if method == "GET" and path == "/api/admin/audit":
             return self.api_admin_audit()
         if method == "POST" and path == "/api/admin/create-user":
@@ -3991,6 +4066,7 @@ class AppHandler(BaseHTTPRequestHandler):
             toplam = conn.execute("SELECT COUNT(*) c FROM participation_index WHERE compliant=1").fetchone()["c"]
             self.json_response({
                 "compliant_total": toplam,
+                "sync": participation_sync_status(conn),
                 "items": [{
                     "symbol": row["symbol"],
                     "name": row["name"] or row["symbol"],
@@ -4019,6 +4095,33 @@ class AppHandler(BaseHTTPRequestHandler):
             audit(conn, admin["id"], "save_participation", "instrument", None, {"symbol": symbol, "compliant": compliant})
             conn.commit()
             self.json_response({"ok": True, "symbol": symbol, "compliant": bool(compliant)})
+
+    def api_admin_participation_sync(self) -> None:
+        """Admin: resmi listeyi simdi kontrol et."""
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+        sonuc = sync_participation_index(source="admin (elle tetiklendi)")
+        with connect_db() as conn:
+            audit(conn, admin["id"], "participation_sync", "instrument", None, {"ok": sonuc.get("ok")})
+            conn.commit()
+            self.json_response({**sonuc, "sync": participation_sync_status(conn)})
+
+    def api_admin_participation_import(self) -> None:
+        """Admin: resmi hisse_endeks_ds.csv dosyasini elle yukle (sunucu
+        Borsa Istanbul'a erisemezse yedek yol)."""
+        payload = self.read_json()
+        text = str(payload.get("text", ""))
+        if len(text) < 1000:
+            raise HttpError(400, "Dosya icerigi bos ya da cok kisa")
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+        sonuc = sync_participation_index(text=text[:8_000_000], source="admin (dosya yuklendi)")
+        with connect_db() as conn:
+            audit(conn, admin["id"], "participation_import", "instrument", None, {"ok": sonuc.get("ok")})
+            conn.commit()
+            if not sonuc.get("ok"):
+                raise HttpError(422, sonuc.get("error", "Dosya uygulanamadi"))
+            self.json_response({**sonuc, "sync": participation_sync_status(conn)})
 
     # ---------------- piyasa kontrolü ----------------
 
@@ -5804,6 +5907,7 @@ def haberleri_isit() -> None:
 if __name__ == "__main__":
     init_db()
     haberleri_isit()
+    katilimi_esitle()
     server = ThreadingHTTPServer(("", PORT), AppHandler)
     print(f"Ottoman backend running at http://localhost:{PORT}")
     print(f"Database: {DB_PATH}")
