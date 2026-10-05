@@ -20,14 +20,13 @@ export const MARKET_TAB_ORDER = [BIST, BIST100, BIST50, BIST30, PARTICIPATION, I
 export const NEWS_TAB_ORDER = [BIST, BIST100, BIST50, BIST30, PARTICIPATION, DIVIDEND, IPO, FUNDS, CURRENCY];
 
 /** Alım-satımı backend'de desteklenen sekmeler; diğerlerinde "referansınız ile iletişime geçin" çıkar. */
-export const TRADABLE_MARKETS = new Set([BIST, BIST100, BIST30, DIVIDEND, BIST50]);
+export const TRADABLE_MARKETS = new Set([BIST, BIST100, BIST30, DIVIDEND, BIST50, PARTICIPATION]);
 
 /** Al/Sat ekranı hiç açılmayan piyasalar için gösterilecek yönlendirme metni (bkz. Trade.jsx REFERRAL_TEXT). */
 export const MARKET_CONTACT_TEXT = {
   [IPO]: "Halka arz alış satışları için referansınız ile iletişime geçiniz.",
   [FUNDS]: "Fon alış satışları için referansınız ile iletişime geçiniz.",
   [CURRENCY]: "Döviz alış satışları için referansınız ile iletişime geçiniz.",
-  [PARTICIPATION]: "Katılım hisse alış satışları için referansınız ile iletişime geçiniz.",
 };
 
 const XU030 = ["AKBNK","AKSEN","ALARK","ASELS","ASTOR","BIMAS","BRSAN","EKGYO","ENKAI","EREGL","FROTO","GARAN","GUBRF","HEKTS","ISCTR","KCHOL","KOZAL","KRDMD","MGROS","ODAS","OYAKC","PETKM","PGSUS","SAHOL","SASA","SISE","TCELL","THYAO","TOASO","TUPRS"];
