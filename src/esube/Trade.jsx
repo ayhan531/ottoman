@@ -39,7 +39,7 @@ export function TradeHeader({ stock, onClose, watched, onToggleWatch, updatedAt 
       {stock.assetClass === "stock" && (
         <div className={`katilim-rozet ${stock.participationCompliant ? "uygun" : "uygun-degil"}`}>
           <Icon name={stock.participationCompliant ? "check" : "close"} size={13} />
-          {T("Katılım endeksine uygun mu?")} <b>{stock.participationCompliant ? T("Evet") : T("Hayır")}</b>
+          <b>{stock.participationCompliant ? T("Katılım Endeksine Uygun") : T("Katılım Endeksine Uygun Değil")}</b>
         </div>
       )}
       <div className="price">{money(stock.price)}</div>
