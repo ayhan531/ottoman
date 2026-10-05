@@ -266,7 +266,13 @@ export const toInstrument = (quote) => {
     // participation_index tablosu) - statik/derlenmis bir listeye
     // gomulmedi ki KAP duyurusu geldiginde deploy beklemeden guncellensin.
     participationCompliant: Boolean(quote.participation_compliant),
-    participationUpdatedAt: quote.participation_updated_at || null,
+    // Backend saniye (unix) cinsinden verir; JS Date milisaniye bekler. Cevrilmezse
+    // tarih 21.01.1970 gorunur. Gecersiz/bos deger tarihi hic gostermez.
+    participationUpdatedAt: (() => {
+      const t = Number(quote.participation_updated_at);
+      if (!Number.isFinite(t) || t <= 0) return null;
+      return t < 1e11 ? t * 1000 : t;
+    })(),
     participationNote: quote.participation_note || "",
   };
 };

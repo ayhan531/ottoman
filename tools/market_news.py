@@ -50,6 +50,7 @@ BIST_YOGUN = [
 ]
 
 YENILEME_SANIYE = 600
+EN_FAZLA_HABER = 20             # her sekmede tutulacak en yeni haber sayisi
 SAYFADAN_EN_FAZLA = 45          # bir tazelemede kaç sayfadan fotoğraf aranacak
 _kilit = threading.Lock()
 _onbellek: dict = {"items": [], "updated": 0.0, "errors": []}
@@ -588,8 +589,12 @@ def sekme_haberleri(sekme: int, en_az: int = 12) -> tuple[list[dict], dict]:
                 break
             ekle(haber)
 
+    # Liste HER ZAMAN yayin zamanina gore yeniden eskiye siralanir (konu puani
+    # sadece hangi haberlerin secilecegini belirler, siralamayi degil) ve en
+    # yeni EN_FAZLA_HABER haber tutulur; gerisi her tazelemede atilir.
+    secilen.sort(key=lambda h: -int(h.get("published_ts") or 0))
     temiz = []
-    for haber in secilen[:25]:
+    for haber in secilen[:EN_FAZLA_HABER]:
         temiz.append({k: v for k, v in haber.items()
                       if not k.startswith("_") and k not in ("kodlar", "turkiye")})
     bilgi = {

@@ -70,8 +70,8 @@
 }
 
 /* Design.Accents — açık / gece / soluk açık / soluk gece */
-[data-accent="0"] { --purple: #3c7771; --lavender: #e5f5f4; }
-[data-accent="1"] { --purple: #3c7771; --lavender: #e5f5f4; }
+[data-accent="0"] { --purple: #7054f6; --lavender: #e9e6fa; }
+[data-accent="1"] { --purple: #2f72e8; --lavender: #e7edf9; }
 [data-accent="2"] { --purple: #0e9aa7; --lavender: #e3f6f8; }
 [data-accent="3"] { --purple: #1e9e6a; --lavender: #e7f6ee; }
 [data-accent="4"] { --purple: #e3922f; --lavender: #fef1e3; }
@@ -80,8 +80,8 @@
 [data-accent="7"] { --purple: #2b3a8c; --lavender: #e9ecfa; }
 [data-accent="8"] { --purple: #4b5563; --lavender: #eef0f3; }
 
-[data-theme="dark"][data-accent="0"] { --purple: #46b9ad; --lavender: #1b3734; }
-[data-theme="dark"][data-accent="1"] { --purple: #46b9ad; --lavender: #1b3734; }
+[data-theme="dark"][data-accent="0"] { --purple: #7b69de; --lavender: #251f41; }
+[data-theme="dark"][data-accent="1"] { --purple: #5187db; --lavender: #1f2d41; }
 [data-theme="dark"][data-accent="2"] { --purple: #30a7b2; --lavender: #173338; }
 [data-theme="dark"][data-accent="3"] { --purple: #37af82; --lavender: #1b372c; }
 [data-theme="dark"][data-accent="4"] { --purple: #d49447; --lavender: #3a2c20; }
