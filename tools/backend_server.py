@@ -1152,31 +1152,61 @@ def seed_market(conn: sqlite3.Connection) -> None:
 # veridir. Bu yuzden statik/derlenmis bir listeye gommek yerine admin panelinden
 # yonetilen, "son guncelleme" tarihi tasiyan ayri bir tabloda tutulur - ekip KAP
 # duyurusunu gordugu an deploy beklemeden guncelleyebilsin diye.
+PARTICIPATION_OLD_NOTE = "Baslangic listesi - admin panelinden dogrulayin/guncelleyin"
+PARTICIPATION_SOURCE_NOTE = "BIST Katilim Tum, 1 Ekim 2026 - 30 Nisan 2027 donemi (capraz dogrulanmis kaynak listesi)"
+PARTICIPATION_REMOVED_NOTE = "BIST Katilim Tum listesinde yok (1 Ekim 2026 donemi)"
+PARTICIPATION_LIST_TS = 1790812800  # donemin gecerlilik baslangici: 01.10.2026
 PARTICIPATION_SEED_SYMBOLS = (
-    "ASELS", "ASTOR", "AKSEN", "ALARK", "BIMAS", "BRSAN", "CIMSA", "EGEEN", "EKGYO",
-    "ENJSA", "ENKAI", "EREGL", "EUPWR", "FROTO", "GESAN", "GUBRF", "HEKTS", "ISDMR",
-    "KARSN", "KCAER", "KCHOL", "KONTR", "KONYA", "KORDS", "KOZAA", "KOZAL", "KRDMD",
-    "MGROS", "MIATK", "OTKAR", "OYAKC", "PETKM", "PGSUS", "SASA", "SISE", "SMRTG",
-    "SOKM", "TAVHL", "TCELL", "THYAO", "TKFEN", "TMSN", "TOASO", "TTKOM", "TTRAK",
-    "TUKAS", "TUPRS", "ULKER", "VESBE", "VESTL", "YEOTK", "ZOREN", "AHGAZ", "AKFYE",
-    "ALFAS", "BOBET", "BTCIM", "CANTE", "CWENE", "ESEN", "EUREN", "GOLTS", "GWIND",
-    "IZENR", "KAYSE", "PAPIL", "REEDR", "SDTTR", "TUREX", "ALTNY", "BINHO", "OBAMS",
+    "ACSEL", "AHGAZ", "AKCNS", "AKFIS", "AKFYE", "AKHAN", "AKYHO", "ALBRK", "ALBTN", "ALCTL",
+    "ALKA", "ALKIM", "ALTNY", "ANGEN", "ARASE", "ARDYZ", "ARENA", "ASELS", "ATAKP", "ATATP",
+    "AVPGY", "AYDEM", "BAHKM", "BAKAB", "BANVT", "BASGZ", "BAYRK", "BEGYO", "BERA", "BETAE",
+    "BIENY", "BIMAS", "BINBN", "BINHO", "BKRGY", "BLUME", "BMSTL", "BORSK", "BOSSA", "BRISA",
+    "BRKSN", "BRLSM", "BUCIM", "BURCE", "BURVA", "BYDNR", "CATES", "CELHA", "CEMTS", "CIMSA",
+    "CITAS", "CMBTN", "COSMO", "CVKMD", "CWENE", "DAPGM", "DARDL", "DCTTR", "DESPC", "DGATE",
+    "DITAS", "DMSAS", "DNISI", "DOFER", "DOFRB", "DYOBY", "EBEBK", "EDATA", "EDIP", "EFOR",
+    "EGEGY", "EGGUB", "EGPRO", "EKGYO", "EKOS", "EKSUN", "ELITE", "EMPAE", "ENERY", "ENJSA",
+    "EREGL", "ESCOM", "ESEN", "EUPWR", "EYGYO", "FADE", "FONET", "FORMT", "FORTE", "FRIGO",
+    "FRMPL", "FZLGY", "GEDZA", "GENIL", "GEREL", "GESAN", "GLRMK", "GMTAS", "GOKNR", "GOLDA",
+    "GOLTS", "GOODY", "GRSEL", "GUBRF", "HATSN", "HKTM", "HOROZ", "HRKET", "IHEVA", "IHLAS",
+    "IHLGM", "IHYAY", "IMASM", "INGRM", "INTEM", "INTET", "ISDMR", "ISSEN", "IZFAS", "IZINV",
+    "JANTS", "KARSN", "KATMR", "KBORU", "KCAER", "KFEIN", "KGYO", "KIMMR", "KLSER", "KMPUR",
+    "KNFRT", "KOCMT", "KONKA", "KONYA", "KOTON", "KPEKS", "KRDMA", "KRDMB", "KRDMD", "KRGYO",
+    "KRONT", "KRPLS", "KRSTL", "KRVGD", "KTLEV", "KUTPO", "KZBGY", "LINK", "LKMNH", "LMKDC",
+    "LOGO", "LXGYO", "MAGEN", "MAKIM", "MARBL", "MAVI", "MCARD", "MEGMT", "MEKAG", "MEYSU",
+    "MOGAN", "MOPAS", "MPARK", "NATEN", "NETAS", "NETCD", "NETGL", "NTGAZ", "OBAMS", "ONCSM",
+    "ORGE", "OSTIM", "OZRDN", "OZYSR", "PAGYO", "PARSN", "PASEU", "PENGD", "PENTA", "PETKM",
+    "PKART", "PNLSN", "PNSUT", "POLHO", "QUAGR", "REEDR", "RODRG", "SAFKR", "SAMAT", "SANKO",
+    "SARKY", "SAYAS", "SDTTR", "SEGMN", "SEKUR", "SELEC", "SILVR", "SMART", "SMRTG", "SNGYO",
+    "SOHOE", "SOKE", "SRVGY", "SSAAT", "SURGY", "TARKM", "TCKRC", "TEZOL", "TGSAS", "TKFEN",
+    "TKNKA", "TKNSA", "TMPOL", "TUCLK", "TUPRS", "TUREX", "TURGG", "UCAYM", "ULUSE", "VAKKO",
+    "VANGD", "VBTYZ", "YATAS", "YEOTK", "YIGIT", "YKSLN", "YUNSA",
 )
 
 
 def seed_participation_index(conn: sqlite3.Connection) -> None:
-    """Tablo bombos ise (ilk kurulum), onceki statik listeyle baslangic
-    verisi yukler. Tablo zaten doluysa HICBIR SEYE dokunmaz - admin'in
-    panelden yaptigi guncellemeler/kaldirmalar (orn. KAP duyurusuyla
-    endeksten cikan bir hisse) her sunucu yeniden baslatmasinda ezilmesin."""
-    count = conn.execute("SELECT COUNT(*) c FROM participation_index").fetchone()["c"]
-    if count:
-        return
-    ts = now()
+    """Katilim Endeksi baslangic verisi + eski/dogrulanmamis seed'in duzeltilmesi.
+
+    Admin'in panelden yaptigi hicbir kayda DOKUNMAZ: sadece notu hala eski
+    baslangic notu olan (yani kimse elle onaylamamis) satirlar duzeltilir.
+    Idempotent: her acilista calisir, ikinci calismada degisecek satir kalmaz."""
+    yeni = set(PARTICIPATION_SEED_SYMBOLS)
     conn.executemany(
         "INSERT OR IGNORE INTO participation_index (symbol, compliant, note, updated_at) VALUES (?, 1, ?, ?)",
-        [(symbol, "Baslangic listesi - admin panelinden dogrulayin/guncelleyin", ts) for symbol in PARTICIPATION_SEED_SYMBOLS],
+        [(sembol, PARTICIPATION_SOURCE_NOTE, PARTICIPATION_LIST_TS) for sembol in PARTICIPATION_SEED_SYMBOLS],
     )
+    for sembol, uygun, not_, zaman in conn.execute(
+        "SELECT symbol, compliant, note, updated_at FROM participation_index WHERE note = ?", (PARTICIPATION_OLD_NOTE,)
+    ).fetchall():
+        if sembol in yeni:
+            conn.execute(
+                "UPDATE participation_index SET compliant=1, note=?, updated_at=? WHERE symbol=?",
+                (PARTICIPATION_SOURCE_NOTE, PARTICIPATION_LIST_TS, sembol),
+            )
+        else:
+            conn.execute(
+                "UPDATE participation_index SET compliant=0, note=?, updated_at=? WHERE symbol=?",
+                (PARTICIPATION_REMOVED_NOTE, PARTICIPATION_LIST_TS, sembol),
+            )
 
 
 def audit(
