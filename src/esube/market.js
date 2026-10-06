@@ -385,7 +385,7 @@ export function listFor(market, instruments) {
     case PARTICIPATION:
       // Not: liste artik statik degil, backend'deki participation_index
       // tablosundan (admin paneli > Katilim Endeksi) geliyor - bkz. toInstrument.
-      return stocks.filter((item) => item.participationCompliant).map((item) => ({ ...item, kind: "participation" }));
+      return stocks.filter((item) => item.participationCompliant).map((item) => ({ ...item, kind: "stock" }));
     case DIVIDEND:
       return stocks.filter((item) => S_XTMTU.has(item.code));
     case IPO:

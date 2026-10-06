@@ -69,26 +69,8 @@
   --shadow-pop: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 
-/* Design.Accents — açık / gece / soluk açık / soluk gece */
-[data-accent="0"] { --purple: #7054f6; --lavender: #e9e6fa; }
-[data-accent="1"] { --purple: #2f72e8; --lavender: #e7edf9; }
-[data-accent="2"] { --purple: #0e9aa7; --lavender: #e3f6f8; }
-[data-accent="3"] { --purple: #1e9e6a; --lavender: #e7f6ee; }
-[data-accent="4"] { --purple: #e3922f; --lavender: #fef1e3; }
-[data-accent="5"] { --purple: #d9479a; --lavender: #fce8f3; }
-[data-accent="6"] { --purple: #d6453d; --lavender: #fce9e7; }
-[data-accent="7"] { --purple: #2b3a8c; --lavender: #e9ecfa; }
-[data-accent="8"] { --purple: #4b5563; --lavender: #eef0f3; }
-
-[data-theme="dark"][data-accent="0"] { --purple: #7b69de; --lavender: #251f41; }
-[data-theme="dark"][data-accent="1"] { --purple: #5187db; --lavender: #1f2d41; }
-[data-theme="dark"][data-accent="2"] { --purple: #30a7b2; --lavender: #173338; }
-[data-theme="dark"][data-accent="3"] { --purple: #37af82; --lavender: #1b372c; }
-[data-theme="dark"][data-accent="4"] { --purple: #d49447; --lavender: #3a2c20; }
-[data-theme="dark"][data-accent="5"] { --purple: #d061a3; --lavender: #3a2233; }
-[data-theme="dark"][data-accent="6"] { --purple: #d25e56; --lavender: #3a2323; }
-[data-theme="dark"][data-accent="7"] { --purple: #6e7bc4; --lavender: #1e2340; }
-[data-theme="dark"][data-accent="8"] { --purple: #8e949f; --lavender: #2a2e36; }
+/* Marka rengi sabit: Ottoman yeşili. Kullanıcı tarafından değiştirilemez. */
+[data-theme="dark"] { --purple: #4a9a91; --lavender: #1b3a37; }
 
 /* ---------- temel ---------- */
 .esube .esube *, .overlay .esube *,

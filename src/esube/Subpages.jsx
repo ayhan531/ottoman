@@ -63,7 +63,7 @@ const Section = ({ heading, children }) => (
 /* ---------- Ayarlar ---------- */
 
 export function Settings({
-  onBack, monogram, onProfile, dark, setDark, textSize, setTextSize, accent, setAccent,
+  onBack, monogram, onProfile, dark, setDark, textSize, setTextSize,
   lang, setLang, dataMode, setDataMode, onNotify, onSecurity, onContracts, onPrivacy, version,
   me, accounts = [], onSwitchAccount, onAddAccount, onRemoveAccount,
 }) {
@@ -93,18 +93,6 @@ export function Settings({
             }
           />
           <SettingsRow icon="Aa" label={T("Yazı boyutu")} value={T(SCALE_NAMES[textSize])} chevron onClick={() => setPicker("scale")} />
-          <SettingsRow
-            icon="palette"
-            label={T("Renk modu")}
-            chevron
-            onClick={() => setPicker("accent")}
-            tail={
-              <span className="vl">
-                <i style={{ width: 12, height: 12, borderRadius: 6, background: (dark ? ACCENT_NIGHT : ACCENT_LIGHT)[accent], display: "block" }} />
-                {T(ACCENT_NAMES[accent])}
-              </span>
-            }
-          />
         </Divided>
       </div>
 
@@ -174,24 +162,6 @@ export function Settings({
       {picker === "data" && (
         <Sheet title={T("Veri kullanımı")} onClose={() => setPicker(null)}>
           <Choices names={DATA_NAMES.map(T)} selected={dataMode} onChoose={(index) => { setDataMode(index); setPicker(null); }} />
-        </Sheet>
-      )}
-      {picker === "accent" && (
-        <Sheet title={T("Renk modu")} onClose={() => setPicker(null)}>
-          <div className="accent-grid">
-            {ACCENT_NAMES.map((name, index) => {
-              const color = (dark ? ACCENT_NIGHT : ACCENT_LIGHT)[index];
-              const on = accent === index;
-              return (
-                <button key={name} className={on ? "on" : ""} onClick={() => { setAccent(index); setPicker(null); }}>
-                  <span className="ring" style={on ? { borderColor: color } : undefined}>
-                    <span className="swatch" style={{ background: color }}>{on && <Icon name="check" size={24} />}</span>
-                  </span>
-                  <span style={on ? { color } : undefined}>{T(name)}</span>
-                </button>
-              );
-            })}
-          </div>
         </Sheet>
       )}
     </div>

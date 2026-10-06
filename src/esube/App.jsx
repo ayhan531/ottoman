@@ -9,7 +9,7 @@ import Account from "./Account.jsx";
 import { TradeHeader, TradePanel, ReviewOrder, OrderResult, QuickTrade } from "./Trade.jsx";
 import {
   Settings, Security, TwoFactorPage, PasswordPage, Personal, Contact, NotifySettings, ContractsList, DocumentPage,
-  SCALE_VALUES, ACCENT_NAMES, LANG_NAMES, NOTIFY_KEYS, PRIVACY,
+  SCALE_VALUES, LANG_NAMES, NOTIFY_KEYS, PRIVACY,
 } from "./Subpages.jsx";
 import { api, usePref, useMarket, useNews, usePortfolio, useNotifications, useMoneyRequests, useHoldings, readPref, writePref } from "./store.js";
 import { savedAccounts, forgetAccount, setPendingTc } from "./accounts.js";
@@ -131,7 +131,6 @@ const NAV = [
 export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   /* ---- tercihler ---- */
   const [dark, setDark] = usePref("dark", () => window.matchMedia?.("(prefers-color-scheme: dark)").matches || false);
-  const [accent, setAccent] = usePref("accent", 1);   // varsayılan renk modu: Mavi
   const [textSize, setTextSize] = usePref("textSize", 1);
   const [lang, setLang] = usePref("lang", 0);
   const [dataMode, setDataMode] = usePref("dataMode", 0);
@@ -151,11 +150,11 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.theme = dark ? "dark" : "light";
-    root.dataset.accent = String(accent);
+    root.removeAttribute("data-accent");
     root.style.setProperty("--s", String(SCALE_VALUES[Math.min(2, Math.max(0, textSize))]));
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) meta.setAttribute("content", dark ? "#171922" : "#ffffff");
-  }, [dark, accent, textSize]);
+  }, [dark, textSize]);
 
   /* ---- veri ---- */
   const [marketTab, setMarketTab] = useState(0);
@@ -319,7 +318,6 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
     fund: ["Fon işlemleri", "Fon alış satışları için referansınız ile iletişime geçiniz."],
     ipo: ["Halka arz talebi", "Halka arz alış satışları için referansınız ile iletişime geçiniz."],
     currency: ["Döviz işlemleri", "Döviz alış satışları için referansınız ile iletişime geçiniz."],
-    participation: ["Katılım hisse işlemleri", "Katılım hisse alış satışları için referansınız ile iletişime geçiniz."],
   };
   const openTrade = (item, { sheet = false, buying = true, searchable = false } = {}) => {
     const stock = asStock(item);
@@ -455,7 +453,6 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             onProfile={() => setOverlay({ kind: "profile" })}
             dark={dark} setDark={setDark}
             textSize={textSize} setTextSize={setTextSize}
-            accent={accent} setAccent={setAccent}
             lang={lang} setLang={setLang}
             dataMode={dataMode} setDataMode={setDataMode}
             onNotify={() => go(13, 5)}
@@ -546,7 +543,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             onOpenKyc={() => setOverlay({ kind: "kyc" })}
             openTrade={(item) => {
               if (!TRADABLE_MARKETS.has(marketTab)) {
-                const kind = marketTab === FUNDS ? "fund" : marketTab === IPO ? "ipo" : marketTab === PARTICIPATION ? "participation" : "currency";
+                const kind = marketTab === FUNDS ? "fund" : marketTab === IPO ? "ipo" : "currency";
                 showNotice(REFERRAL_ONLY[kind][0], REFERRAL_ONLY[kind][1]);
                 return;
               }
