@@ -1574,7 +1574,7 @@ function MoneyPanel({ moneyReqs, tur, baslik, not, ensure, onNotice, refresh }) 
               <li>Tarih: {m.created_at_label || "—"}</li>
               {m.iban && <li className="ac-iban-satiri">IBAN: {m.iban} <KopyaBtn metin={m.iban} /></li>}
               {m.note && <li className="not">Not: {m.note}</li>}
-              {m.admin_note && <li className="not">{m.status === "rejected" ? "Ret nedeni" : "Not"}: {m.admin_note}</li>}
+              {m.admin_note && <li className="not">{m.status === "rejected" && m.status_label !== "İptal" ? "Ret nedeni" : "Not"}: {m.admin_note}</li>}
             </ul>
             {m.status === "pending" && (
               <footer>
