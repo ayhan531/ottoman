@@ -1,6 +1,7 @@
 // Tercihler (APK'daki Preferences), API çağrıları ve canlı veri akışı.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toInstrument, applyPriceDeviations, isMarketOpen } from "./market.js";
+import { trSirketAdi } from "./trname.js";
 
 const KEY = "ottoman.";
 
@@ -214,7 +215,7 @@ export function useHoldings(portfolio, instruments) {
         return {
           symbol: position.symbol,
           code: position.symbol,
-          name: quote?.name || position.symbol,
+          name: trSirketAdi(quote?.name || position.symbol),
           logo: quote?.logo || "",
           quantity,
           avgCost,

@@ -1,3 +1,4 @@
+import { trSirketAdi } from "./trname.js";
 // Piyasa sekmeleri, endeks üyelikleri ve APK'daki biçimleyiciler (Models/DemoAccount.cs).
 
 export const MARKET_NAMES = [
@@ -249,7 +250,7 @@ export const toInstrument = (quote) => {
   return {
     symbol: isFx ? symbol.replace(/TRY$/, "/TRY") : symbol,
     code: symbol,
-    name: isFx ? CURRENCY_NAMES[symbol] || quote.name || symbol : String(quote.name || symbol).trim(),
+    name: isFx ? CURRENCY_NAMES[symbol] || quote.name || symbol : trSirketAdi(quote.name || symbol),
     price,
     change: changePct,
     dayDelta: price - previous,

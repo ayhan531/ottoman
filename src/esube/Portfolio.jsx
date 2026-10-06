@@ -4,6 +4,7 @@ import Icon from "./icons.jsx";
 import { Symbol, SearchBox, Divided, Donut, Spark, Sheet } from "./ui.jsx";
 import { money, signed, delta, fold, trSayi } from "./market.js";
 import { T, locale } from "./lang.js";
+import { trSirketAdi } from "./trname.js";
 
 const MINT = "#7FE3C4", ROSE = "#FF9EB5", MINT_SOFT = "#CFF5E6", ROSE_SOFT = "#FFD6E0", CASH_TONE = "#FFD48A";
 const FAINT = "rgba(255,255,255,.72)";
@@ -224,7 +225,7 @@ export function toTrade(row) {
   const profit = buy ? 0 : net - quantity * avgCost;
   return {
     symbol: row.code || "",
-    name: row.name || row.code || "",
+    name: trSirketAdi(row.name || row.code || ""),
     buy,
     quantity,
     price,
