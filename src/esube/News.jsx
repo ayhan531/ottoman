@@ -99,7 +99,7 @@ export default function News({ brandBar, marketTab, setMarketTab, items, state, 
         ) : (
           <div className="notice-box">
             {state === "failed"
-              ? T("Haberler alınamadı. Bağlantını kontrol et.")
+              ? T("Bu sekme için şu anda güncel haber bulunamadı.")
               : query.trim()
                 ? `“${query.trim()}”${T(" için haber bulunamadı.")}`
                 : T("Haberler yükleniyor…")}

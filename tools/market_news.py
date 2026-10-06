@@ -107,8 +107,16 @@ XHARZ = (
     "YIGIT",
 )
 
+XU050 = (
+    "AEFES", "AKBNK", "AKSEN", "ALARK", "ASELS", "ASTOR", "BIMAS", "BRSAN", "BTCIM", "CANTE",
+    "CCOLA", "CIMSA", "DSTKF", "ECILC", "EFOR", "EKGYO", "ENKAI", "EREGL", "FROTO", "GARAN",
+    "GLRMK", "GUBRF", "HALKB", "HEKTS", "ISCTR", "KCHOL", "KRDMD", "KTLEV", "KUYAS", "MGROS",
+    "MIATK", "OYAKC", "PASEU", "PETKM", "PGSUS", "SAHOL", "SASA", "SISE", "TAVHL", "TCELL",
+    "THYAO", "TOASO", "TRALT", "TRMET", "TTKOM", "TUPRS", "TURSG", "ULKER", "VAKBN", "YKBNK",
+)
+
 XU100 = tuple(dict.fromkeys(XU030 + XU100_EK))
-SEKME_ENDEKSI = {1: set(XU100), 2: set(XU030), 3: set(XKTUM), 4: set(XTMTU), 5: set(XHARZ)}
+SEKME_ENDEKSI = {1: set(XU100), 2: set(XU030), 3: set(XKTUM), 4: set(XTMTU), 5: set(XHARZ), 8: set(XU050)}
 
 # Şirket kodu → şirket adı; sunucu açılışta gerçek listeyi veriyor (sirketleri_tanit).
 _SIRKET_ADLARI: dict[str, str] = {}
@@ -220,13 +228,14 @@ TURKIYE_KALIP = _kalip(TURKIYE)
 # Sekme konusu anahtarları (0: BIST Tüm ... 7: Döviz)
 SEKME_ANAHTARLARI = [
     ("bist", "borsa istanbul", "hisse*", "endeks*", "kap", "spk", "viop", "halka arz*", "temettü*"),
-    ("bist 100", "bist100", "xu100", "bist-100", "endeks*", "borsa istanbul"),
-    ("bist 30", "bist30", "xu030", "bist-30", "viop", "endeks kontrat*"),
+    ("bist 100", "bist100", "xu100", "bist-100"),
+    ("bist 30", "bist30", "xu030", "bist-30"),
     ("katılım*", "faizsiz", "islami finans", "kira sertifikası", "sukuk", "katılım endeks*"),
     ("temettü*", "kar payı", "kâr payı", "nakit temettü", "temettü verim*"),
     ("halka arz*", "borsada işlem görmeye", "ipo", "izahname*", "talep toplama*", "gong"),
     ("fon*", "yatırım fonu", "portföy*", "serbest fon*", "byf", "emeklilik fonu", "tefas"),
     ("dolar*", "euro", "kur", "altın*", "sterlin*", "döviz*", "ons", "gram*", "parite*"),
+    ("bist 50", "bist50", "xu050", "bist-50"),
 ]
 SEKME_KALIPLARI = [_kalip(k) for k in SEKME_ANAHTARLARI]
 
@@ -243,6 +252,7 @@ BING_SORGULARI = [
     ("halka arz Borsa İstanbul", "halka arz talep toplama SPK onay"),
     ("yatırım fonu portföy SPK", "TEFAS yatırım fonu getiri"),
     ("dolar euro altın kuru", "altın fiyatları döviz piyasası"),
+    ("BIST 50 endeksi", "BIST 50 hisseleri borsa"),
 ]
 
 # Haber değil: fiyat sorgu sayfaları, çevirici sayfaları, tekrar eden kotasyonlar.
@@ -510,6 +520,18 @@ def _tazele() -> None:
     _onbellek.update(items=fotolu, updated=simdi, errors=hatalar)
 
 
+KADEME_SEKMELERI = (2, 8, 1)          # dardan genişe: BIST 30, BIST 50, BIST 100
+_KADEME_KUMELERI = ((2, set(XU030)), (8, set(XU050)), (1, set(XU100)))
+
+
+def _kademe(kodlar) -> int:
+    """Haberdeki şirketlerin düştüğü en dar endeks sekmesi (yoksa 0)."""
+    for sekme, kume in _KADEME_KUMELERI:
+        if kodlar & kume:
+            return sekme
+    return 0
+
+
 def _sekme_puani(haber: dict, sekme: int) -> int:
     """Haberin sekmeye uygunluğu: 3 tam isabet, 2 endeks şirketi, 1 genel borsa, 0 uzak."""
     metin = haber["_metin"]
@@ -527,6 +549,16 @@ def _sekme_puani(haber: dict, sekme: int) -> int:
         return 0
     if sekme == 0:
         return 3 if tam else (2 if haber["kodlar"] else 0)
+    if sekme in KADEME_SEKMELERI:
+        # BIST 30 / 50 / 100: haber ya o endeksi açıkça anıyor ya da şirketi en dar
+        # bu kademeye düşüyor. Böylece aynı haber üç sekmede birden çıkmaz.
+        if tam:
+            return 3
+        return 2 if _kademe(haber["kodlar"]) == sekme else 0
+    if sekme == 3:                                   # Katılım: konu anahtarı ya da yalnız katılım endeksi üyesi
+        if tam:
+            return 3
+        return 2 if (uye and not (haber["kodlar"] & set(XU100))) else 0
     if uye and tam:
         return 3
     if uye:
@@ -568,7 +600,7 @@ def sekme_haberleri(sekme: int, en_az: int = 12) -> tuple[list[dict], dict]:
 
     # Arama sonucu da olsa konuyla ya da BIST ile ilgisi olmayan haber girmez.
     for haber in sorted(hedefli, key=lambda h: -h["published_ts"]):
-        if _sekme_puani(haber, sekme) >= 2 or _sekme_puani(haber, 0) >= 2:
+        if _sekme_puani(haber, sekme) >= 2 or (sekme == 0 and _sekme_puani(haber, 0) >= 2):
             ekle(haber)
 
     uyanlar = [(h, _sekme_puani(h, sekme)) for h in hepsi]
@@ -576,9 +608,9 @@ def sekme_haberleri(sekme: int, en_az: int = 12) -> tuple[list[dict], dict]:
                         key=lambda h: (-_sekme_puani(h, sekme), -h["published_ts"])):
         ekle(haber)
 
-    if len(secilen) < en_az:
-        # Yabancı borsa haberi ya da konu dışı haber girmez: az haber göstermek,
-        # yanlış haber göstermekten iyi.
+    if sekme == 0 and len(secilen) < en_az:
+        # Yalnız "BIST Tüm" sekmesi genel borsa haberiyle tamamlanır; öteki sekmeler
+        # kendi konusundan haber bulamazsa az haber gösterir, başka sekmenin haberini değil.
         for haber in sorted([h for h in hepsi if _sekme_puani(h, 0) >= 2], key=lambda h: -h["published_ts"]):
             if len(secilen) >= en_az:
                 break

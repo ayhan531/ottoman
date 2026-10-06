@@ -2006,7 +2006,7 @@ def spk_bulletin_news() -> list[dict]:
 # sorgusu, tarihe göre sıralı. Sekme sırası MarketNames ile aynıdır.
 MARKET_NEWS_QUERIES = [
     "Borsa İstanbul", "BIST 100", "BIST 30", "katılım endeksi",
-    "temettü", "halka arz", "yatırım fonu", "dolar euro kur",
+    "temettü", "halka arz", "yatırım fonu", "dolar euro kur", "BIST 50",
 ]
 MARKET_NEWS_CACHE: dict[int, dict] = {}
 MARKET_NEWS_REFRESH_SECONDS = int(os.environ.get("MARKET_NEWS_REFRESH_SECONDS", "600"))
@@ -2189,7 +2189,8 @@ def market_news(market: int) -> tuple[list[dict], bool]:
         items, _bilgi = fotolu_sekme_haberleri(market, en_az=14)
     except Exception:            # ağ/ayrıştırma sorunu Bing yedeğini engellemesin
         items = []
-    if not items:
+    if not items and market not in (1, 2, 3, 8):
+        # Endeks sekmelerinde genel Bing yedeği kullanılmaz: aynı haberler her sekmede çıkıyordu.
         items = [haber for haber in fetch_market_news(market) if haber.get("image_url")]
     # Fotoğrafsız haber gösterilmez: görselsiz Bing yedeğine asla düşülmez,
     # bulunamazsa sekme boş kalır ya da son bilinen fotoğraflı listeye dönülür.
