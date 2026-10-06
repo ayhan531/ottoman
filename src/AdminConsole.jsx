@@ -1185,7 +1185,7 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
   const [query, setQuery] = useState("");
   const [kisi, setKisi] = useState("hepsi");
   const [duzenlenen, setDuzenlenen] = useState(null);
-  const [form, setForm] = useState({ quantity: "", price: "", totalCost: "", valueOverride: "", note: "" });
+  const [form, setForm] = useState({ quantity: "", price: "", totalCost: "", valueOverride: "", note: "", mode: "fiyat" });
   const [busy, setBusy] = useState(false);
 
   const liste = useMemo(() => {
@@ -1200,6 +1200,22 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
   const kullaniciSecenekleri = [["hepsi", "Tüm Kullanıcılar"],
     ...users.map((u) => [String(u.id), `${u.full_name} (${u.account_no || u.id})`])];
 
+  // Maliyet duzeltme: Adet / Alis fiyati / Toplam maliyet birbirine bagli. Son duzenlenen alan
+  // gecerli olur (mode); eskiden eski toplam maliyet kutusu hep dolu gittigi icin backend
+  // girilen alis fiyatini ezip eski fiyata geri donuyordu.
+  const sayi = (v) => Number(String(v ?? "").replace(",", ".")) || 0;
+  const yuvarla = (n, k) => String(Number((Number(n) || 0).toFixed(k)));
+  const adetDegisti = (v) => setForm((x) => {
+    const adet = Number(v) || 0;
+    if (x.mode === "toplam") return { ...x, quantity: v, price: adet > 0 ? yuvarla(sayi(x.totalCost) / adet, 4) : x.price };
+    return { ...x, quantity: v, totalCost: yuvarla(sayi(x.price) * adet, 2) };
+  });
+  const fiyatDegisti = (v) => setForm((x) => ({ ...x, price: v, mode: "fiyat", totalCost: yuvarla(sayi(v) * (Number(x.quantity) || 0), 2) }));
+  const toplamDegisti = (v) => setForm((x) => {
+    const adet = Number(x.quantity) || 0;
+    return { ...x, totalCost: v, mode: "toplam", price: adet > 0 ? yuvarla(sayi(v) / adet, 4) : x.price };
+  });
+
   const kaydet = async () => {
     if (!(await ensure())) return;
     setBusy(true);
@@ -1210,7 +1226,7 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
           user_id: duzenlenen.user_id, symbol: duzenlenen.symbol, action: "set",
           quantity: Number(form.quantity) || 0,
           price: Number(String(form.price).replace(",", ".")) || duzenlenen.avg_price,
-          total_cost: form.totalCost.trim() ? String(form.totalCost).replace(",", ".") : "",
+          total_cost: form.mode === "toplam" && form.totalCost.trim() ? String(form.totalCost).replace(",", ".") : "",
           value_override: form.valueOverride.trim() ? String(form.valueOverride).replace(",", ".") : "",
           note: form.note.trim().length >= 8 ? form.note.trim() : "Pozisyon admin tarafından düzenlendi",
         }),
@@ -1280,7 +1296,7 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
                   </td>
                   <td className="sag">
                     <span className="ac-poz-islem">
-                      <button className="ac-ghost kare" aria-label="Düzenle" onClick={() => { setDuzenlenen(p); setForm({ quantity: String(p.quantity), price: String(p.avg_price), totalCost: String((Number(p.avg_price) || 0) * (Number(p.quantity) || 0)), valueOverride: p.value_override != null ? String(p.value_override) : "", note: "" }); }}>
+                      <button className="ac-ghost kare" aria-label="Düzenle" onClick={() => { setDuzenlenen(p); setForm({ quantity: String(p.quantity), price: String(p.avg_price), totalCost: String((Number(p.avg_price) || 0) * (Number(p.quantity) || 0)), valueOverride: p.value_override != null ? String(p.value_override) : "", note: "", mode: "fiyat" }); }}>
                         <Icon name="sliders" size={15} />
                       </button>
                       <button className="ac-danger kare" aria-label="Sil" onClick={() => sil(p)}><Icon name="trash" size={15} /></button>
@@ -1305,7 +1321,7 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
                 <small className="kisi"><Icon name="user" size={13} /> {p.full_name} {p.account_no ? `(${p.account_no})` : `(${p.user_id})`}</small>
               </span>
               <span className="ac-poz-islem">
-                <button className="ac-ghost" aria-label="Düzenle" onClick={() => { setDuzenlenen(p); setForm({ quantity: String(p.quantity), price: String(p.avg_price), totalCost: String((Number(p.avg_price) || 0) * (Number(p.quantity) || 0)), valueOverride: p.value_override != null ? String(p.value_override) : "", note: "" }); }}>Düzenle</button>
+                <button className="ac-ghost" aria-label="Düzenle" onClick={() => { setDuzenlenen(p); setForm({ quantity: String(p.quantity), price: String(p.avg_price), totalCost: String((Number(p.avg_price) || 0) * (Number(p.quantity) || 0)), valueOverride: p.value_override != null ? String(p.value_override) : "", note: "", mode: "fiyat" }); }}>Düzenle</button>
                 <button className="ac-danger small" aria-label="Sil" onClick={() => sil(p)}>Sil</button>
               </span>
             </div>
@@ -1326,9 +1342,9 @@ function PortfolioPanel({ users = [], onNotice, ensure }) {
             <h2>{duzenlenen.symbol}</h2>
             <p className="subtle-count">{duzenlenen.full_name}</p>
             <div className="ac-form">
-              <Field label="Adet"><Input inputMode="numeric" value={form.quantity} onChange={(e) => setForm((x) => ({ ...x, quantity: e.target.value.replace(/\D/g, "") }))} /></Field>
-              <Field label="Alış fiyatı"><Input inputMode="decimal" value={form.price} onChange={(e) => setForm((x) => ({ ...x, price: e.target.value }))} /></Field>
-              <Field label="Toplam maliyet (opsiyonel)"><Input inputMode="decimal" value={form.totalCost} onChange={(e) => setForm((x) => ({ ...x, totalCost: e.target.value }))} placeholder="Doldurulursa alış fiyatının yerine geçer" /></Field>
+              <Field label="Adet"><Input inputMode="numeric" value={form.quantity} onChange={(e) => adetDegisti(e.target.value.replace(/\D/g, ""))} /></Field>
+              <Field label="Alış fiyatı"><Input inputMode="decimal" value={form.price} onChange={(e) => fiyatDegisti(e.target.value)} /></Field>
+              <Field label="Toplam maliyet (opsiyonel)"><Input inputMode="decimal" value={form.totalCost} onChange={(e) => toplamDegisti(e.target.value)} placeholder="Alış fiyatı × adet" /></Field>
               <Field label="Güncel değer fiyatı (opsiyonel)"><Input inputMode="decimal" value={form.valueOverride} onChange={(e) => setForm((x) => ({ ...x, valueOverride: e.target.value }))} placeholder="Boş bırakılırsa canlı fiyat kullanılır" /></Field>
               <Field label="Gerekçe (opsiyonel)" wide><Input value={form.note} onChange={(e) => setForm((x) => ({ ...x, note: e.target.value }))} placeholder="Örn: Müşteri talebi üzerine düzeltme" /></Field>
             </div>
@@ -1496,6 +1512,8 @@ function MoneyPanel({ moneyReqs, tur, baslik, not, ensure, onNotice, refresh }) 
   const [durum, setDurum] = useState("hepsi");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(0);
+  const [redId, setRedId] = useState(0);
+  const [redNot, setRedNot] = useState("");
 
   const turdekiler = useMemo(
     () => moneyReqs.filter((m) => tur === "hepsi" || m.request_type === tur),
@@ -1508,15 +1526,19 @@ function MoneyPanel({ moneyReqs, tur, baslik, not, ensure, onNotice, refresh }) 
   const toplam = liste.reduce((sum, m) => sum + Number(m.amount || 0), 0);
   const say = (d) => turdekiler.filter((x) => d === "hepsi" || x.status === d).length;
 
-  const calistir = async (item, action) => {
-    const gerekce = reason.trim();
+  const calistir = async (item, action, not) => {
+    const gerekce = (action === "reject" ? not : reason).trim();
+    if (action === "reject" && !gerekce) {
+      onNotice("Not gerekli", "Yatırımcının görmesi için ret nedenini yazın.");
+      return;
+    }
     if (!(await ensure())) return;
     setBusy(item.id);
     try {
       await api(`/api/admin/money/${item.id}/${action}`, { method: "POST", body: JSON.stringify({ reason: gerekce }) });
       await refresh();
-      setReason("");
-      onNotice("Tamam", action === "approve" ? "Onaylandı." : "Reddedildi.");
+      if (action === "reject") { setRedId(0); setRedNot(""); } else setReason("");
+      onNotice("Tamam", action === "approve" ? "Onaylandı." : "Reddedildi, ret nedeni yatırımcıya iletildi.");
     } catch (hata) {
       onNotice("Olmadı", hata?.message || "İşlem tamamlanamadı");
     } finally {
@@ -1534,7 +1556,7 @@ function MoneyPanel({ moneyReqs, tur, baslik, not, ensure, onNotice, refresh }) 
         ))}
       </div>
       <div className="ac-form">
-        <Field label="Gerekçe (opsiyonel)" wide>
+        <Field label="Onay notu (opsiyonel)" wide>
           <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Örn: Dekont doğrulandı" />
         </Field>
       </div>
@@ -1552,13 +1574,35 @@ function MoneyPanel({ moneyReqs, tur, baslik, not, ensure, onNotice, refresh }) 
               <li>Tarih: {m.created_at_label || "—"}</li>
               {m.iban && <li className="ac-iban-satiri">IBAN: {m.iban} <KopyaBtn metin={m.iban} /></li>}
               {m.note && <li className="not">Not: {m.note}</li>}
-              {m.admin_note && <li className="not">Not: {m.admin_note}</li>}
+              {m.admin_note && <li className="not">{m.status === "rejected" ? "Ret nedeni" : "Not"}: {m.admin_note}</li>}
             </ul>
             {m.status === "pending" && (
               <footer>
                 <button className="ac-yukle-btn" disabled={busy === m.id} onClick={() => calistir(m, "approve")}>Onayla</button>
-                <button className="ac-cikar-btn" disabled={busy === m.id} onClick={() => calistir(m, "reject")}>Reddet</button>
+                <button className="ac-cikar-btn" disabled={busy === m.id} onClick={() => { setRedId(redId === m.id ? 0 : m.id); setRedNot(""); }}>Reddet</button>
               </footer>
+            )}
+            {m.status === "pending" && redId === m.id && (
+              <div className="ac-ret-kutusu" style={{ display: "grid", gap: 8, marginTop: 10 }}>
+                <label style={{ fontSize: 12, fontWeight: 700 }}>Ret nedeni (yatırımcı görecek)</label>
+                <textarea
+                  rows={3}
+                  value={redNot}
+                  maxLength={300}
+                  onChange={(e) => setRedNot(e.target.value)}
+                  placeholder="Örn: IBAN bilgisi hesap sahibiyle uyuşmuyor"
+                  style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #d8d6e0", font: "inherit", resize: "vertical" }}
+                />
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {["IBAN bilgisi hesap sahibiyle uyuşmuyor", "Yetersiz bakiye", "Doğrulama tamamlanamadı"].map((hazir) => (
+                    <button key={hazir} type="button" className="ac-yukle-btn" style={{ background: "#f1f0f5", color: "#333", fontSize: 12 }} onClick={() => setRedNot(hazir)}>{hazir}</button>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="ac-cikar-btn" disabled={busy === m.id} onClick={() => calistir(m, "reject", redNot)}>Reddi gönder</button>
+                  <button className="ac-yukle-btn" style={{ background: "#f1f0f5", color: "#333" }} onClick={() => { setRedId(0); setRedNot(""); }}>Vazgeç</button>
+                </div>
+              </div>
             )}
           </article>
         ))}

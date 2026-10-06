@@ -101,8 +101,8 @@ export default function Account({
               <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--muted)" }}>
                 {item.created_at_label} &nbsp;<b style={{ color: renk }}>{item.status_label || T("Beklemede")}</b>
               </span>
-              {!!(item.status_label === "Reddedildi" && item.admin_note) && (
-                <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--red)" }}>{T("Not:")} {item.admin_note}</span>
+              {!!(item.status === "rejected" && item.admin_note) && (
+                <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--red)" }}>{T("Ret nedeni:")} {item.admin_note}</span>
               )}
               {item.status === "pending" && item.request_type === "withdraw" && (
                 <button className="btn ghost" onClick={() => onCancelMoneyRequest?.(item)}>{T("Talebi iptal et")}</button>
