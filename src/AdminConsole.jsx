@@ -2248,17 +2248,21 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
   }, [users, query, siralama]);
 
   const uygula = async () => {
-    const tutar = Number(String(form.amount).replace(/\./g, "").replace(",", "."));
-    if (!Number.isFinite(tutar) || tutar <= 0) return onNotice("Tutar hatalı", "Sıfırdan büyük bir tutar gir.");
+    // "1.250,50", "1250,50" ve "1250.50" yazımlarının üçü de doğru okunur.
+    const ham = String(form.amount).trim().replace(/\s/g, "");
+    const temiz = ham.includes(",") ? ham.replace(/\./g, "").replace(",", ".") : (/^\d{1,3}(\.\d{3})+$/.test(ham) ? ham.replace(/\./g, "") : ham);
+    const tutar = Number(temiz);
+    const ayarla = kutu.yon === "ayarla";
+    if (!Number.isFinite(tutar) || tutar < 0 || (!ayarla && tutar <= 0)) return onNotice("Tutar hatalı", ayarla ? "Geçerli bir tutar yazın." : "Sıfırdan büyük bir tutar yazın.");
     if (!(await ensure())) return;
     setBusy(true);
     try {
       await api("/api/admin/balances", {
         method: "POST",
-        body: JSON.stringify({ user_id: kutu.user.id, action: kutu.yon === "yukle" ? "add" : "subtract", amount: tutar, note: form.note.trim() }),
+        body: JSON.stringify({ user_id: kutu.user.id, action: kutu.yon === "yukle" ? "add" : kutu.yon === "ayarla" ? "set" : "subtract", amount: tutar, note: form.note.trim() }),
       });
       await refresh();
-      onNotice("Tamam", `${kutu.user.full_name}: ${money(tutar)} ${kutu.yon === "yukle" ? "yüklendi" : "çıkarıldı"}.`);
+      onNotice("Tamam", `${kutu.user.full_name}: ${money(tutar)} ${kutu.yon === "yukle" ? "yüklendi" : kutu.yon === "ayarla" ? "olarak ayarlandı" : "çıkarıldı"}.`);
       setKutu(null);
       setForm({ amount: "", note: "" });
     } catch (hata) {
@@ -2269,7 +2273,7 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
   };
 
   return (
-    <Section title="Bakiye Yönetimi" note={`${liste.length} müşteri · bakiye yükleyin ya da çıkarın`}>
+    <Section title="Bakiye Yönetimi" note={`${liste.length} müşteri · bakiye yükleyin, çıkarın ya da doğrudan ayarlayın`}>
       <AraSatiri
         value={query}
         onChange={setQuery}
@@ -2293,6 +2297,7 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
             <span className="islem">
               <button className="ac-yukle-btn" onClick={() => { setKutu({ user: u, yon: "yukle" }); setForm({ amount: "", note: "" }); }}>+ Bakiye Yükle</button>
               <button className="ac-cikar-btn" onClick={() => { setKutu({ user: u, yon: "cikar" }); setForm({ amount: "", note: "" }); }}>− Bakiye Çıkar</button>
+              <button className="ac-ghost" onClick={() => { setKutu({ user: u, yon: "ayarla" }); setForm({ amount: "", note: "" }); }}>= Bakiyeyi Ayarla</button>
             </span>
           </div>
         ))}
@@ -2307,9 +2312,9 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
       {kutu && (
         <div className="modal-layer" onClick={() => setKutu(null)}>
           <section className="trade-modal readable-modal ac-notice" onClick={(e) => e.stopPropagation()}>
-            <h2>{kutu.yon === "yukle" ? "Bakiye Yükle" : "Bakiye Çıkar"}</h2>
+            <h2>{kutu.yon === "yukle" ? "Bakiye Yükle" : kutu.yon === "ayarla" ? "Bakiyeyi Ayarla" : "Bakiye Çıkar"}</h2>
             <p className="subtle-count">{kutu.user.full_name} · {kutu.user.account_no} · mevcut {money(kutu.user.cash_balance || 0)}</p>
-            <Field label="Tutar (₺)" wide>
+            <Field label={kutu.yon === "ayarla" ? "Yeni bakiye (₺)" : "Tutar (₺)"} wide>
               <Input inputMode="decimal" value={form.amount} onChange={(e) => setForm((x) => ({ ...x, amount: e.target.value }))} placeholder="0,00" />
             </Field>
             <Field label="Gerekçe (opsiyonel)" wide>
@@ -2317,8 +2322,8 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
             </Field>
             <div className="ac-actions">
               <button className="ac-ghost" onClick={() => setKutu(null)}>Vazgeç</button>
-              <button className={kutu.yon === "yukle" ? "confirm" : "ac-danger"} disabled={busy} onClick={uygula}>
-                {busy ? "İşleniyor…" : kutu.yon === "yukle" ? "Yükle" : "Çıkar"}
+              <button className={kutu.yon === "cikar" ? "ac-danger" : "confirm"} disabled={busy} onClick={uygula}>
+                {busy ? "İşleniyor…" : kutu.yon === "yukle" ? "Yükle" : kutu.yon === "ayarla" ? "Ayarla" : "Çıkar"}
               </button>
             </div>
           </section>
