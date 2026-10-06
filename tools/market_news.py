@@ -47,6 +47,16 @@ BIST_YOGUN = [
     ("CNN Türk", "https://www.cnnturk.com/feed/rss/ekonomi/news"),
     ("Anadolu Ajansı", "https://www.aa.com.tr/tr/rss/default?cat=ekonomi"),
     ("BloombergHT", "https://www.bloomberght.com/rss"),
+    ("Bigpara", "https://bigpara.hurriyet.com.tr/rss/"),
+    ("Paraanaliz", "https://www.paraanaliz.com/feed/"),
+    ("Foreks", "https://www.foreks.com/rss"),
+    ("Finans Gündem", "https://www.finansgundem.com/rss"),
+    ("NTV", "https://www.ntv.com.tr/ekonomi.rss"),
+    ("Yeni Şafak", "https://www.yenisafak.com/rss?xml=ekonomi"),
+    ("Mynet Finans", "https://finans.mynet.com/rss/"),
+    ("Haberler.com", "https://www.haberler.com/ekonomi/rss/"),
+    ("Dünya", "https://www.dunya.com/rss?dunya"),
+    ("Anadolu Ajansı", "https://www.aa.com.tr/tr/rss/default?cat=finans"),
 ]
 
 YENILEME_SANIYE = 600
@@ -299,12 +309,25 @@ def _bing_sorgu(sorgu: str) -> tuple:
     return [], ""
 
 
+def _uye_sorgulari(sekme: int) -> list[str]:
+    """Endeks sekmeleri için: o sekmeye ait şirket kodlarıyla gruplu aramalar
+    (THYAO OR ASELS ... hisse). Sekmeye özgü şirketler haber akışını doldurur."""
+    kume = {2: set(XU030), 8: set(XU050) - set(XU030),
+            1: set(XU100) - set(XU050), 3: set(XKTUM) - set(XU100)}.get(sekme)
+    if not kume:
+        return []
+    kodlar = sorted(kume)
+    gruplar = [kodlar[i:i + 5] for i in range(0, len(kodlar), 5)]
+    return [" OR ".join(g) + " hisse" for g in gruplar[:12]]
+
+
 def _bing_oku(sekme: int, simdi: float) -> list[dict]:
     """Sekmenin konusuyla arama yapar; fotoğrafı haber sayfasından alır."""
     dugumler: list = []
-    for sorgu in BING_SORGULARI[sekme]:
-        parca, ad_alani = _bing_sorgu(sorgu)
-        dugumler.extend((dugum, ad_alani) for dugum in parca)   # kaynak adı ad alanına bağlı
+    sorgular = list(BING_SORGULARI[sekme]) + _uye_sorgulari(sekme)
+    with ThreadPoolExecutor(max_workers=6) as sorgu_havuzu:
+        for parca, ad_alani in sorgu_havuzu.map(_bing_sorgu, sorgular):
+            dugumler.extend((dugum, ad_alani) for dugum in parca)   # kaynak adı ad alanına bağlı
 
     adaylar: list[dict] = []
     gorulen: set[str] = set()
@@ -328,7 +351,7 @@ def _bing_oku(sekme: int, simdi: float) -> list[dict]:
             damga = parsedate_to_datetime(dugum.findtext("pubDate") or "").timestamp()
         except (TypeError, ValueError, OverflowError):
             damga = simdi
-        if damga < simdi - 2 * 86400:
+        if damga < simdi - 3 * 86400:
             continue  # 2 gunden eski haber havuza hic girmesin (guncellik icin)
         kaynak = (dugum.findtext("{%s}Source" % ns) or "").strip() if ns else ""
         adaylar.append({
@@ -441,7 +464,7 @@ def _besleme_oku(ad: str, adres: str, simdi: float, gorsel_sart: bool) -> list[d
             damga = parsedate_to_datetime(dugum.findtext("pubDate") or "").timestamp()
         except (TypeError, ValueError, OverflowError):
             damga = simdi
-        if damga > simdi + 3600 or damga < simdi - 2 * 86400:
+        if damga > simdi + 3600 or damga < simdi - 3 * 86400:
             continue  # 2 gunden eski haber havuza hic girmesin (guncellik icin)
         cikti.append({
             "id": baglanti,
