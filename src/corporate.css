@@ -92,3 +92,7 @@
 @media(max-width:460px){.corporate-services,.corporate-discover{grid-template-columns:1fr}.corporate-nav .brand{font-size:21px;gap:7px}.corporate-nav .brand .brand-logo-icon{width:26px;height:26px;border-radius:7px}.corporate-nav{padding:14px 12px;gap:8px}.corporate-login{white-space:nowrap;flex-shrink:0;font-size:12px;padding:9px 11px;gap:5px}.corporate-menu{flex-shrink:0}.corporate-hero h1{font-size:38px}.corporate-trust{gap:14px}.corporate-actions button{padding:12px 16px}.corporate-regulators>div{gap:22px}.corporate-regulators a{font-size:17px}.corporate-numbers strong{font-size:34px}.corporate-footer{grid-template-columns:1fr 1fr;gap:26px}.corporate-footer>div:first-child{grid-column:1/-1}}
 @media(prefers-reduced-motion:reduce){.corporate *{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
 @media(max-width:360px){.corporate-nav .brand{font-size:18px}.corporate-nav .brand .brand-logo-icon{width:22px;height:22px}.corporate-login{font-size:11px;padding:8px 9px}.corporate-login svg{display:none}}
+.corporate-wa-btn{text-decoration:none}
+.corporate-wa-float{position:fixed;right:18px;bottom:18px;z-index:30;display:inline-flex;align-items:center;gap:8px;background:#3c7771;color:#fff;border-radius:999px;padding:12px 18px;font-size:14px;font-weight:700;text-decoration:none;box-shadow:0 10px 26px rgba(22,33,31,.28)}
+.corporate-wa-float:hover{background:#2f625d}
+@media(max-width:460px){.corporate-wa-float{right:12px;bottom:12px;padding:12px 14px}.corporate-wa-float span{display:none}}

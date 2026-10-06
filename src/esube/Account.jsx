@@ -4,6 +4,7 @@ import Icon from "./icons.jsx";
 import { Divided } from "./ui.jsx";
 import { money } from "./market.js";
 import { T } from "./lang.js";
+import { SUPPORT_WHATSAPP_URL, SUPPORT_PHONE_DISPLAY } from "../support.js";
 
 const Row = ({ title, subtitle, onClick }) => (
   <button className="list-row" onClick={onClick}>
@@ -156,8 +157,8 @@ export default function Account({
           <Row title={T("Bildirim ayarları")} subtitle={T("Fiyat, haber ve işlem bildirimleri")} onClick={onOpenNotifySettings} />
           <Row
             title={T("Yardım ve destek")}
-            subtitle={T("Sıkça sorulan sorular ve iletişim")}
-            onClick={() => onNotice("Yardım ve destek", "Al/Sat ekranından bir hisse seç, fiyat ve lot bilgilerini gir ve emri incele.")}
+            subtitle={`${T("WhatsApp destek hattı")} · ${SUPPORT_PHONE_DISPLAY}`}
+            onClick={() => window.open(SUPPORT_WHATSAPP_URL, "_blank", "noopener,noreferrer")}
           />
           <Row
             title={T("Uygulama hakkında")}
