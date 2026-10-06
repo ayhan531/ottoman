@@ -274,9 +274,6 @@ NEWS_SOURCES = {
 
 
 FALLBACK_QUOTES = [
-    ("XU100", "BIST 100", 11048.12, 0.72, 0, "index"),
-    ("XU030", "BIST 30", 12204.48, 0.68, 0, "index"),
-    ("XBANK", "BIST Banka", 15782.35, 1.18, 0, "index"),
     ("USDTRY", "Amerikan Doları", 48.81, 0.0, 0, "fx"),
     ("EURTRY", "Euro", 56.07, 0.0, 0, "fx"),
     ("GBPTRY", "İngiliz Sterlini", 65.22, 0.0, 0, "fx"),
@@ -1364,6 +1361,7 @@ def market_from_cache(conn: sqlite3.Connection) -> list[dict]:
           COALESCE(p.note, '') AS participation_note
         FROM market_cache m
         LEFT JOIN participation_index p ON p.symbol = m.symbol
+        WHERE NOT (m.asset_class = 'index' AND m.updated_at <= 0)
         ORDER BY
           CASE m.symbol
             WHEN 'XU100' THEN 0 WHEN 'XU030' THEN 1 WHEN 'XBANK' THEN 2
@@ -1660,8 +1658,79 @@ def refresh_fx(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+
+INDEX_TICKERS = {
+    "BIST:XU100": ("XU100", "BIST 100"),
+    "BIST:XU050": ("XU050", "BIST 50"),
+    "BIST:XU030": ("XU030", "BIST 30"),
+    "BIST:XKTUM": ("XKTUM", "BIST Katılım Tüm"),
+    "BIST:XBANK": ("XBANK", "BIST Banka"),
+}
+INDEX_REFRESH_SECONDS = int(os.environ.get("INDEX_REFRESH_SECONDS", "20"))
+_index_refreshed_at = 0.0
+
+
+def refresh_indices(conn: sqlite3.Connection) -> None:
+    """BIST endekslerini (XU100/XU050/XU030/XKTUM/XBANK) TradingView endeks verisinden çeker.
+
+    Sadece kaynaktan gerçekten gelen değer yazılır; kaynak okunamazsa önceki
+    gerçek değer olduğu gibi kalır, sabit/uydurma değer hiçbir zaman yazılmaz.
+    Daha önce kurulumla gelmiş sabit (updated_at=0) endeks satırları silinir.
+    """
+    global _index_refreshed_at
+    conn.execute("DELETE FROM market_cache WHERE asset_class='index' AND updated_at<=0")
+    if time.time() - _index_refreshed_at < INDEX_REFRESH_SECONDS:
+        return
+    _index_refreshed_at = time.time()
+    body = json.dumps(
+        {
+            "symbols": {"tickers": list(INDEX_TICKERS), "query": {"types": []}},
+            "columns": ["name", "close", "change"],
+        }
+    ).encode("utf-8")
+    request = urllib.request.Request(
+        TRADINGVIEW_SCANNER_URL,
+        data=body,
+        headers={"Content-Type": "application/json", "User-Agent": "OttomanBackend/2.0"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=MARKET_TIMEOUT) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError):
+        return
+    ts = now()
+    rows = []
+    for item in payload.get("data", []) if isinstance(payload, dict) else []:
+        ticker = str(item.get("s", "")) if isinstance(item, dict) else ""
+        values = item.get("d") if isinstance(item, dict) else None
+        if ticker not in INDEX_TICKERS or not isinstance(values, list) or len(values) < 3:
+            continue
+        try:
+            price = float(values[1])
+            change = float(values[2])
+        except (TypeError, ValueError):
+            continue
+        if not (price > 0) or abs(change) > 25:
+            continue
+        symbol, name = INDEX_TICKERS[ticker]
+        rows.append((symbol, name, round(price, 2), round(change, 2), 0, "index", ts))
+    if rows:
+        conn.executemany(
+            """
+            INSERT INTO market_cache (symbol, name, price, change_pct, volume, asset_class, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(symbol) DO UPDATE SET
+              price=excluded.price, change_pct=excluded.change_pct, updated_at=excluded.updated_at
+            """,
+            rows,
+        )
+        conn.commit()
+
+
 def refresh_market(conn: sqlite3.Connection) -> list[dict]:
     refresh_fx(conn)
+    refresh_indices(conn)
     if not market_feed_enabled(conn):
         # Panelden "borsadan fiyat çekmeyi durdur" denmiş: son fiyatlar dondurulur.
         apply_manual_prices(conn)

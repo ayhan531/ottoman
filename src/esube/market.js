@@ -257,6 +257,7 @@ export const toInstrument = (quote) => {
     previousClose: previous,
     rawPrice: price,
     volume: Number(quote.volume || 0),
+    updatedAt: Number(quote.updated_at || 0),
     logo: quote.logo_url || "",
     assetClass: quote.asset_class || "stock",
     currency: isFx ? "TRY" : quote.asset_class === "index" ? "" : "TRY",
@@ -400,9 +401,16 @@ export function listFor(market, instruments) {
 }
 
 /** Sekmenin endeksi (Piyasa Durumu kartı). */
+const INDEX_CODE = { [BIST30]: "XU030", [BIST50]: "XU050", [PARTICIPATION]: "XKTUM" };
+const INDEX_MAX_AGE = 4 * 24 * 60 * 60; // saniye: hafta sonu kapanış değeri geçerli, daha eskisi gösterilmez
+
 export const indexFor = (market, instruments) => {
-  const code = market === BIST30 ? "XU030" : "XU100";
-  return instruments.find((item) => item.code === code) || null;
+  const code = INDEX_CODE[market] || "XU100";
+  const found = instruments.find((item) => item.code === code && item.assetClass === "index");
+  // Kaynaktan gerçekten gelmemiş / bayat endeks değeri gösterilmez; başka endeksin değeri de yerine konmaz.
+  if (!found || !(found.price > 0) || !(found.updatedAt > 0)) return null;
+  if (Date.now() / 1000 - found.updatedAt > INDEX_MAX_AGE) return null;
+  return found;
 };
 
 /** Yükselen / düşen payı. */
