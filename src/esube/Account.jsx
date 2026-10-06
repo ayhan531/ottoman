@@ -21,11 +21,13 @@ export default function Account({
   const [hidden, setHidden] = useState(false);
   const bakiyeGecmisiRef = useRef(null);
   const cash = Number(account?.cash_balance || 0);
+  const pending = Number(account?.pending_balance || 0);
   const legacyBlocked = Number(account?.blocked_balance || 0);
   const pendingWithdrawals = Number(account?.pending_withdrawals || 0);
   const blocked = Number(account?.orders_reserved || 0);
-  const available = Math.max(0, cash - legacyBlocked - pendingWithdrawals);
-  const total = cash + stockValue;
+  // Hisse alımında bakiye her zaman kullanılabilir:
+  const available = Math.max(0, cash + pending - legacyBlocked - pendingWithdrawals);
+  const total = cash + pending + stockValue;
   const mask = (text) => (hidden ? "••••••" : text);
 
   return (
@@ -54,6 +56,12 @@ export default function Account({
               <span className="lbl">{T("Kullanılabilir bakiye")}</span>
               <span className="val b p">{mask(money(available))}</span>
             </div>
+            {pending > 0 && (
+              <div className="amount-row">
+                <span className="lbl"><Icon name="clock" size={15} color="var(--muted)" />{T("T+2 Takas bakiyesi")}</span>
+                <span className="val b">{mask(money(pending))}</span>
+              </div>
+            )}
             <div className="amount-row">
               <span className="lbl"><Icon name="lock" size={15} color="var(--muted)" />{T("Emirlerdeki bakiye")}</span>
               <span className="val b o">{mask(money(blocked))}</span>

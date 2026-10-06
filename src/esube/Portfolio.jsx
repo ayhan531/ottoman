@@ -30,12 +30,13 @@ const Deck = ({ children }) => (
 
 /* ---------- özet kartı ---------- */
 
-function SummaryCard({ total, profit, ratio, available, t2, stockValue, cost, cash, hidden, onToggleHidden }) {
-  const basis = (profit >= 0 ? cost : stockValue) + Math.abs(profit) + cash;
+function SummaryCard({ total, profit, ratio, available, t2, stockValue, cost, cash, pending = 0, hidden, onToggleHidden }) {
+  const totalCash = cash + pending;
+  const basis = (profit >= 0 ? cost : stockValue) + Math.abs(profit) + totalCash;
   const share = (value) => (basis === 0 ? 0 : value / basis);
   const stockShare = share(profit >= 0 ? cost : stockValue);
   const gainShare = share(Math.abs(profit));
-  const cashShare = share(cash);
+  const cashShare = share(totalCash);
   const gainTone = profit >= 0 ? MINT : ROSE;
   const mask = (text) => (hidden ? DOTS : text);
 
@@ -386,13 +387,15 @@ export default function Portfolio({
   const pendingWithdrawals = Number(account?.pending_withdrawals || 0);
   const blocked = Number(account?.orders_reserved || 0);
   const pending = Number(account?.pending_balance || 0);
-  const available = Math.max(0, cash - legacyBlocked - pendingWithdrawals);
-  const t2 = cash + pending;
+  // Alım işlemlerinde T+2 bakiyesi kullanılabilir; bakiye işlem için her zaman aktiftir:
+  const available = Math.max(0, cash + pending - legacyBlocked - pendingWithdrawals);
+  const t2 = pending;
   const stockValue = holdings.reduce((sum, item) => sum + item.value, 0);
   const cost = holdings.reduce((sum, item) => sum + item.cost, 0);
   const profit = stockValue - cost;
   const ratio = cost === 0 ? 0 : (profit / cost) * 100;
-  const total = stockValue + cash;
+  // Toplam varlık: Hisse Değeri + Serbest Nakit + T+2 Takastaki Bakiye (para kullanıcıda tam görünür):
+  const total = stockValue + cash + pending;
 
   const logoOf = useMemo(() => {
     const map = new Map(instruments.map((item) => [item.code, item.logo]));
@@ -451,7 +454,7 @@ export default function Portfolio({
             <Deck>
               <SummaryCard
                 total={total} profit={profit} ratio={ratio} available={available} t2={t2}
-                stockValue={stockValue} cost={cost} cash={cash}
+                stockValue={stockValue} cost={cost} cash={cash} pending={pending}
                 hidden={hidden} onToggleHidden={() => setHidden(!hidden)}
               />
             </Deck>
