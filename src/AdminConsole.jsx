@@ -1715,7 +1715,7 @@ function T2Panel({ ensure, onNotice, settings, refresh, users = [] }) {
 
       <div className="ac-list">
         <div className="ac-line">
-          <span><strong>T+2 sistemi {t2Acik ? "açık" : "kapalı"}</strong><small>{t2Acik ? "Satış tutarı iki iş günü bekler" : "Satış tutarı anında nakde geçer"}</small></span>
+          <span><strong>T+2 sistemi {t2Acik ? "açık (Süresiz / Onaylı)" : "kapalı"}</strong><small>{t2Acik ? "Satış tutarı süresiz T+2'de bekler (Manuel 'Çöz' onayıyla nakde geçer)" : "Satış tutarı anında nakde geçer"}</small></span>
           <b className="ac-line-actions">
             <button className="ac-ghost" disabled={toplu || !bekleyenler.length} onClick={hepsiniCoz}>{toplu ? "Çözülüyor…" : "Hepsini çöz"}</button>
             <Anahtar acik={t2Acik} onChange={t2Degistir} />

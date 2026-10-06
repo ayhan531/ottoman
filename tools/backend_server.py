@@ -827,6 +827,7 @@ def migrate_db(conn: sqlite3.Connection) -> None:
     conn.execute("UPDATE system_bank_accounts SET is_active=0 WHERE REPLACE(iban, ' ', '') LIKE 'TR00%'")
     conn.execute("UPDATE orders SET gross_total=total WHERE gross_total<=0")
     conn.execute("UPDATE sessions SET last_seen_at=created_at WHERE last_seen_at<=0")
+    conn.execute("INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES ('t2_enabled', '1', ?) ON CONFLICT(setting_key) DO UPDATE SET setting_value='1', updated_at=excluded.updated_at", (now(),))
     create_compatibility_views(conn)
 
 
@@ -944,7 +945,7 @@ def seed_system_settings(conn: sqlite3.Connection) -> None:
         "market_feed_enabled": "1",
         "maintenance_mode": "0",
         "price_simulation": "0",
-        "t2_enabled": "0",
+        "t2_enabled": "1",
         "commission_rate_bps": os.environ.get("COMMISSION_RATE_BPS", "0"),
         "minimum_commission": os.environ.get("MINIMUM_COMMISSION", "0"),
         "official_company_name": os.environ.get("OFFICIAL_COMPANY_NAME", ""),
@@ -5363,7 +5364,7 @@ def release_order_reservation(conn: sqlite3.Connection, order_id: int, amount: f
         if remaining <= 0:
             break
         restore = min(float(item["amount"]), remaining)
-        if item["settlement_status"] == "pending" and int(item["settlement_date"]) > now():
+        if item["settlement_status"] == "pending":
             conn.execute("UPDATE t2_settlements SET remaining_amount=remaining_amount+? WHERE id=?", (restore, item["settlement_id"]))
             pending_future = round(pending_future + restore, 2)
         else:
@@ -5398,17 +5399,14 @@ def credit_sale_proceeds(
     note: str,
 ) -> int:
     account = account_for(conn, user_id)
-    if t2_is_enabled(conn):
-        before = float(account["pending_balance"])
-        after = round(before + total, 2)
-        conn.execute("UPDATE accounts SET pending_balance=? WHERE user_id=?", (after, user_id))
-        tx_id = write_transaction(conn, user_id, "trade_sell", total, before, after, order_id=order_id, code=symbol, name=name, quantity=quantity, price=price, note=note)
-        create_t2_settlement(conn, user_id, order_id, tx_id, symbol, name, total, quantity, price)
-        return tx_id
-    before = float(account["cash_balance"])
+    # Satış hasılatının tamamı süresiz T+2 (pending_balance) bakiyesine aktarılır.
+    # Yönetici admin panelinden manuel onay verene kadar çekilebilir konuma geçmez.
+    before = float(account["pending_balance"])
     after = round(before + total, 2)
-    conn.execute("UPDATE accounts SET cash_balance=? WHERE user_id=?", (after, user_id))
-    return write_transaction(conn, user_id, "trade_sell", total, before, after, order_id=order_id, code=symbol, name=name, quantity=quantity, price=price, note=f"{note} · T+2 kapalı")
+    conn.execute("UPDATE accounts SET pending_balance=? WHERE user_id=?", (after, user_id))
+    tx_id = write_transaction(conn, user_id, "trade_sell", total, before, after, order_id=order_id, code=symbol, name=name, quantity=quantity, price=price, note=note)
+    create_t2_settlement(conn, user_id, order_id, tx_id, symbol, name, total, quantity, price)
+    return tx_id
 
 
 def position_avg_price(conn: sqlite3.Connection, user_id: int, symbol: str) -> float:
@@ -5460,14 +5458,10 @@ def document_rows(conn: sqlite3.Connection, where: str = "", params: tuple = ())
 
 
 def settle_due_t2(conn: sqlite3.Connection) -> None:
-    if t2_is_enabled(conn):
-        rows = conn.execute("SELECT id FROM t2_settlements WHERE status='pending' AND settlement_date<=?", (now(),)).fetchall()
-    else:
-        rows = conn.execute("SELECT id FROM t2_settlements WHERE status='pending'").fetchall()
-    for row in rows:
-        settle_one_t2(conn, int(row["id"]))
-    if rows:
-        conn.commit()
+    # Süresiz T+2: Otomatik takas / çözüm tamamen devre dışıdır.
+    # Kullanıcı hisse sattığında tutar süresiz olarak pending_balance'ta kalır.
+    # Yalnızca admin panelinden yönetici manuel onay ("Şimdi Çöz") verdiğinde çekilebilir nakde geçer.
+    pass
 
 
 def settle_one_t2(conn: sqlite3.Connection, settlement_id: int) -> None:
