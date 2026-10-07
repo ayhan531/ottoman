@@ -1,7 +1,7 @@
 // Hesap — MainPage.Home.cs içindeki BuildAccount() birebir karşılığı.
 import React, { useState, useRef } from "react";
 import Icon from "./icons.jsx";
-import { Divided } from "./ui.jsx";
+import { Divided, Sheet } from "./ui.jsx";
 import { money } from "./market.js";
 import { T } from "./lang.js";
 import { SUPPORT_WHATSAPP_URL, SUPPORT_PHONE_DISPLAY } from "../support.js";
@@ -19,6 +19,7 @@ export default function Account({
   onOpenKyc, kycApproved, moneyRequests, onCancelMoneyRequest,
 }) {
   const [hidden, setHidden] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
   const bakiyeGecmisiRef = useRef(null);
   const cash = Number(account?.cash_balance || 0);
   const pending = Number(account?.pending_balance || 0);
@@ -165,8 +166,8 @@ export default function Account({
           <Row title={T("Bildirim ayarları")} subtitle={T("Fiyat, haber ve işlem bildirimleri")} onClick={onOpenNotifySettings} />
           <Row
             title={T("Yardım ve destek")}
-            subtitle={`${T("WhatsApp destek hattı")} · ${SUPPORT_PHONE_DISPLAY}`}
-            onClick={() => window.open(SUPPORT_WHATSAPP_URL, "_blank", "noopener,noreferrer")}
+            subtitle={T("Müşteri hizmetleri ile iletişime geçin")}
+            onClick={() => setSupportOpen(true)}
           />
           <Row
             title={T("Uygulama hakkında")}
@@ -175,6 +176,23 @@ export default function Account({
           />
         </Divided>
       </div>
+
+      {supportOpen && (
+        <Sheet title={T("Yardım ve destek")} onClose={() => setSupportOpen(false)}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <span style={{ fontSize: "calc(13.5px * var(--s))", color: "var(--muted)", lineHeight: 1.5 }}>
+              {T("Müşteri hizmetleri ekibimize WhatsApp üzerinden yazabilirsiniz.")}
+            </span>
+            <div className="card outline" style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 4 }}>
+              <span style={{ fontSize: "calc(12px * var(--s))", color: "var(--muted)" }}>{T("WhatsApp destek hattı")}</span>
+              <strong style={{ fontSize: "calc(19px * var(--s))", letterSpacing: ".2px" }}>{SUPPORT_PHONE_DISPLAY}</strong>
+            </div>
+            <button className="btn" onClick={() => window.open(SUPPORT_WHATSAPP_URL, "_blank", "noopener,noreferrer")}>
+              {T("WhatsApp ile yaz")}
+            </button>
+          </div>
+        </Sheet>
+      )}
 
       <button
         className="card outline list-card"
