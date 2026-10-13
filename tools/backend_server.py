@@ -4618,16 +4618,19 @@ class AppHandler(BaseHTTPRequestHandler):
         is_test_user = 1 if payload.get("is_test_user") else 0
         if status not in {"pending", "under_review", "awaiting_back", "approved", "rejected", "suspended"}:
             raise HttpError(400, "Durum hatalı")
-        if not full_name or not phone or not email:
-            raise HttpError(400, "Kullanıcı bilgileri eksik")
-        if tc_raw and not identity_number_is_real(tc_raw):
-            raise HttpError(400, "Geçersiz T.C. kimlik numarası")
         with connect_db() as conn:
             admin = self.require_admin(conn)
             self.require_admin_step_up(conn)
             target = conn.execute("SELECT * FROM users WHERE id=? AND role='user'", (user_id,)).fetchone()
             if not target:
                 raise HttpError(404, "Kullanıcı bulunamadı")
+            # Hesap konumu (askıda, beklemede, onaylı...) bilgi eksikliği yüzünden engellenmez:
+            # boş bırakılan alanlar kayıtlı değeriyle korunur. T.C. yalnızca değiştiriliyorsa doğrulanır.
+            full_name = full_name or str(target["full_name"] or "")
+            phone = phone or str(target["phone"] or "")
+            email = email or str(target["email"] or "")
+            if tc_raw and tc_raw != target["tc"] and not identity_number_is_real(tc_raw):
+                raise HttpError(400, "Geçersiz T.C. kimlik numarası")
             tc = tc_raw or target["tc"]
             if tc != target["tc"] and conn.execute("SELECT id FROM users WHERE tc=? AND id!=?", (tc, user_id)).fetchone():
                 raise HttpError(409, "Bu T.C. kimlik numarası başka bir kullanıcıda kayıtlı")
