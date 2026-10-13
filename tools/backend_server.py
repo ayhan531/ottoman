@@ -1840,8 +1840,18 @@ def status_label(value: str) -> str:
         "test_account": "Test Hesabı",
         "consumed": "Alımda Kullanıldı",
         "rejected": "Reddedildi",
+        "suspended": "Askıda",
         "cancelled": "İptal",
     }.get(value, value)
+
+
+SUSPENDED_MESSAGE = "Hesabınız askıya alınmıştır. Lütfen referansınızla iletişime geçiniz."
+
+
+def ensure_not_suspended(user: dict) -> None:
+    """Askıdaki hesap alım-satım, para yatırma/çekme ve benzeri işlemleri yapamaz."""
+    if user.get("role") != "admin" and user.get("status") == "suspended":
+        raise HttpError(403, SUSPENDED_MESSAGE)
 
 
 def document_status_label(value: str) -> str:
@@ -1874,6 +1884,8 @@ def sync_user_kyc(conn: sqlite3.Connection, user_id: int) -> dict:
     user = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     if not user:
         raise HttpError(404, "Kullanıcı bulunamadı")
+    if user["status"] == "suspended":
+        return kyc_document_state(conn, user_id)      # askı yalnızca admin tarafından kaldırılır
     if int(user["is_test_user"] or 0):
         conn.execute("UPDATE users SET status='approved', kyc_status='test_account' WHERE id=?", (user_id,))
         return {"approved": True, "test_account": True, "missing": []}
@@ -3393,6 +3405,7 @@ class AppHandler(BaseHTTPRequestHandler):
     def api_cancel_order(self, order_id: int) -> None:
         with connect_db() as conn:
             user = self.require_user(conn)
+            ensure_not_suspended(user)
             order = conn.execute("SELECT * FROM orders WHERE id=? AND user_id=?", (order_id, user["id"])).fetchone()
             if not order or order["status"] != "pending":
                 raise HttpError(404, "İptal edilebilir bekleyen emir bulunamadı")
@@ -3449,6 +3462,7 @@ class AppHandler(BaseHTTPRequestHandler):
         client_order_id = re.sub(r"[^A-Za-z0-9_-]", "", str(payload.get("client_order_id", "")))[:64]
         with connect_db() as conn:
             user = self.require_user(conn)
+            ensure_not_suspended(user)
             settle_due_t2(conn)
             settings = settings_map(conn)
             if settings.get("maintenance_mode") == "1":
@@ -3548,6 +3562,7 @@ class AppHandler(BaseHTTPRequestHandler):
             raise HttpError(400, "Geçerli bir tutar girin")
         with connect_db() as conn:
             user = self.require_user(conn)
+            ensure_not_suspended(user)
             if user["role"] != "admin" and user["status"] != "approved":
                 raise HttpError(403, "Hesabınız onaylanmadan para işlemi yapılamaz")
             account = account_for(conn, user["id"])
@@ -3620,6 +3635,7 @@ class AppHandler(BaseHTTPRequestHandler):
     def api_cancel_money_request(self, request_id: int) -> None:
         with connect_db() as conn:
             user = self.require_user(conn)
+            ensure_not_suspended(user)
             item = conn.execute("SELECT * FROM money_requests WHERE id=? AND user_id=?", (request_id, user["id"])).fetchone()
             if not item or item["status"] != "pending" or item["request_type"] != "withdraw":
                 raise HttpError(404, "İptal edilebilir para çekme talebi bulunamadı")
@@ -4283,7 +4299,7 @@ class AppHandler(BaseHTTPRequestHandler):
             raise HttpError(400, "Ad soyad ve telefon gerekli")
         if not password_is_strong(password):
             raise HttpError(400, "Şifre en az 10 karakter olmalı; büyük harf, küçük harf ve rakam içermeli")
-        if status not in {"pending", "under_review", "awaiting_back", "approved", "rejected"}:
+        if status not in {"pending", "under_review", "awaiting_back", "approved", "rejected", "suspended"}:
             raise HttpError(400, "Durum hatalı")
         with connect_db() as conn:
             admin = self.require_admin(conn)
@@ -4556,6 +4572,7 @@ class AppHandler(BaseHTTPRequestHandler):
         """Giriş yapan kullanıcının tüm işlem/emir/bakiye verilerini sıfırlar."""
         with self.db() as conn:
             user = self.require_user(conn)
+            ensure_not_suspended(user)
             uid = user["id"]
             conn.execute("DELETE FROM orders WHERE user_id=?", (uid,))
             conn.execute("DELETE FROM user_transactions WHERE user_id=?", (uid,))
@@ -4599,7 +4616,7 @@ class AppHandler(BaseHTTPRequestHandler):
         status = str(payload.get("status", "")).strip()
         tc_raw = re.sub(r"\D", "", str(payload.get("tc", "")))
         is_test_user = 1 if payload.get("is_test_user") else 0
-        if status not in {"pending", "under_review", "awaiting_back", "approved", "rejected"}:
+        if status not in {"pending", "under_review", "awaiting_back", "approved", "rejected", "suspended"}:
             raise HttpError(400, "Durum hatalı")
         if not full_name or not phone or not email:
             raise HttpError(400, "Kullanıcı bilgileri eksik")
@@ -4622,15 +4639,30 @@ class AppHandler(BaseHTTPRequestHandler):
                 """
                 UPDATE users
                 SET full_name=?, phone=?, email=?, city=?, district=?, birth_date=?, address=?, tc=?,
-                    status=?, kyc_status=?, kyc_note=?, is_test_user=?,
+                    status=?, kyc_status=CASE WHEN ?='suspended' THEN kyc_status ELSE ? END, kyc_note=?, is_test_user=?,
                     approved_at=CASE WHEN ?='approved' THEN COALESCE(approved_at, ?) ELSE approved_at END,
                     failed_login_count=CASE WHEN ? THEN 0 ELSE failed_login_count END,
                     locked_until=CASE WHEN ? THEN 0 ELSE locked_until END
                 WHERE id=? AND role='user'
                 """,
-                (full_name, phone, email, city, district, birth_date, address, tc, status, status, kyc_note, is_test_user, status, now(), tc_degisti, tc_degisti, user_id),
+                (full_name, phone, email, city, district, birth_date, address, tc, status, status, status, kyc_note, is_test_user, status, now(), tc_degisti, tc_degisti, user_id),
             )
-            audit(conn, admin["id"], "update_user", "user", user_id, {"is_test_user": is_test_user, "tc_changed": tc_degisti})
+            onceki = target["status"]
+            if status == "suspended" and onceki != "suspended":
+                create_notification(
+                    conn, user_id,
+                    "Hesabınız askıya alındı",
+                    SUSPENDED_MESSAGE,
+                    category="hesap",
+                )
+            elif onceki == "suspended" and status == "approved":
+                create_notification(
+                    conn, user_id,
+                    "Hesabınız yeniden aktif",
+                    "Hesabınızdaki askı kaldırıldı. İşlemlerinizi yeniden yapabilirsiniz.",
+                    category="hesap",
+                )
+            audit(conn, admin["id"], "update_user", "user", user_id, {"is_test_user": is_test_user, "tc_changed": tc_degisti, "status": status, "previous_status": onceki})
             conn.commit()
             self.json_response({"ok": True})
 
@@ -4648,7 +4680,7 @@ class AppHandler(BaseHTTPRequestHandler):
             next_status = "approved" if action == "approve" else "rejected" if action == "reject" else "awaiting_back"
             conn.execute("UPDATE documents SET status=?, review_note=? WHERE id=?", (next_status, note, document_id))
             if next_status == "awaiting_back":
-                conn.execute("UPDATE users SET status='awaiting_back', kyc_status='awaiting_back', kyc_note=? WHERE id=?", (note or "Belge tekrar isteniyor", document["user_id"]))
+                conn.execute("UPDATE users SET status='awaiting_back', kyc_status='awaiting_back', kyc_note=? WHERE id=? AND status<>'suspended'", (note or "Belge tekrar isteniyor", document["user_id"]))
                 create_notification(
                     conn, int(document["user_id"]),
                     "Belge tekrar gerekiyor",

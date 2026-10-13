@@ -78,7 +78,7 @@ const Info = ({ label, value }) => (
 
 export function TradePanel({
   stock, buying, sheet, searchable, instruments, cash, availableLots, watchlist,
-  onToggleWatch, onPickStock, onClose, onSubmitted, onNotice, tradeKind, setTradeKind, kycApproved,
+  onToggleWatch, onPickStock, onClose, onSubmitted, onNotice, tradeKind, setTradeKind, kycApproved, suspended,
 }) {
   const isFund = stock.kind === "fund";
   const isIpo = stock.kind === "ipo";
@@ -86,7 +86,10 @@ export function TradePanel({
   const referralOnly = isFund || isIpo || isCurrency;
   const unit = isFund ? "pay" : "lot";
   const closed = !isFund && !isIpo && !isMarketOpen();
-  const restricted = !isFund && !isIpo && kycApproved === false;
+  const restricted = !isFund && !isIpo && (suspended === true || kycApproved === false);
+  const restrictedText = suspended
+    ? T("Hesabınız askıya alınmıştır. Alım satım işlemleri durdurulmuştur. Lütfen referansınızla iletişime geçiniz.")
+    : T("Hesabınız kısıtlı: kimlik doğrulamayı tamamlamadan emir veremezsiniz. Hesap > Kimlik Doğrulama üzerinden tamamlayabilirsiniz.");
 
   const [buy, setBuy] = useState(isIpo ? true : buying);
   const [market, setMarket] = useState(!closed);
@@ -165,7 +168,7 @@ export function TradePanel({
       );
       return;
     }
-    if (restricted) { setError(T("Hesabınız kısıtlı: kimlik doğrulamayı tamamlamadan emir veremezsiniz.")); return; }
+    if (restricted) { setError(suspended ? T("Hesabınız askıya alınmıştır. Lütfen referansınızla iletişime geçiniz.") : T("Hesabınız kısıtlı: kimlik doğrulamayı tamamlamadan emir veremezsiniz.")); return; }
     if (buy && total + Math.round(total * 0.001 * 100) / 100 > cash) { setError(T("Yetersiz bakiye.")); return; }
     if (!buy && quantity > availableLots) { setError(T("Satılabilir lot adedini aşıyorsun.")); return; }
     onSubmitted({ stock, buy, quantity, price, market: market && !closed, duration: market ? "Günlük" : "İptale kadar" });
@@ -277,7 +280,7 @@ export function TradePanel({
               {T(kindNames[3])}
             </button>
           </div>
-          {restricted && <div className="closed-note">{T("Hesabınız kısıtlı: kimlik doğrulamayı tamamlamadan emir veremezsiniz. Hesap > Kimlik Doğrulama üzerinden tamamlayabilirsiniz.")}</div>}
+          {restricted && <div className="closed-note">{restrictedText}</div>}
           {!restricted && closed && <div className="closed-note">{T("Piyasa kapalı (10:00-18:00). Sadece limit emir verebilirsin.")}</div>}
           <div className="seg2">
             <button className={buy ? "on-buy" : ""} onClick={() => setBuy(true)}>{T("Alış")}</button>

@@ -16,7 +16,7 @@ const Row = ({ title, subtitle, onClick }) => (
 export default function Account({
   brandBar, me, account, stockValue, monogram, onOpenPersonal, onOpenSecurity, onOpenContracts,
   onOpenNotifySettings, onTransfer, onHistory, onNotice, onPortfolio, onBankAccounts, version, onLogout,
-  onOpenKyc, kycApproved, moneyRequests, onCancelMoneyRequest,
+  onOpenKyc, kycApproved, suspended, moneyRequests, onCancelMoneyRequest,
 }) {
   const [hidden, setHidden] = useState(false);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -128,7 +128,13 @@ export default function Account({
         )}
       </div>
 
-      {!kycApproved && (
+      {suspended && (
+        <div className="card outline kyc-banner" role="status">
+          <Icon name="lock" size={18} color="var(--red, #e5484d)" />
+          <span>{T("Hesabınız askıya alınmıştır. Alım satım, para yatırma ve çekme işlemleri durdurulmuştur. Lütfen referansınızla iletişime geçiniz.")}</span>
+        </div>
+      )}
+      {!kycApproved && !suspended && (
         <div className="card outline kyc-banner" onClick={onOpenKyc} role="button" tabIndex={0}>
           {me?.kyc_status === "under_review" ? (
             <>
@@ -152,7 +158,7 @@ export default function Account({
           <Row title={T("Güvenlik")} subtitle={T("Şifre, iki adımlı doğrulama ve güvenlik ayarları")} onClick={onOpenSecurity} />
           <Row
             title={T("Kimlik Doğrulama")}
-            subtitle={kycApproved ? T("Onaylandı") : me?.kyc_status === "under_review" ? T("İncelemede") : T("Hesabını onaylatmak için belgelerini yükle")}
+            subtitle={suspended ? T("Hesabınız askıdadır") : kycApproved ? T("Onaylandı") : me?.kyc_status === "under_review" ? T("İncelemede") : T("Hesabını onaylatmak için belgelerini yükle")}
             onClick={onOpenKyc}
           />
           <Row title={T("Banka hesaplarım")} subtitle={T("Para yatırma ve çekme işlemleri için hesaplarınız")} onClick={onBankAccounts} />

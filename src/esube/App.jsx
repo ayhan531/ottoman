@@ -335,7 +335,8 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
   const bankAccounts = portfolio.data?.system_bank_accounts || [];
   const kycDocuments = portfolio.data?.documents || [];
   const kycApproved = Boolean(me?.is_test_user) || me?.status === "approved";
-  const kycUnderReview = !kycApproved && me?.kyc_status === "under_review";
+  const suspended = me?.status === "suspended";
+  const kycUnderReview = !kycApproved && !suspended && me?.kyc_status === "under_review";
   const stockValue = holdings.reduce((sum, item) => sum + item.value, 0);
   const cash = Number(account?.cash_balance || 0);
   const pending = Number(account?.pending_balance || 0);
@@ -427,6 +428,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             onOpenNotifySettings={() => go(13, 4)}
             onOpenKyc={() => setOverlay({ kind: "kyc" })}
             kycApproved={kycApproved}
+            suspended={suspended}
             moneyRequests={moneyRequests.items || []}
             onCancelMoneyRequest={async (item) => {
               try {
@@ -436,12 +438,14 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
               } catch (error) { showNotice(T("Talep iptali"), error.message); }
             }}
             onTransfer={(deposit) => {
+              if (suspended) { showNotice(T("Hesabınız Askıya Alınmıştır"), T("Alım satım, para yatırma ve çekme işlemleri durdurulmuştur. Lütfen referansınızla iletişime geçiniz.")); return; }
               if (!kycApproved) { showNotice(T("Kimlik Doğrulaması Olmadan İşlem Yapılamaz"), T("Para yatırma ve çekme işlemleri için önce Hesap İşlemleri altındaki Kimlik Doğrulama adımını tamamla.")); return; }
               setOverlay({ kind: "transfer", deposit });
             }}
             onHistory={() => { setPortfolioTab(2); go(3); }}
             onPortfolio={() => go(3)}
             onBankAccounts={() => {
+              if (suspended) { showNotice(T("Hesabınız Askıya Alınmıştır"), T("Alım satım, para yatırma ve çekme işlemleri durdurulmuştur. Lütfen referansınızla iletişime geçiniz.")); return; }
               if (!kycApproved) { showNotice(T("Kimlik Doğrulaması Olmadan İşlem Yapılamaz"), T("Banka hesaplarını yönetmek için önce Hesap İşlemleri altındaki Kimlik Doğrulama adımını tamamla.")); return; }
               setOverlay({ kind: "banks" });
             }}
@@ -543,6 +547,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
             state={market.state}
             watchlist={watchlist}
             kycApproved={kycApproved}
+            suspended={suspended}
             kycUnderReview={kycUnderReview}
             onOpenKyc={() => setOverlay({ kind: "kyc" })}
             openTrade={(item) => {
@@ -727,6 +732,7 @@ export default function App({ me, onLogout, onAdmin, onExit, refreshMe }) {
               tradeKind={tradeKind}
               setTradeKind={setTradeKind}
               kycApproved={kycApproved}
+              suspended={suspended}
               onToggleWatch={() => toggleWatch(tradeStock.code)}
               onPickStock={(item) => openTrade(item, { sheet: overlay.sheet, searchable: overlay.searchable, buying: overlay.buying })}
               onClose={() => setOverlay(null)}

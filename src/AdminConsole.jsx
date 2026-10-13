@@ -25,6 +25,7 @@ const STATUS = [
   ["awaiting_back", "Belge bekleniyor"],
   ["approved", "Onaylı"],
   ["rejected", "Reddedildi"],
+  ["suspended", "Askıda"],
 ];
 
 /* ---------- yönetici kilidi ---------- */
@@ -224,7 +225,7 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
             <Field label="İlçe"><Input value={form.district} onChange={(e) => setForm({ ...form, district: e.target.value })} /></Field>
             <Field label="Adres" wide><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></Field>
             <Field label="Hesap durumu"><Select value={form.status} onChange={(v) => setForm({ ...form, status: v })} options={STATUS} /></Field>
-            <Field label="Uyum notu" wide><Input value={form.kyc_note} onChange={(e) => setForm({ ...form, kyc_note: e.target.value })} /></Field>
+            <Field label="Uyum notu (opsiyonel)" wide><Input value={form.kyc_note} onChange={(e) => setForm({ ...form, kyc_note: e.target.value })} /></Field>
           </div>
           <button className="confirm" disabled={busy === "profil"} onClick={kaydet}>{busy === "profil" ? "Kaydediliyor…" : "Bilgileri kaydet"}</button>
         </Section>
@@ -970,7 +971,7 @@ function YeniMusteri({ onNotice, ensure, refresh, onKapat }) {
 
 /* ---------- 3. Kullanıcılar ---------- */
 
-const DURUM_SINIFI = { approved: "onay", pending: "bekle", under_review: "incele", awaiting_back: "bekle", rejected: "ret" };
+const DURUM_SINIFI = { approved: "onay", pending: "bekle", under_review: "incele", awaiting_back: "bekle", rejected: "ret", suspended: "ret" };
 
 function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
   const [query, setQuery] = useState("");
@@ -1080,7 +1081,7 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
       >
         <AraSatiri value={query} onChange={setQuery} placeholder="Ad, soyad, hesap numarası veya T.C. ile ara…" />
         <div className="ac-sekme">
-          {[["hepsi", "Tümü"], ["approved", "Onaylandı"], ["pending", "Beklemede"], ["under_review", "İnceleniyor"], ["rejected", "Reddedildi"], ["supheli", "Şüpheli T.C."]].map(([k, ad]) => (
+          {[["hepsi", "Tümü"], ["approved", "Onaylandı"], ["pending", "Beklemede"], ["under_review", "İnceleniyor"], ["rejected", "Reddedildi"], ["suspended", "Askıda"], ["supheli", "Şüpheli T.C."]].map(([k, ad]) => (
             <button key={k} className={durum === k ? "on" : ""} onClick={() => setDurum(k)}>{ad} ({say(k)})</button>
           ))}
         </div>

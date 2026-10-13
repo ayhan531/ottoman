@@ -146,7 +146,7 @@ const HOME_MARKETS = MARKET_TAB_ORDER.filter((value) => value !== DIVIDEND).map(
 
 export default function Home({
   brandBar, marketTab, setMarketTab, instruments, state, watchlist, openTrade, onNotice, onAllStocks,
-  kycApproved, kycUnderReview, onOpenKyc,
+  kycApproved, suspended, kycUnderReview, onOpenKyc,
 }) {
   const [query, setQuery] = useState("");
   const list = useMemo(() => listFor(marketTab, instruments), [marketTab, instruments]);
@@ -249,7 +249,13 @@ export default function Home({
   return (
     <div className="page gap-14">
       {brandBar}
-      {!kycApproved && (
+      {suspended && (
+        <div className="card outline kyc-banner" role="status">
+          <Icon name="lock" size={18} color="var(--red, #e5484d)" />
+          <span>{T("Hesabınız askıya alınmıştır. Alım satım, para yatırma ve çekme işlemleri durdurulmuştur. Lütfen referansınızla iletişime geçiniz.")}</span>
+        </div>
+      )}
+      {!kycApproved && !suspended && (
         <div className="card outline kyc-banner" onClick={onOpenKyc} role="button" tabIndex={0}>
           {kycUnderReview ? (
             <>
