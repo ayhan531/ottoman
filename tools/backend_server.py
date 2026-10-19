@@ -3683,7 +3683,7 @@ class AppHandler(BaseHTTPRequestHandler):
                   (SELECT COUNT(*) FROM user_transactions t WHERE t.user_id=u.id) AS transaction_count
                 FROM users u
                 LEFT JOIN accounts a ON a.user_id=u.id
-                WHERE u.role='user'
+                WHERE u.role IN ('user','admin')
                 ORDER BY u.created_at DESC
                 """
             ).fetchall()
@@ -3838,7 +3838,7 @@ class AppHandler(BaseHTTPRequestHandler):
                   (SELECT COALESCE(SUM(m2.amount), 0) FROM money_requests m2 WHERE m2.user_id=u.id AND m2.request_type='withdraw' AND m2.status='pending') AS pending_withdrawals
                 FROM users u
                 LEFT JOIN accounts a ON a.user_id=u.id
-                WHERE u.role='user'
+                WHERE u.role IN ('user','admin')
                 ORDER BY u.created_at DESC
                 """
             ).fetchall()
@@ -4331,7 +4331,7 @@ class AppHandler(BaseHTTPRequestHandler):
         with connect_db() as conn:
             admin = self.require_admin(conn)
             self.require_admin_step_up(conn)
-            if not conn.execute("SELECT 1 FROM users WHERE id=? AND role='user'", (user_id,)).fetchone():
+            if not conn.execute("SELECT 1 FROM users WHERE id=? AND role IN ('user','admin')", (user_id,)).fetchone():
                 raise HttpError(404, "Kullanıcı bulunamadı")
             salt, digest = hash_password(password)
             # failed_login_count/locked_until temizlenmezse, admin sifreyi
@@ -4354,7 +4354,7 @@ class AppHandler(BaseHTTPRequestHandler):
         icin gorulebiliyor."""
         with connect_db() as conn:
             self.require_admin(conn)
-            if not conn.execute("SELECT 1 FROM users WHERE id=? AND role='user'", (user_id,)).fetchone():
+            if not conn.execute("SELECT 1 FROM users WHERE id=? AND role IN ('user','admin')", (user_id,)).fetchone():
                 raise HttpError(404, "Kullanıcı bulunamadı")
             rows = conn.execute(
                 "SELECT sid, created_at, last_seen_at, ip_address, user_agent FROM sessions WHERE user_id=? AND expires_at>? ORDER BY last_seen_at DESC",
@@ -4377,7 +4377,7 @@ class AppHandler(BaseHTTPRequestHandler):
             raise HttpError(400, "Oturum kimliği gerekli")
         with connect_db() as conn:
             admin = self.require_admin(conn)
-            if not conn.execute("SELECT 1 FROM users WHERE id=? AND role='user'", (user_id,)).fetchone():
+            if not conn.execute("SELECT 1 FROM users WHERE id=? AND role IN ('user','admin')", (user_id,)).fetchone():
                 raise HttpError(404, "Kullanıcı bulunamadı")
             conn.execute("DELETE FROM sessions WHERE sid=? AND user_id=?", (session_id, user_id))
             audit(conn, admin["id"], "revoke_session", "user", user_id)
@@ -4621,7 +4621,7 @@ class AppHandler(BaseHTTPRequestHandler):
         with connect_db() as conn:
             admin = self.require_admin(conn)
             self.require_admin_step_up(conn)
-            target = conn.execute("SELECT * FROM users WHERE id=? AND role='user'", (user_id,)).fetchone()
+            target = conn.execute("SELECT * FROM users WHERE id=? AND role IN ('user','admin')", (user_id,)).fetchone()
             if not target:
                 raise HttpError(404, "Kullanıcı bulunamadı")
             # Hesap konumu (askıda, beklemede, onaylı...) bilgi eksikliği yüzünden engellenmez:
@@ -4646,7 +4646,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     approved_at=CASE WHEN ?='approved' THEN COALESCE(approved_at, ?) ELSE approved_at END,
                     failed_login_count=CASE WHEN ? THEN 0 ELSE failed_login_count END,
                     locked_until=CASE WHEN ? THEN 0 ELSE locked_until END
-                WHERE id=? AND role='user'
+                WHERE id=? AND role IN ('user','admin')
                 """,
                 (full_name, phone, email, city, district, birth_date, address, tc, status, status, status, kyc_note, is_test_user, status, now(), tc_degisti, tc_degisti, user_id),
             )
@@ -4828,7 +4828,7 @@ class AppHandler(BaseHTTPRequestHandler):
             self.json_response({"ok": True})
 
     def admin_user_action(self, conn: sqlite3.Connection, admin: dict, user_id: int, action: str, reason: str = "") -> None:
-        user = conn.execute("SELECT * FROM users WHERE id=? AND role='user'", (user_id,)).fetchone()
+        user = conn.execute("SELECT * FROM users WHERE id=? AND role IN ('user','admin')", (user_id,)).fetchone()
         if not user:
             raise HttpError(404, "Kullanıcı bulunamadı")
         if action == "unlock":

@@ -987,11 +987,11 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
   const liste = useMemo(() => {
     const needle = fold(query);
     return users.filter((u) =>
-      (durum === "hepsi" || (durum === "supheli" ? u.tc_valid === false : u.status === durum)) &&
+      (durum === "hepsi" || (durum === "yonetici" ? u.role === "admin" : durum === "supheli" ? u.tc_valid === false : u.role !== "admin" && u.status === durum)) &&
       eslesir(u, ["full_name", "email", "account_no", "phone", "tc"], needle));
   }, [users, query, durum]);
 
-  const say = (d) => users.filter((u) => (d === "hepsi" ? true : d === "supheli" ? u.tc_valid === false : u.status === d)).length;
+  const say = (d) => users.filter((u) => (d === "hepsi" ? true : d === "yonetici" ? u.role === "admin" : d === "supheli" ? u.tc_valid === false : u.role !== "admin" && u.status === d)).length;
   const supheli = say("supheli");
 
   const sifreKaydet = async () => {
@@ -1081,7 +1081,7 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
       >
         <AraSatiri value={query} onChange={setQuery} placeholder="Ad, soyad, hesap numarası veya T.C. ile ara…" />
         <div className="ac-sekme">
-          {[["hepsi", "Tümü"], ["approved", "Onaylandı"], ["pending", "Beklemede"], ["under_review", "İnceleniyor"], ["rejected", "Reddedildi"], ["suspended", "Askıda"], ["supheli", "Şüpheli T.C."]].map(([k, ad]) => (
+          {[["hepsi", "Tümü"], ["approved", "Onaylandı"], ["pending", "Beklemede"], ["under_review", "İnceleniyor"], ["rejected", "Reddedildi"], ["suspended", "Askıda"], ["yonetici", "Yöneticiler"], ["supheli", "Şüpheli T.C."]].map(([k, ad]) => (
             <button key={k} className={durum === k ? "on" : ""} onClick={() => setDurum(k)}>{ad} ({say(k)})</button>
           ))}
         </div>
@@ -1096,6 +1096,7 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
                   <small># {user.account_no}</small>
                 </span>
                 <em className={`ac-durum ${DURUM_SINIFI[user.status] || "bekle"}`}>{user.status_label || user.status}</em>
+                {user.role === "admin" && <em className="ac-rozet sari">Yönetici</em>}
                 {user.login_locked && <em className="ac-rozet kirmizi">kilitli ({user.login_locked_minutes} dk)</em>}
               </header>
               <ul>
@@ -2579,8 +2580,9 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
     return () => { document.body.style.overflow = onceki; };
   }, [menuAcik]);
 
+  const musteriler = users.filter((u) => u.role !== "admin");
   const bekleyenSayilari = {
-    "Kullanıcılar": users.filter((u) => u.status !== "approved" && u.status !== "rejected").length,
+    "Kullanıcılar": musteriler.filter((u) => u.status !== "approved" && u.status !== "rejected").length,
     "Emirler": orders.filter((o) => o.status === "pending").length,
     "Para Yatırma Talepleri": moneyReqs.filter((m) => m.status === "pending" && m.request_type === "deposit").length,
     "Para Çekme": moneyReqs.filter((m) => m.status === "pending" && m.request_type === "withdraw").length,
@@ -2638,14 +2640,14 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
           </div>
         </header>
 
-        {sayfa === "Dashboard" && <Dashboard summary={summary} users={users} orders={orders} moneyReqs={moneyReqs} onGit={git} />}
+        {sayfa === "Dashboard" && <Dashboard summary={summary} users={musteriler} orders={orders} moneyReqs={moneyReqs} onGit={git} />}
         {sayfa === "Kullanıcılar" && <UsersPanel users={users} onSec={setSelected} onNotice={onNotice} ensure={lock.ensure} refresh={refresh} />}
         {sayfa === "Portföyler" && <PortfolioPanel users={users} onNotice={onNotice} ensure={lock.ensure} />}
         {sayfa === "Bakiye Detayları" && <BalancePanel ensure={lock.ensure} onNotice={onNotice} onSec={(b) => setSelected(users.find((u) => u.id === b.id) || null)} />}
         {sayfa === "Kredi Başvuruları" && <MoneyPanel moneyReqs={moneyReqs} tur="credit" baslik="Kredi Başvuruları" not="limit talepleri" ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
         {sayfa === "Kredi Ayarları" && <CreditSettings settings={settings} ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
         {sayfa === "T+2 Takip" && <T2Panel ensure={lock.ensure} onNotice={onNotice} settings={settings} refresh={refresh} users={users} />}
-        {sayfa === "Onay Bekleyenler" && <PendingPanel users={users} orders={orders} moneyReqs={moneyReqs} onGit={git} onSec={setSelected} />}
+        {sayfa === "Onay Bekleyenler" && <PendingPanel users={musteriler} orders={orders} moneyReqs={moneyReqs} onGit={git} onSec={setSelected} />}
         {sayfa === "Banka Hesapları" && <BankPanel onNotice={onNotice} ensure={lock.ensure} />}
         {sayfa === "Para Yatırma Talepleri" && <MoneyPanel moneyReqs={moneyReqs} tur="deposit" baslik="Para Yatırma Talepleri" not="dekont doğrulanınca onayla" ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
         {sayfa === "Bakiye Yönetimi" && <LoadMoneyPanel users={users} ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
@@ -2657,7 +2659,7 @@ export default function AdminConsole({ data, refresh, logout, onClose }) {
         {sayfa === "Emirler" && <OrdersPanel orders={orders} ensure={lock.ensure} onNotice={onNotice} refresh={refresh} />}
         {sayfa === "Denetim Kaydı" && <AuditPanel />}
         {sayfa === "Kullanıcı Doğrulama" && (
-          <KycQueuePanel users={users} documents={documents} ensure={lock.ensure} onNotice={onNotice} refresh={belgeleriYukle} />
+          <KycQueuePanel users={musteriler} documents={documents} ensure={lock.ensure} onNotice={onNotice} refresh={belgeleriYukle} />
         )}
       </main>
 
