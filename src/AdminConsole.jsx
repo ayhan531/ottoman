@@ -1427,6 +1427,8 @@ function BalancePanel({ onSec, ensure, onNotice }) {
                   <span><small>Bloke</small><strong>{money(b.orders_reserved)}</strong></span>
                   <span><small>T+2 bekleyen</small><strong>{money(b.pending_balance)}</strong></span>
                   <span><small>Kredi limiti</small><strong>{money(b.credit_limit)}</strong></span>
+                  <span><small>Hisse değeri</small><strong>{money(b.stock_value || 0)}</strong></span>
+                  <span><small>Toplam varlık</small><strong>{money(toplamBakiye(b) + Number(b.stock_value || 0))}</strong></span>
                 </div>
                 <div className="ac-poz-islem">
                   <button className="ac-ghost" onClick={() => onSec?.(b)}>Hesabı aç ve düzenle</button>

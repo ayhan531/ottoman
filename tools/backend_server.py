@@ -3842,7 +3842,15 @@ class AppHandler(BaseHTTPRequestHandler):
                 ORDER BY u.created_at DESC
                 """
             ).fetchall()
-            self.json_response({"balances": [dict(row) for row in rows]})
+            balances = []
+            for row in rows:
+                item = dict(row)
+                try:
+                    item["stock_value"] = round(sum(float(p.get("market_value") or 0) for p in portfolio_rows(conn, int(item["id"]))), 2)
+                except Exception:
+                    item["stock_value"] = 0.0
+                balances.append(item)
+            self.json_response({"balances": balances})
 
     def api_admin_system_settings(self) -> None:
         with connect_db() as conn:
