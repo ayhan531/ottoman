@@ -689,7 +689,7 @@
 .dark-mode .ac-danger{background:#3a1f24;color:#ff8f9a}
 .ac-error{color:#ef4655;font-size:13px;font-weight:600}
 .ac-empty{color:var(--muted);font-size:13px}
-.ac-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:12px 0 4px}
+.ac-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 4px}
 .ac-stats article{background:#f7f7fb;border-radius:12px;padding:10px;display:grid;gap:3px}
 .dark-mode .ac-stats article{background:#171c27}
 .ac-stats span{font-size:11px;color:var(--muted)}

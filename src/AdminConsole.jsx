@@ -28,6 +28,10 @@ const STATUS = [
   ["suspended", "Askıda"],
 ];
 
+/** Hesabın tüm parası: serbest nakit + T+2 bekleyen + bekleyen emirlerde ayrılan tutar. */
+const toplamBakiye = (b) =>
+  Number(b?.cash_balance || 0) + Number(b?.pending_balance || 0) + Number(b?.orders_reserved || 0);
+
 /* ---------- yönetici kilidi ---------- */
 
 function useLock() {
@@ -196,6 +200,8 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
   const nakit = Number(hesap?.cash_balance ?? user.cash_balance ?? 0);
   const bloke = Number(hesap?.orders_reserved ?? 0);
   const kredi = Number(hesap?.credit_limit ?? 0);
+  const t2 = Number(hesap?.pending_balance ?? user.pending_balance ?? 0);
+  const toplam = nakit + t2 + bloke;
 
   return (
     <div className="modal-layer">
@@ -205,7 +211,9 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
         <p className="subtle-count">{user.account_no} · {user.email} · {user.phone || "telefon yok"}</p>
 
         <div className="ac-stats">
+          <article><span>Toplam bakiye</span><strong>{money(toplam)}</strong></article>
           <article><span>Nakit</span><strong>{money(nakit)}</strong></article>
+          <article><span>T+2 bekleyen</span><strong>{money(t2)}</strong></article>
           <article><span>Bloke</span><strong>{money(bloke)}</strong></article>
           <article><span>Kredi limiti</span><strong>{money(kredi)}</strong></article>
           <article><span>Pozisyon</span><strong>{positions.length}</strong></article>
@@ -1104,7 +1112,7 @@ function UsersPanel({ users, onSec, onNotice, ensure, refresh }) {
                 <li><Icon name="phone" size={13} /> {user.phone || "—"}</li>
                 <li><Icon name="globe" size={13} /> {[user.district, user.city].filter(Boolean).join(", ") || "—"}</li>
                 <li><Icon name="calendar" size={13} /> Kayıt: {user.created_at || "—"}</li>
-                <li><Icon name="wallet" size={13} /> Bakiye: <b>{money(user.cash_balance || 0)}</b></li>
+                <li><Icon name="wallet" size={13} /> Toplam bakiye: <b>{money(toplamBakiye(user))}</b>{Number(user.pending_balance || 0) > 0 && <small> (nakit {money(user.cash_balance || 0)} · T+2 {money(user.pending_balance || 0)})</small>}</li>
               </ul>
               <footer>
                 <button className="ac-ghost" onClick={() => onSec(user)}>Düzenle</button>
@@ -1375,8 +1383,8 @@ function BalancePanel({ onSec, ensure, onNotice }) {
     const kopya = [...suzulmus];
     if (sira === "ad") kopya.sort((a, b) => String(a.full_name || "").localeCompare(String(b.full_name || ""), "tr"));
     if (sira === "adTers") kopya.sort((a, b) => String(b.full_name || "").localeCompare(String(a.full_name || ""), "tr"));
-    if (sira === "bakiyeCok") kopya.sort((a, b) => Number(b.cash_balance || 0) - Number(a.cash_balance || 0));
-    if (sira === "bakiyeAz") kopya.sort((a, b) => Number(a.cash_balance || 0) - Number(b.cash_balance || 0));
+    if (sira === "bakiyeCok") kopya.sort((a, b) => toplamBakiye(b) - toplamBakiye(a));
+    if (sira === "bakiyeAz") kopya.sort((a, b) => toplamBakiye(a) - toplamBakiye(b));
     return kopya;
   }, [items, query, sira]);
 
@@ -1390,7 +1398,8 @@ function BalancePanel({ onSec, ensure, onNotice }) {
       </div>
 
       <div className="ac-cards iki">
-        <StatKart renk="yesil" etiket="Toplam Nakit" deger={money(topla("cash_balance"))} />
+        <StatKart renk="yesil" etiket="Toplam Bakiye" deger={money(liste.reduce((sum, b) => sum + toplamBakiye(b), 0))} />
+        <StatKart renk="yesil" etiket="Serbest Nakit" deger={money(topla("cash_balance"))} />
         <StatKart renk="sari" etiket="Bloke" deger={money(topla("orders_reserved"))} />
         <StatKart renk="mavi" etiket="T+2 Bekleyen" deger={money(topla("pending_balance"))} />
         <StatKart renk="mor" etiket="Kredi Limiti" deger={money(topla("credit_limit"))} />
@@ -1405,14 +1414,15 @@ function BalancePanel({ onSec, ensure, onNotice }) {
                 <small>Hesap No: {b.account_no} | Tel: {b.phone || "—"}</small>
               </span>
               <span className="tutar">
-                <small>Mevcut Bakiye</small>
-                <strong>{money(b.cash_balance)}</strong>
+                <small>Toplam Bakiye</small>
+                <strong>{money(toplamBakiye(b))}</strong>
               </span>
               <b className={`ac-chevron${acik === b.id ? " acik" : ""}`}>⌄</b>
             </button>
             {acik === b.id && (
               <div className="alt">
                 <div className="ac-poz-alt">
+                  <span><small>Toplam bakiye</small><strong>{money(toplamBakiye(b))}</strong></span>
                   <span><small>Nakit</small><strong>{money(b.cash_balance)}</strong></span>
                   <span><small>Bloke</small><strong>{money(b.orders_reserved)}</strong></span>
                   <span><small>T+2 bekleyen</small><strong>{money(b.pending_balance)}</strong></span>
@@ -2243,8 +2253,8 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
     const needle = fold(query);
     const filtreli = users.filter((u) => eslesir(u, ["full_name", "account_no", "email", "phone", "tc"], needle));
     const sirali = [...filtreli];
-    if (siralama === "bakiye-yuksek") sirali.sort((a, b) => Number(b.cash_balance || 0) - Number(a.cash_balance || 0));
-    else if (siralama === "bakiye-dusuk") sirali.sort((a, b) => Number(a.cash_balance || 0) - Number(b.cash_balance || 0));
+    if (siralama === "bakiye-yuksek") sirali.sort((a, b) => toplamBakiye(b) - toplamBakiye(a));
+    else if (siralama === "bakiye-dusuk") sirali.sort((a, b) => toplamBakiye(a) - toplamBakiye(b));
     else sirali.sort((a, b) => fold(a.full_name).localeCompare(fold(b.full_name), "tr"));
     return sirali;
   }, [users, query, siralama]);
@@ -2294,7 +2304,7 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
               <small>Hesap No: {u.account_no}</small>
               <small>Telefon: {u.phone || "—"}</small>
               <small>TC: {u.tc || u.tc_masked || "—"}</small>
-              <small className="bakiye">Bakiye: {money(u.cash_balance || 0)}</small>
+              <small className="bakiye">Toplam: {money(toplamBakiye(u))} · nakit {money(u.cash_balance || 0)} · T+2 {money(u.pending_balance || 0)}</small>
             </span>
             <span className="islem">
               <button className="ac-yukle-btn" onClick={() => { setKutu({ user: u, yon: "yukle" }); setForm({ amount: "", note: "" }); }}>+ Bakiye Yükle</button>
@@ -2315,7 +2325,7 @@ function LoadMoneyPanel({ users = [], ensure, onNotice, refresh }) {
         <div className="modal-layer" onClick={() => setKutu(null)}>
           <section className="trade-modal readable-modal ac-notice" onClick={(e) => e.stopPropagation()}>
             <h2>{kutu.yon === "yukle" ? "Bakiye Yükle" : kutu.yon === "ayarla" ? "Bakiyeyi Ayarla" : "Bakiye Çıkar"}</h2>
-            <p className="subtle-count">{kutu.user.full_name} · {kutu.user.account_no} · mevcut {money(kutu.user.cash_balance || 0)}</p>
+            <p className="subtle-count">{kutu.user.full_name} · {kutu.user.account_no} · toplam {money(toplamBakiye(kutu.user))} (nakit {money(kutu.user.cash_balance || 0)} · T+2 {money(kutu.user.pending_balance || 0)})</p>
             <Field label={kutu.yon === "ayarla" ? "Yeni bakiye (₺)" : "Tutar (₺)"} wide>
               <Input inputMode="decimal" value={form.amount} onChange={(e) => setForm((x) => ({ ...x, amount: e.target.value }))} placeholder="0,00" />
             </Field>
