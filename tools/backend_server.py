@@ -3820,6 +3820,16 @@ class AppHandler(BaseHTTPRequestHandler):
     def api_admin_transactions(self) -> None:
         with connect_db() as conn:
             self.require_admin(conn)
+            query = parse_qs(urlparse(self.path).query)
+            try:
+                user_id = int((query.get("user_id") or ["0"])[0])
+            except ValueError:
+                user_id = 0
+            if user_id > 0:
+                # Tek müşteri: tüm hareketler (limitsiz) + yatırılan/çekilen özeti.
+                rows = transaction_rows(conn, "WHERE t.user_id=?", (user_id,), limit=10000)
+                self.json_response({"transactions": rows, "summary": transaction_summary(rows)})
+                return
             self.json_response({"transactions": transaction_rows(conn, "")})
 
     def api_admin_positions(self) -> None:
@@ -5199,6 +5209,7 @@ def transaction_rows(conn: sqlite3.Connection, where: str, params: tuple = (), l
         "stock_sale": "Hisse Satımı",
         "t2_settlement": "Satış Bakiyesi Aktarımı",
         "credit_limit": "Kredi Limiti",
+        "admin_set_balance": "Admin Bakiye Düzeltme",
     }
     items = []
     for row in rows:
@@ -5208,6 +5219,26 @@ def transaction_rows(conn: sqlite3.Connection, where: str, params: tuple = (), l
         item["created_at_label"] = iso_time(item["created_at"])
         items.append(item)
     return items
+
+
+def transaction_summary(rows: list[dict]) -> dict:
+    """Müşterinin toplam yatırdığı / çektiği nakit (para talepleri + admin yükleme/çıkarma)."""
+    deposited = 0.0
+    withdrawn = 0.0
+    for row in rows:
+        kind = row.get("transaction_type")
+        total = float(row.get("total") or 0)
+        if kind in ("deposit", "admin_add"):
+            deposited += total
+        elif kind in ("withdrawal", "admin_subtract"):
+            withdrawn += total
+        elif kind == "admin_set_balance":
+            delta = float(row.get("balance_after") or 0) - float(row.get("balance_before") or 0)
+            if delta >= 0:
+                deposited += delta
+            else:
+                withdrawn += -delta
+    return {"deposited": round(deposited, 2), "withdrawn": round(withdrawn, 2), "net": round(deposited - withdrawn, 2)}
 
 
 def filtered_transactions(conn: sqlite3.Connection, user_id: int | None = None, query: dict | None = None, limit: int = 10000) -> list[dict]:

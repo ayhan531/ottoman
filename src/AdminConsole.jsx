@@ -29,6 +29,17 @@ const STATUS = [
 ];
 
 /** Hesabın tüm parası: serbest nakit + T+2 bekleyen + bekleyen emirlerde ayrılan tutar. */
+/** Epoch saniyesini İstanbul saatiyle dakikasına kadar yazar: "25.05.2026 16:22". */
+const zamanYaz = (ts) => {
+  const n = Number(ts);
+  if (!n) return "—";
+  try {
+    return new Date(n * 1000).toLocaleString("tr-TR", {
+      timeZone: "Europe/Istanbul", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).replace(",", "");
+  } catch { return "—"; }
+};
+
 const toplamBakiye = (b) =>
   Number(b?.cash_balance || 0) + Number(b?.pending_balance || 0) + Number(b?.orders_reserved || 0);
 
@@ -132,15 +143,17 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
   const [positions, setPositions] = useState([]);
   const [position, setPosition] = useState({ action: "set", symbol: "", quantity: "", price: "", note: "" });
   const [hesap, setHesap] = useState(null);
+  const [ozet, setOzet] = useState(null);
   const [yeniSifre, setYeniSifre] = useState("");
 
   const yukle = useCallback(async () => {
     const [tx, poz, bak] = await Promise.all([
-      api("/api/admin/transactions").catch(() => ({})),
+      api(`/api/admin/transactions?user_id=${user.id}`).catch(() => ({})),
       api("/api/admin/positions").catch(() => ({})),
       api("/api/admin/user-balances").catch(() => ({})),
     ]);
     setHistory((tx.transactions || []).filter((row) => Number(row.user_id) === Number(user.id)));
+    setOzet(tx.summary || null);
     setPositions((poz.positions || []).filter((row) => Number(row.user_id) === Number(user.id)));
     setHesap((bak.balances || bak.users || []).find((row) => Number(row.user_id ?? row.id) === Number(user.id)) || null);
   }, [user.id]);
@@ -217,6 +230,9 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
           <article><span>Bloke</span><strong>{money(bloke)}</strong></article>
           <article><span>Kredi limiti</span><strong>{money(kredi)}</strong></article>
           <article><span>Pozisyon</span><strong>{positions.length}</strong></article>
+          <article><span>Toplam yatırılan</span><strong>{money(ozet?.deposited || 0)}</strong></article>
+          <article><span>Toplam çekilen</span><strong>{money(ozet?.withdrawn || 0)}</strong></article>
+          <article><span>Net yatırım</span><strong>{money(ozet?.net || 0)}</strong></article>
         </div>
 
         <Section title="Kimlik ve iletişim" note="Tüm alanlar doğrudan değiştirilebilir">
@@ -265,19 +281,36 @@ function UserEditor({ user, onClose, onNotice, ensure, refresh }) {
           <button className="confirm" disabled={busy === "pozisyon"} onClick={pozisyonUygula}>{busy === "pozisyon" ? "Uygulanıyor…" : "Pozisyonu uygula"}</button>
         </Section>
 
-        <Section title="Hareketler" note={`${history.length} kayıt`}>
-          <div className="ac-list scroll">
-            {history.length === 0 && <div className="ac-line"><span><strong>Kayıt yok</strong><small>Bu hesapta hareket bulunmuyor</small></span></div>}
-            {history.slice(0, 40).map((row) => (
-              <div className="ac-line" key={row.id}>
-                <span>
-                  <strong>{row.type_label || row.transaction_type}{row.code ? ` · ${row.code}` : ""}</strong>
-                  <small>{row.quantity ? `${row.quantity} lot · ` : ""}{row.price ? `${money(row.price)} · ` : ""}{money(row.total)} · {row.created_at_label || ""}</small>
-                </span>
-                <b className="admin-amount">{money(row.balance_after)}</b>
-              </div>
-            ))}
-          </div>
+        <Section title="Bakiye geçmişi" note={`${history.length} kayıt · en yeni üstte`}>
+          {history.length === 0 ? (
+            <div className="ac-list"><div className="ac-line"><span><strong>Kayıt yok</strong><small>Bu hesapta hareket bulunmuyor</small></span></div></div>
+          ) : (
+            <div className="ac-tablo-sarmal">
+              <table className="ac-tablo">
+                <thead>
+                  <tr><th>Tarih</th><th>İşlem</th><th>Tutar</th><th>Önceki</th><th>Sonraki</th><th>Not</th></tr>
+                </thead>
+                <tbody>
+                  {history.map((row) => {
+                    const cikis = ["withdrawal", "admin_subtract", "trade_buy"].includes(row.transaction_type);
+                    const fark = row.transaction_type === "admin_set_balance" ? Number(row.balance_after || 0) - Number(row.balance_before || 0) : null;
+                    const negatif = fark !== null ? fark < 0 : cikis;
+                    const tutar = fark !== null ? Math.abs(fark) : Number(row.total || 0);
+                    return (
+                      <tr key={row.id}>
+                        <td>{zamanYaz(row.created_at)}</td>
+                        <td>{row.type_label || row.transaction_type}{row.code ? ` · ${row.code}` : ""}{row.quantity ? ` · ${row.quantity} lot` : ""}</td>
+                        <td style={{ color: negatif ? "#b3261e" : "#1b7f3b", fontWeight: 600 }}>{negatif ? "−" : "+"}{money(tutar)}</td>
+                        <td>{money(row.balance_before || 0)}</td>
+                        <td>{money(row.balance_after || 0)}</td>
+                        <td>{row.note || ""}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Section>
 
         <Section title="Kimlik ve giriş" note="T.C. kimlik numarası kayıt sırasında algoritmayla doğrulanır">
@@ -902,7 +935,7 @@ function Dashboard({ summary, users, orders, moneyReqs, onGit }) {
           {sonIslemler.map((o) => (
             <Satir key={o.id}
               ust={o.symbol}
-              alt={`${o.quantity} adet · ${o.full_name}`}
+              alt={`${o.quantity} adet · ${o.full_name} · ${zamanYaz(o.reviewed_at || o.created_at)}`}
               sag={<em className={o.side === "buy" ? "ac-al" : "ac-sat"}>{money(o.total)}<b>{o.side === "buy" ? "ALIŞ" : "SATIŞ"}</b></em>}
             />
           ))}
@@ -1491,7 +1524,7 @@ function OrdersPanel({ orders, ensure, onNotice, refresh }) {
         {liste.map((o) => (
           <Satir key={o.id}
             ust={`${o.symbol} · ${o.side === "buy" ? "ALIŞ" : "SATIŞ"} · ${o.quantity} lot`}
-            alt={`${o.full_name} · ${money(o.total)} · ${o.status_label || o.status}`}
+            alt={`${o.full_name} · ${money(o.total)} · ${o.status_label || o.status} · Emir: ${zamanYaz(o.created_at)}${o.reviewed_at ? ` · ${o.status === "rejected" ? "Red" : o.status === "cancelled" ? "İptal" : "Gerçekleşme"}: ${zamanYaz(o.reviewed_at)}` : ""}`}
             sag={o.status === "pending" ? (
               <>
                 <button className="ac-ghost" disabled={busy === o.id} onClick={() => calistir(o, "approve")}>Onayla</button>
