@@ -1700,6 +1700,22 @@ def refresh_indices(conn: sqlite3.Connection) -> None:
 
 
 _market_refresh_lock = threading.Lock()
+MARKET_HISTORY_DAYS = env_int("MARKET_HISTORY_DAYS", 14)
+_history_pruned_at = 0.0
+
+
+def prune_market_history(conn: sqlite3.Connection, current: int) -> None:
+    """Eski fiyat örneklerini temizler. recorded_at üzerinde indeks olmadığından her yenilemede tüm tabloyu taramak
+    yerine, en eski kayıtlardan (id sırasıyla) küçük parçalar halinde ve 5 dakikada bir siler."""
+    global _history_pruned_at
+    if time.time() - _history_pruned_at < 300:
+        return
+    _history_pruned_at = time.time()
+    cutoff = current - 60 * 60 * 24 * MARKET_HISTORY_DAYS
+    conn.execute(
+        "DELETE FROM market_history WHERE id IN (SELECT id FROM market_history ORDER BY id LIMIT 100000) AND recorded_at<?",
+        (cutoff,),
+    )
 
 
 def refresh_market(conn: sqlite3.Connection) -> list[dict]:
@@ -1761,7 +1777,7 @@ def _refresh_market_locked(conn: sqlite3.Connection) -> list[dict]:
                     "INSERT INTO market_history (symbol, price, recorded_at) VALUES (?, ?, ?)",
                     [(quote["symbol"], quote["price"], sampled_at) for quote in quotes if quote["asset_class"] == "stock"],
                 )
-                conn.execute("DELETE FROM market_history WHERE recorded_at<?", (sampled_at - 60 * 60 * 24 * 90,))
+                prune_market_history(conn, sampled_at)
                 save_market_status(conn, url, True, len(quotes), "")
                 conn.commit()
                 refresh_company_metadata(conn)
