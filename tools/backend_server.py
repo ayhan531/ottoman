@@ -7,6 +7,7 @@ from email.utils import parsedate_to_datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import base64
 import io
+import gzip
 import hashlib
 import html
 import hmac
@@ -1608,8 +1609,12 @@ def refresh_fx(conn: sqlite3.Connection) -> None:
     oldest = int(row["oldest"]) if row and row["oldest"] is not None else 0
     if now() - oldest < FX_REFRESH_SECONDS:
         return
+    global _fx_fail_until
+    if time.time() < _fx_fail_until:
+        return
     quotes = fetch_fx_quotes(conn)
     if not quotes:
+        _fx_fail_until = time.time() + 60
         return
     conn.executemany(
         """
@@ -1700,6 +1705,11 @@ def refresh_indices(conn: sqlite3.Connection) -> None:
 
 
 _market_refresh_lock = threading.Lock()
+_market_body_lock = threading.Lock()
+_market_body_cache: dict = {"body": None, "gz": None, "ts": 0.0}
+MARKET_BODY_TTL = float(os.environ.get("MARKET_BODY_TTL", "4"))
+_market_fail_until = 0.0
+_fx_fail_until = 0.0
 MARKET_HISTORY_DAYS = env_int("MARKET_HISTORY_DAYS", 14)
 _history_pruned_at = 0.0
 
@@ -1731,6 +1741,10 @@ def refresh_market(conn: sqlite3.Connection) -> list[dict]:
 
 
 def _refresh_market_locked(conn: sqlite3.Connection) -> list[dict]:
+    global _market_fail_until
+    if time.time() < _market_fail_until:
+        # Kaynak yakın zamanda hata verdi: her istekte yeniden denemek yerine önbelleği ver.
+        return market_from_cache(conn)
     refresh_fx(conn)
     refresh_indices(conn)
     if not market_feed_enabled(conn):
@@ -1787,6 +1801,7 @@ def _refresh_market_locked(conn: sqlite3.Connection) -> list[dict]:
             last_error = "Kaynak veri döndürdü ama sembol ayrıştırılamadı"
         except Exception as exc:
             last_error = str(exc)
+    _market_fail_until = time.time() + 20
     count = conn.execute("SELECT COUNT(*) c FROM market_cache").fetchone()["c"]
     save_market_status(conn, "fallback-cache", False, count, last_error or "Canlı kaynak okunamadı")
     apply_manual_prices(conn)
@@ -2231,9 +2246,51 @@ def market_news(market: int) -> tuple[list[dict], bool]:
     akışına düşülür, o da olmazsa son bilinen liste verilir.
     """
     cached = MARKET_NEWS_CACHE.get(market)
-    if cached and cached["items"] and now() - int(cached["updated_at"]) < MARKET_NEWS_REFRESH_SECONDS:
+    if cached and cached["items"]:
+        if now() - int(cached["updated_at"]) >= MARKET_NEWS_REFRESH_SECONDS:
+            # Eski ama dolu liste hemen verilir; yenileme arka planda tek iş parçacığıyla yapılır (kullanıcı beklemez).
+            _news_refresh_async(market)
         return cached["items"], True
+    if cached and now() - int(cached["updated_at"]) < MARKET_NEWS_REFRESH_SECONDS:
+        return [], False          # kaynaklar yakın zamanda boş döndü: kullanıcıyı yeniden taramada bekletme
+    return _market_news_fetch(market)
 
+
+_news_refreshing: set = set()
+_news_refreshing_lock = threading.Lock()
+
+
+def _news_refresh_async(market: int) -> None:
+    with _news_refreshing_lock:
+        if market in _news_refreshing:
+            return
+        _news_refreshing.add(market)
+
+    def run() -> None:
+        try:
+            _market_news_fetch(market)
+        except Exception:
+            pass
+        finally:
+            with _news_refreshing_lock:
+                _news_refreshing.discard(market)
+
+    threading.Thread(target=run, daemon=True).start()
+
+
+_news_fetch_locks: dict = {}
+
+
+def _market_news_fetch(market: int) -> tuple[list[dict], bool]:
+    lock = _news_fetch_locks.setdefault(market, threading.Lock())
+    with lock:   # aynı sekme için aynı anda tek kaynak taraması; diğer istekler bitmesini bekleyip önbelleği okur
+        cached = MARKET_NEWS_CACHE.get(market)
+        if cached and cached["items"] and now() - int(cached["updated_at"]) < MARKET_NEWS_REFRESH_SECONDS:
+            return cached["items"], True
+        return _market_news_scan(market, cached)
+
+
+def _market_news_scan(market: int, cached: dict | None) -> tuple[list[dict], bool]:
     items: list[dict] = []
     try:
         tanit_sirketler()
@@ -2250,7 +2307,11 @@ def market_news(market: int) -> tuple[list[dict], bool]:
         MARKET_NEWS_CACHE[market] = {"items": items, "updated_at": now()}
         return items, True
     if cached and cached["items"]:
+        # Yenileme başarısız: her istekte yeniden denemek yerine 2 dakika sonra tekrar dene.
+        cached["updated_at"] = now() - MARKET_NEWS_REFRESH_SECONDS + 120
         return cached["items"], True
+    # Hiç haber yok: 60 sn boyunca tekrar tarama yapma (her istek 15-30 sn beklemesin).
+    MARKET_NEWS_CACHE[market] = {"items": [], "updated_at": now() - MARKET_NEWS_REFRESH_SECONDS + 60}
     return [], False
 
 
@@ -2620,8 +2681,19 @@ class AppHandler(BaseHTTPRequestHandler):
 
     def json_response(self, data: dict | list, status: int = 200, extra_headers: dict | None = None) -> None:
         body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self.send_json_bytes(body, status, extra_headers)
+
+    def send_json_bytes(self, body: bytes, status: int = 200, extra_headers: dict | None = None, gz: bytes | None = None) -> None:
+        """Hazır JSON gövdesini gönderir; istemci destekliyorsa ve gövde büyükse gzip ile sıkıştırır."""
+        encoding = ""
+        if len(body) > 2048 and "gzip" in (self.headers.get("Accept-Encoding", "") or "").lower():
+            body = gz if gz is not None else gzip.compress(body, 4)
+            encoding = "gzip"
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
+        if encoding:
+            self.send_header("Content-Encoding", encoding)
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(body)))
         self._cors_headers()
         self.security_headers()
@@ -2733,15 +2805,20 @@ class AppHandler(BaseHTTPRequestHandler):
             return None
         row = conn.execute(
             """
-            SELECT u.* FROM sessions s
+            SELECT u.*, s.last_seen_at AS _session_seen FROM sessions s
             JOIN users u ON u.id=s.user_id
             WHERE s.sid=? AND s.expires_at>?
             """,
             (sid, now()),
         ).fetchone()
-        if row:
+        if not row:
+            return None
+        user = dict(row)
+        seen = int(user.pop("_session_seen", 0) or 0)
+        if now() - seen >= 60:
+            # Her istekte yazma yapmak kilit ve disk yükü üretiyordu; dakikada bir yeterli.
             conn.execute("UPDATE sessions SET last_seen_at=? WHERE sid=?", (now(), sid))
-        return dict(row) if row else None
+        return user
 
     def require_user(self, conn: sqlite3.Connection) -> dict:
         user = self.current_user(conn)
@@ -3169,9 +3246,19 @@ class AppHandler(BaseHTTPRequestHandler):
             self.json_response({"ok": True, "status": "pending", "message": "Hesap oluşturuldu. Kimlik belgeleri profilden yüklenmeli."}, 201)
 
     def api_market(self) -> None:
-        with connect_db() as conn:
-            quotes = refresh_market(conn)
-            self.json_response({"quotes": quotes, "source": "trrealapi-market", "updated_at": iso_time(), "meta": market_status(conn)})
+        # Tüm müşteriler aynı veriyi ister: yanıtı birkaç saniye hazır tut (veritabanı + JSON + gzip her istekte tekrarlanmasın).
+        cached = _market_body_cache
+        if cached["body"] is not None and time.time() - cached["ts"] < MARKET_BODY_TTL:
+            return self.send_json_bytes(cached["body"], gz=cached["gz"])
+        with _market_body_lock:
+            if cached["body"] is not None and time.time() - cached["ts"] < MARKET_BODY_TTL:
+                return self.send_json_bytes(cached["body"], gz=cached["gz"])
+            with connect_db() as conn:
+                quotes = refresh_market(conn)
+                payload = {"quotes": quotes, "source": "trrealapi-market", "updated_at": iso_time(), "meta": market_status(conn)}
+            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            cached.update(body=body, gz=gzip.compress(body, 4), ts=time.time())
+        return self.send_json_bytes(body, gz=cached["gz"])
 
     def api_market_sparklines(self) -> None:
         """Auth ekranındaki şerit için: sembol başına son gerçek fiyat örneklerini döndürür
