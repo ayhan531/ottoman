@@ -286,9 +286,16 @@ def iso_time(ts: int | None = None) -> str:
 
 
 def connect_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    # WAL: okuyucular yazıcıları, yazıcılar okuyucuları beklemez; busy_timeout: kilitte hata vermek yerine bekler.
+    conn = sqlite3.connect(DB_PATH, timeout=30)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 30000")
+    try:
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
+    except sqlite3.OperationalError:
+        pass
     return conn
 
 
@@ -1640,8 +1647,6 @@ def refresh_indices(conn: sqlite3.Connection) -> None:
     Daha önce kurulumla gelmiş sabit (updated_at=0) endeks satırları silinir.
     """
     global _index_refreshed_at
-    # Kurulumla gelmiş sabit/örnek fiyat satırlarını (hiç canlı güncellenmemiş) temizle.
-    conn.execute("DELETE FROM market_cache WHERE updated_at<=0 AND metadata_updated_at<=0")
     if time.time() - _index_refreshed_at < INDEX_REFRESH_SECONDS:
         return
     _index_refreshed_at = time.time()
@@ -1678,6 +1683,9 @@ def refresh_indices(conn: sqlite3.Connection) -> None:
             continue
         symbol, name = INDEX_TICKERS[ticker]
         rows.append((symbol, name, round(price, 2), round(change, 2), 0, "index", ts))
+    # Kurulumla gelmiş sabit/örnek fiyat satırlarını (hiç canlı güncellenmemiş) ağ çağrısından SONRA temizle;
+    # böylece yazma kilidi ağ beklerken tutulmaz.
+    conn.execute("DELETE FROM market_cache WHERE updated_at<=0 AND metadata_updated_at<=0")
     if rows:
         conn.executemany(
             """
@@ -1688,10 +1696,25 @@ def refresh_indices(conn: sqlite3.Connection) -> None:
             """,
             rows,
         )
-        conn.commit()
+    conn.commit()
+
+
+_market_refresh_lock = threading.Lock()
 
 
 def refresh_market(conn: sqlite3.Connection) -> list[dict]:
+    """Piyasa verisini yeniler. Aynı anda yalnızca tek istek dış kaynağa gider; diğerleri anında önbelleği alır.
+    Ağ beklerken veritabanı yazma kilidi tutulmaz."""
+    conn.commit()
+    if not _market_refresh_lock.acquire(blocking=False):
+        return market_from_cache(conn)
+    try:
+        return _refresh_market_locked(conn)
+    finally:
+        _market_refresh_lock.release()
+
+
+def _refresh_market_locked(conn: sqlite3.Connection) -> list[dict]:
     refresh_fx(conn)
     refresh_indices(conn)
     if not market_feed_enabled(conn):
