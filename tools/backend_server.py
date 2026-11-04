@@ -1732,12 +1732,39 @@ def refresh_market(conn: sqlite3.Connection) -> list[dict]:
     """Piyasa verisini yeniler. Aynı anda yalnızca tek istek dış kaynağa gider; diğerleri anında önbelleği alır.
     Ağ beklerken veritabanı yazma kilidi tutulmaz."""
     conn.commit()
+    if _market_worker_started:
+        # Yenileme arka plan iş parçacığında yapılır; istek yolunda ağ beklemesi ve yazma yoktur.
+        return market_from_cache(conn)
     if not _market_refresh_lock.acquire(blocking=False):
         return market_from_cache(conn)
     try:
         return _refresh_market_locked(conn)
     finally:
         _market_refresh_lock.release()
+
+
+_market_worker_started = False
+
+
+def market_refresh_worker() -> None:
+    """Piyasa/kur/endeks verisini düzenli aralıkla, kullanıcı isteklerinden bağımsız yeniler."""
+    while True:
+        try:
+            with connect_db() as conn:
+                with _market_refresh_lock:
+                    _refresh_market_locked(conn)
+                conn.commit()
+        except Exception as exc:  # kaynak hatası döngüyü durdurmamalı
+            print(f"market worker: {exc}")
+        time.sleep(max(5, MARKET_REFRESH_SECONDS))
+
+
+def start_market_worker() -> None:
+    global _market_worker_started
+    if _market_worker_started:
+        return
+    _market_worker_started = True
+    threading.Thread(target=market_refresh_worker, name="market-refresh", daemon=True).start()
 
 
 def _refresh_market_locked(conn: sqlite3.Connection) -> list[dict]:
@@ -6233,6 +6260,7 @@ if __name__ == "__main__":
     init_db()
     haberleri_isit()
     katilimi_esitle()
+    start_market_worker()
     server = ThreadingHTTPServer(("", PORT), AppHandler)
     print(f"Ottoman backend running at http://localhost:{PORT}")
     print(f"Database: {DB_PATH}")
