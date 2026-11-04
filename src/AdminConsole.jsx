@@ -610,6 +610,51 @@ function SettingsPanel({ settings, onNotice, ensure, refresh }) {
     }
   };
 
+  const [yedekBusy, setYedekBusy] = useState(false);
+
+  const yedekIndir = async () => {
+    if (!(await ensure())) return;
+    setYedekBusy(true);
+    try {
+      const response = await fetch("/api/admin/db-backup", { credentials: "include" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
+      const bag = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const damga = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+      a.href = bag; a.download = `ottoman-yedek-${damga}.db`;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(bag), 10000);
+      onNotice("Yedek indirildi", `${(blob.size / 1048576).toFixed(1)} MB`);
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Yedek indirilemedi");
+    } finally {
+      setYedekBusy(false);
+    }
+  };
+
+  const yedekYukle = async (e) => {
+    const dosya = e.target.files?.[0];
+    e.target.value = "";
+    if (!dosya) return;
+    if (window.prompt(`"${dosya.name}" canlı verinin yerine geçecek. Devam için GERİ YÜKLE yaz.`) !== "GERİ YÜKLE") return;
+    if (!(await ensure())) return;
+    setYedekBusy(true);
+    try {
+      const response = await fetch("/api/admin/db-restore?confirm=EVET", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/octet-stream" }, body: dosya,
+      });
+      const veri = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(veri.error || `HTTP ${response.status}`);
+      onNotice("Geri yüklendi", "Sayfa yenileniyor.");
+      setTimeout(() => window.location.reload(), 1500);
+    } catch (hata) {
+      onNotice("Olmadı", hata?.message || "Yedek yüklenemedi");
+    } finally {
+      setYedekBusy(false);
+    }
+  };
+
   const kaydet = async () => {
     if (!(await ensure())) return;
     setBusy(true);
@@ -641,6 +686,19 @@ function SettingsPanel({ settings, onNotice, ensure, refresh }) {
               </b>
             </div>
           ))}
+        </div>
+      </Section>
+
+      <Section title="Veritabanı yedeği" note="Tüm verinin kopyasını bilgisayarına indir ya da yedekten geri yükle">
+        <div className="ac-list">
+          <div className="ac-line">
+            <span><strong>Yedeği indir</strong><small>Şu anki tüm müşteri, bakiye ve emir verisinin .db kopyası</small></span>
+            <b className="ac-line-actions"><button className="ac-ghost" disabled={yedekBusy} onClick={yedekIndir}>{yedekBusy ? "Hazırlanıyor…" : "İndir"}</button></b>
+          </div>
+          <div className="ac-line">
+            <span><strong>Yedekten geri yükle</strong><small>Seçilen .db dosyası canlı verinin yerine geçer. Mevcut veri önce sunucuda ayrıca saklanır.</small></span>
+            <b className="ac-line-actions"><input type="file" accept=".db,.sqlite" disabled={yedekBusy} onChange={yedekYukle} /></b>
+          </div>
         </div>
       </Section>
 

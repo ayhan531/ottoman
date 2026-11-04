@@ -2479,6 +2479,10 @@ class AppHandler(BaseHTTPRequestHandler):
             return self.api_admin_reports()
         if method == "GET" and path == "/api/admin/reports/export":
             return self.api_admin_reports_export()
+        if method == "GET" and path == "/api/admin/db-backup":
+            return self.api_admin_db_backup()
+        if method == "POST" and path == "/api/admin/db-restore":
+            return self.api_admin_db_restore()
         if method == "GET" and path == "/api/admin/project-export":
             return self.api_admin_project_export()
         if method == "GET" and path == "/api/admin/project-export/apk":
@@ -3816,6 +3820,100 @@ class AppHandler(BaseHTTPRequestHandler):
             audit(conn, admin["id"], "manual_settle_t2", "t2_settlement", settlement_id)
             conn.commit()
             self.json_response({"ok": True})
+
+    def api_admin_db_backup(self) -> None:
+        """Canlı veritabanının tutarlı bir kopyasını indirir (yalnızca yönetici)."""
+        import tempfile
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+            self.require_admin_step_up(conn)
+            audit(conn, admin["id"], "db_backup_download", "system", None)
+            conn.commit()
+        fd, tmp_name = tempfile.mkstemp(suffix=".db", dir=str(DB_PATH.parent))
+        os.close(fd)
+        try:
+            src = sqlite3.connect(DB_PATH)
+            dst = sqlite3.connect(tmp_name)
+            try:
+                src.backup(dst)
+            finally:
+                dst.close()
+                src.close()
+            body = Path(tmp_name).read_bytes()
+        finally:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+        filename = time.strftime("ottoman-yedek-%Y%m%d-%H%M.db", time.localtime(now()))
+        self.send_response(200)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+        self.send_header("Content-Length", str(len(body)))
+        self.security_headers()
+        self.end_headers()
+        self.wfile.write(body)
+
+    def api_admin_db_restore(self) -> None:
+        """Yüklenen SQLite dosyasını canlı veritabanının yerine koyar. Önce mevcut veri diskte yedeklenir."""
+        import tempfile
+        length = int(self.headers.get("Content-Length", "0") or "0")
+        if length <= 0 or length > 400_000_000:
+            raise HttpError(413, "Dosya boyutu geçersiz")
+        if (parse_qs(urlparse(self.path).query).get("confirm") or [""])[0] != "EVET":
+            raise HttpError(400, "Onay gerekli")
+        with connect_db() as conn:
+            admin = self.require_admin(conn)
+            self.require_admin_step_up(conn)
+        fd, tmp_name = tempfile.mkstemp(suffix=".db", dir=str(DB_PATH.parent))
+        with os.fdopen(fd, "wb") as handle:
+            remaining = length
+            while remaining > 0:
+                chunk = self.rfile.read(min(1_048_576, remaining))
+                if not chunk:
+                    break
+                handle.write(chunk)
+                remaining -= len(chunk)
+        try:
+            if remaining != 0:
+                raise HttpError(400, "Dosya eksik geldi")
+            with open(tmp_name, "rb") as handle:
+                if handle.read(16) != b"SQLite format 3\x00":
+                    raise HttpError(400, "Geçerli bir SQLite dosyası değil")
+            check = sqlite3.connect(tmp_name)
+            try:
+                if check.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+                    raise HttpError(400, "Dosya bütünlük kontrolünden geçmedi")
+                tables = {row[0] for row in check.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+                if not {"users", "accounts", "user_transactions"} <= tables:
+                    raise HttpError(400, "Dosya Ottoman veritabanı gibi görünmüyor")
+            finally:
+                check.close()
+            # Mevcut veriyi diskte sakla (geri dönüş için).
+            safety = DB_PATH.parent / time.strftime("ottoman-onceki-%Y%m%d-%H%M%S.db", time.localtime(now()))
+            live = sqlite3.connect(DB_PATH)
+            keep = sqlite3.connect(safety)
+            try:
+                live.backup(keep)
+            finally:
+                keep.close()
+                live.close()
+            src = sqlite3.connect(tmp_name)
+            dst = sqlite3.connect(DB_PATH, timeout=30)
+            try:
+                src.backup(dst)
+            finally:
+                dst.close()
+                src.close()
+        finally:
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+        with connect_db() as conn:
+            audit(conn, admin["id"], "db_restore_upload", "system", None, {"safety_copy": safety.name})
+            conn.commit()
+        self.json_response({"ok": True, "safety_copy": safety.name})
 
     def api_admin_transactions(self) -> None:
         with connect_db() as conn:
