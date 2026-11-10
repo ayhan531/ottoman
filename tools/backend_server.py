@@ -1340,7 +1340,7 @@ def market_from_cache(conn: sqlite3.Connection) -> list[dict]:
             ELSE 20
           END,
           m.symbol ASC
-        LIMIT 1000
+        LIMIT 5000
         """
     ).fetchall()
     return [dict(row) for row in rows]
@@ -4458,7 +4458,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 "SELECT m.symbol, m.name, m.price, m.change_pct, m.asset_class, m.updated_at,"
                 " e.price AS manual_price, e.change_pct AS manual_change, e.updated_at AS manual_at"
                 " FROM market_cache m LEFT JOIN instrument_prices e ON e.symbol=m.symbol"
-                + kosul + " ORDER BY m.symbol ASC LIMIT 1000",
+                + kosul + " ORDER BY m.symbol ASC LIMIT 5000",
                 parametreler,
             ).fetchall()
             elle = conn.execute("SELECT COUNT(*) c FROM instrument_prices").fetchone()["c"]

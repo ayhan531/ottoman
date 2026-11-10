@@ -29,7 +29,16 @@ function Root() {
   const [uyari, setUyari] = useState(null);
 
   const loadMe = useCallback(async () => {
-    try { setMe(normalize(await api("/api/me"))); } catch { setMe(null); } finally { setReady(true); }
+    try {
+      setMe(normalize(await api("/api/me")));
+    } catch (hata) {
+      // Yalnızca oturum gerçekten bittiğinde (401) çıkış yap. Anlık bağlantı kopması, yavaşlık ya da sunucu
+      // hatası kullanıcıyı sessizce dışarı atmasın (eskiden boş/giriş ekranına düşüyordu).
+      const oturumYok = /Oturum gerekli|HTTP 401/.test(String(hata?.message || ""));
+      setMe((onceki) => (oturumYok ? null : onceki));
+    } finally {
+      setReady(true);
+    }
   }, []);
 
   useEffect(() => { loadMe(); }, [loadMe]);
@@ -119,8 +128,47 @@ function Root() {
   return <Esube me={me} onLogout={logout} onAdmin={() => setShowAdmin(true)} refreshMe={loadMe} />;
 }
 
+/** Beklenmeyen bir görüntüleme hatasında beyaz ekran yerine toparlama ekranı gösterir. */
+class HataSiniri extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hata: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hata: true };
+  }
+
+  componentDidCatch(hata) {
+    try { console.error("Uygulama hatası:", hata); } catch { /* yoksay */ }
+  }
+
+  yenile = async () => {
+    try {
+      const kayitlar = (await navigator.serviceWorker?.getRegistrations?.()) || [];
+      await Promise.all(kayitlar.map((k) => k.unregister()));
+      const adlar = (await caches?.keys?.()) || [];
+      await Promise.all(adlar.map((ad) => caches.delete(ad)));
+    } catch { /* yoksay */ }
+    window.location.reload();
+  };
+
+  render() {
+    if (!this.state.hata) return this.props.children;
+    return (
+      <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, textAlign: "center", fontFamily: "system-ui, sans-serif" }}>
+        <div>
+          <h2 style={{ margin: "0 0 8px" }}>Bir sorun oluştu</h2>
+          <p style={{ margin: "0 0 16px", opacity: 0.7 }}>Sayfa beklenmedik şekilde durdu. Yenileyince kaldığınız yerden devam edebilirsiniz.</p>
+          <button className="btn" onClick={this.yenile}>Sayfayı yenile</button>
+        </div>
+      </div>
+    );
+  }
+}
+
 trackSafeArea();
 trackInstall();
 registerWorker();
 
-createRoot(document.getElementById("app")).render(<Root />);
+createRoot(document.getElementById("app")).render(<HataSiniri><Root /></HataSiniri>);

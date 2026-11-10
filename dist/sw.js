@@ -10,7 +10,7 @@
  * verilir.
  */
 
-const SURUM = "ottoman-v3";
+const SURUM = "ottoman-v4";
 const KABUK = `${SURUM}-kabuk`;
 const VERI = `${SURUM}-veri`;
 const APP_URL = "/?uygulama=1";
